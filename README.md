@@ -17,10 +17,26 @@ Windows 本地漫画管理与图片查看器。
 
 ## 本地运行
 
+要求：
+
+- Windows
+- .NET 8 SDK
+
 ```powershell
 dotnet build .\MangaReader.Native\MangaReader.Native.csproj
 dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 ```
+
+## 本地数据
+
+本项目不上传任何本地漫画数据。
+
+- `MangaReader_Data/`：运行时数据库、缩略图缓存、备份目录，已加入 `.gitignore`。
+- `_release/`：本地发布产物，已加入 `.gitignore`。
+- `bin/`、`obj/`：编译缓存，已加入 `.gitignore`。
+- `*.db`、`*.db-wal`、`*.db-shm`：SQLite 数据文件，已加入 `.gitignore`。
+
+如果需要迁移自己的书库数据，请手动复制本机的 `MangaReader_Data`，不要提交到 Git。
 
 ## 发布测试版
 
