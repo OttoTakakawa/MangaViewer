@@ -1,0 +1,1331 @@
+<Window x:Class="MangaReader.Native.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:MangaReader.Native.Models"
+        mc:Ignorable="d"
+        Title="漫画库" Height="900" Width="1500" MinHeight="760" MinWidth="1180"
+        Background="#F6F7F9" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <DropShadowEffect x:Key="BookShadow" Color="#111827" BlurRadius="18" ShadowDepth="6" Opacity="0.14"/>
+        <DropShadowEffect x:Key="PanelShadow" Color="#111827" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
+
+        <Style TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="#111827"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="18"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.78"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Foreground" Value="#111827"/>
+        </Style>
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#FFF1F2"/>
+            <Setter Property="BorderBrush" Value="#FECDD3"/>
+            <Setter Property="Foreground" Value="#9F1239"/>
+        </Style>
+        <Style x:Key="FilterPillButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="18,10"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="#E5E7EB"
+                                BorderThickness="1"
+                                CornerRadius="22"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#F3F4F6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TinyButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style x:Key="FilterPillTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="22">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#D1D5DB"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#9CA3AF"/>
+                                <Setter TargetName="Root" Property="Background" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="BorderBrush" Value="#D8DEE8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="14">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="BorderBrush" Value="#D8DEE8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="ComboRoot" SnapsToDevicePixels="True">
+                            <Border x:Name="ComboBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="36"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Margin="16,0,4,0"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                                    <Grid Grid.Column="1">
+                                        <Path Data="M 0 0 L 4 4 L 8 0"
+                                              Stroke="#6B7280"
+                                              StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                            <ToggleButton x:Name="DropDownToggle"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PlacementTarget="{Binding ElementName=ComboRoot}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Margin="0,6,0,0"
+                                        Width="{Binding ActualWidth, ElementName=ComboRoot}"
+                                        Background="#FFFFFF"
+                                        BorderBrush="#D8DEE8"
+                                        BorderThickness="1"
+                                        CornerRadius="14"
+                                        Effect="{StaticResource PanelShadow}">
+                                    <ScrollViewer MaxHeight="280"
+                                                  CanContentScroll="True">
+                                        <ItemsPresenter Margin="4"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#C4CCD7"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#9CA3AF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="FilterPillComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="FilterComboBox_PreviewMouseLeftButtonDown"/>
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="ComboRoot" SnapsToDevicePixels="True">
+                            <Border x:Name="ComboBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="22">
+                                <Grid Margin="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="42"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                                    <Border Grid.Column="1"
+                                            Width="28"
+                                            Height="28"
+                                            Margin="0,0,10,0"
+                                            Background="#EEF2F7"
+                                            CornerRadius="14"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center">
+                                        <Path Data="M 0 0 L 5 5 L 10 0"
+                                              Stroke="#6B7280"
+                                              StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                            <ToggleButton Background="Transparent"
+                                          BorderThickness="0"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PlacementTarget="{Binding ElementName=ComboRoot}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Margin="0,8,0,0"
+                                        Width="{Binding ActualWidth, ElementName=ComboRoot}"
+                                        Background="#FFFFFF"
+                                        BorderBrush="#E5E7EB"
+                                        BorderThickness="1"
+                                        CornerRadius="18"
+                                        Effect="{StaticResource PanelShadow}">
+                                    <ScrollViewer MaxHeight="280" CanContentScroll="True">
+                                        <ItemsPresenter Margin="6"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#D1D5DB"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#9CA3AF"/>
+                                <Setter TargetName="ComboBorder" Property="Background" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemRoot"
+                                Margin="2"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#F3F4F6"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#E5E7EB"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsHighlighted" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#DDE3EA"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Foreground" Value="#4B5563"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="PillRoot"
+                                MinHeight="36"
+                                Padding="12,7"
+                                Background="#F8FAFC"
+                                BorderBrush="#E5E7EB"
+                                BorderThickness="1"
+                                CornerRadius="18">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border x:Name="CheckMark"
+                                        Width="18"
+                                        Height="18"
+                                        Margin="0,0,8,0"
+                                        Background="#FFFFFF"
+                                        BorderBrush="#CBD5E1"
+                                        BorderThickness="1"
+                                        CornerRadius="9">
+                                    <Path x:Name="CheckGlyph"
+                                          Data="M 4 9 L 7 12 L 14 5"
+                                          Stroke="#FFFFFF"
+                                          StrokeThickness="2"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Visibility="Collapsed"/>
+                                </Border>
+                                <ContentPresenter VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="PillRoot" Property="Background" Value="#F1F5F9"/>
+                                <Setter TargetName="PillRoot" Property="BorderBrush" Value="#D1D5DB"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="PillRoot" Property="Background" Value="#EEF2FF"/>
+                                <Setter TargetName="PillRoot" Property="BorderBrush" Value="#C7D2FE"/>
+                                <Setter TargetName="CheckMark" Property="Background" Value="#111827"/>
+                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="#111827"/>
+                                <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="#111827"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="LabelText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style x:Key="MetricCard" TargetType="Border">
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+        <Style x:Key="SidebarNavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#374151"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="MinHeight" Value="40"/>
+        </Style>
+        <Style x:Key="SidebarActionButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+        <Style x:Key="LibraryListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Width" Value="198"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="SelectionFrame" Padding="4" Background="Transparent" BorderBrush="Transparent" BorderThickness="2" CornerRadius="28">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="SelectionFrame" Property="BorderBrush" Value="#D0B89F"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="#55FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="LibraryBookTemplate">
+            <Grid Margin="6,8" Width="176">
+                <StackPanel>
+                    <Grid Height="218" HorizontalAlignment="Center">
+                        <Grid Width="148" Height="210" VerticalAlignment="Top" Effect="{StaticResource BookShadow}">
+                            <Grid x:Name="GrooveCover">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Border CornerRadius="5" ClipToBounds="True" Background="Transparent">
+                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                </Border>
+                                <Rectangle Width="2" Margin="23,10,0,10" HorizontalAlignment="Left" Fill="#66000000" RadiusX="1" RadiusY="1"/>
+                                <Rectangle Width="1" Margin="27,12,0,12" HorizontalAlignment="Left" Fill="#66FFFFFF" RadiusX="1" RadiusY="1"/>
+                            </Grid>
+
+                            <Grid x:Name="BoundMangaCover">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="1">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Border CornerRadius="4" ClipToBounds="True" Background="Transparent">
+                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                </Border>
+                                <Border Width="30" HorizontalAlignment="Left" CornerRadius="4,0,0,4">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#70000000" Offset="0"/>
+                                            <GradientStop Color="#26000000" Offset="0.48"/>
+                                            <GradientStop Color="#24FFFFFF" Offset="0.66"/>
+                                            <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                <Rectangle Width="10" HorizontalAlignment="Left" Margin="18,4,0,4" RadiusX="5" RadiusY="5" Opacity="0.38">
+                                    <Rectangle.Fill>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#00000000" Offset="0"/>
+                                            <GradientStop Color="#55FFFFFF" Offset="0.55"/>
+                                            <GradientStop Color="#00000000" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Rectangle.Fill>
+                                </Rectangle>
+                            </Grid>
+
+                            <Grid x:Name="PlainCover">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="2">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Border CornerRadius="3" ClipToBounds="True" Background="Transparent">
+                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                </Border>
+                            </Grid>
+
+                            <Grid x:Name="WhiteBorderCover">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="3">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Border Background="#FAFFFFFF" CornerRadius="6" Padding="7">
+                                    <Border CornerRadius="2" ClipToBounds="True" Background="Transparent">
+                                        <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                    </Border>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                    <TextBlock Text="{Binding Title}" Margin="0,8,0,0" FontWeight="Black" FontSize="15" Foreground="#25211E" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Author}" Margin="0,3,0,0" Foreground="#81756B" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding StatusBadgeText}" Margin="0,3,0,0" Foreground="#7E6A58" FontSize="12" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="{Binding ReadCountBadgeText}" Foreground="#9A6F25" FontSize="12" FontWeight="SemiBold" TextAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Margin" Value="0,3,0,0"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Margin" Value="0"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding MissingText}" Foreground="#B44A36" FontWeight="SemiBold" TextAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Margin" Value="0,3,0,0"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Margin" Value="0"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding HiddenText}" Foreground="#9A6F25" FontWeight="SemiBold" TextAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Margin" Value="0,3,0,0"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Margin" Value="0"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding TagItems}" Margin="0,6,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel HorizontalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="2" Padding="7,3" CornerRadius="10" Background="{Binding Color}">
+                                    <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#2B2520"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="HomeWideBookTemplate">
+            <Border Width="430" Height="208" Margin="0,0,18,0" CornerRadius="22" Background="#26201B" BorderBrush="#22FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click" ClipToBounds="True">
+                <Grid>
+                    <Grid.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#2D241E" Offset="0"/>
+                            <GradientStop Color="#171310" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill" Opacity="0.34"/>
+                    <Rectangle>
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#E61C1713" Offset="0"/>
+                                <GradientStop Color="#B8191512" Offset="0.52"/>
+                                <GradientStop Color="#33110D0A" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <Grid Margin="22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="118"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="102" Height="146" CornerRadius="16" Background="{Binding BookAccentColor}" ClipToBounds="True" VerticalAlignment="Center" Effect="{StaticResource BookShadow}">
+                            <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,6,0,6" VerticalAlignment="Stretch">
+                            <TextBlock Text="继续阅读" Foreground="#CFB9A6" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Title}" Margin="0,10,0,0" Foreground="#FAF5EF" FontSize="26" FontWeight="Black" TextWrapping="Wrap" MaxHeight="72"/>
+                            <TextBlock Text="{Binding Author}" Margin="0,8,0,0" Foreground="#D6C7BA" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding ProgressText}" Margin="0,16,0,0" Foreground="#F0E5DA" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding StatusBadgeText}" Margin="0,4,0,0" Foreground="#BFAE9F" FontSize="12"/>
+                            <Border Margin="0,20,0,0" Padding="14,8" CornerRadius="999" Background="#F6E7D6" HorizontalAlignment="Left">
+                                <TextBlock Text="继续阅读" Foreground="#1D1714" FontSize="12" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="HomeCompactBookTemplate">
+            <Border Width="286" Height="104" Margin="0,0,14,0" Padding="10" CornerRadius="18" Background="#FDFBF8" BorderBrush="#55FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="78"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="68" Height="84" CornerRadius="12" Background="{Binding BookAccentColor}" ClipToBounds="True" VerticalAlignment="Center">
+                        <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="10,4,0,0">
+                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="#25211E" TextWrapping="Wrap" MaxHeight="38" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="#7B7068" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding StatusBadgeText}" Margin="0,6,0,0" Foreground="#9A5A36" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding ProgressText}" Margin="0,2,0,0" Foreground="#9A938C" FontSize="11"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#F8FAFC" Offset="0"/>
+                <GradientStop Color="#F3F4F6" Offset="0.55"/>
+                <GradientStop Color="#EEF2F7" Offset="1"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="228"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition x:Name="DetailColumn" Width="0"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Margin="18" Padding="16" CornerRadius="24" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Effect="{StaticResource PanelShadow}">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Top">
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,24">
+                        <Border Width="46" Height="46" CornerRadius="15">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#F18A56" Offset="0"/>
+                                    <GradientStop Color="#A66DF2" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="漫" Foreground="White" FontSize="23" FontWeight="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Margin="12,2,0,0">
+                            <TextBlock Text="漫画库" FontSize="21" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock Text="按阅读状态管理本地漫画" Foreground="#8D8177" FontSize="12"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border Padding="12,10" CornerRadius="14" Background="#F3F4F6" Margin="0,0,0,18">
+                        <TextBlock Text="快速入口" Foreground="#6B7280" FontSize="13"/>
+                    </Border>
+
+                    <TextBlock Text="浏览" Foreground="#81756B" FontSize="12" FontWeight="SemiBold" Margin="4,0,0,8"/>
+                    <Button x:Name="HomeNavButton" Content="主页" Click="NavHome_Click" Style="{StaticResource SidebarNavButton}"/>
+                    <Button x:Name="LibraryNavButton" Content="书库" Click="NavLibrary_Click" Style="{StaticResource SidebarNavButton}"/>
+                    <Button x:Name="TagsNavButton" Content="标签" Click="NavTags_Click" Style="{StaticResource SidebarNavButton}"/>
+
+                    <TextBlock Text="工具" Foreground="#81756B" FontSize="12" FontWeight="SemiBold" Margin="4,0,0,8"/>
+                    <Button Content="导入书库" Click="ChooseLibrary_Click" Style="{StaticResource SidebarActionButton}"/>
+                    <Button Content="同步书架" Click="Rescan_Click" Style="{StaticResource SidebarActionButton}"/>
+                    <Button Content="立即备份" Click="ManualBackup_Click" Style="{StaticResource SidebarActionButton}"/>
+                    <Button Content="打开备份" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}"/>
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Padding="12" Margin="0,18,0,0" CornerRadius="18" Background="#F8FAFC" BorderBrush="#E5E7EB" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="本地存档已启用" FontWeight="Bold" Foreground="#25211E"/>
+                        <TextBlock x:Name="StoragePathText" Text="数据保存在软件同级目录" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="12" Foreground="#8D8177"/>
+                        <TextBlock x:Name="StatusText" Margin="0,8,0,0" TextWrapping="Wrap" FontSize="12" Foreground="#9A5A36"/>
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="0,26,0,26">
+            <Grid x:Name="HomePagePanel">
+                <ScrollViewer x:Name="HomeMainScrollViewer"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                    <StackPanel Margin="8,0,22,12">
+                        <Border x:Name="HomeEmptyState" Padding="26" CornerRadius="26" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Effect="{StaticResource PanelShadow}" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="先导入一本漫画" FontSize="30" FontWeight="Black" Foreground="#111827"/>
+                                    <TextBlock x:Name="HomeIntroText" Text="首页只有在有内容时才应该存在。现在先导入一本漫画，后面才会出现继续阅读、收藏和最近加入。" Margin="0,10,0,0" Foreground="#6B7280" FontSize="15" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                                    <Button Content="导入漫画" Click="ChooseLibrary_Click" Margin="0,0,10,0"/>
+                                    <Button Content="去漫画库" Click="NavLibrary_Click" Style="{StaticResource GhostButton}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <StackPanel x:Name="HomeSectionsPanel">
+                        <TextBlock Text="继续阅读" Margin="4,6,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
+                            <ItemsControl ItemsSource="{Binding ContinueReadingBooks}" ItemTemplate="{StaticResource HomeWideBookTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock x:Name="ContinueReadingEmptyText" Text="还没有可继续阅读的漫画，先打开一本书，主页就会把它放在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+
+                        <TextBlock Text="之前读过" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
+                            <ItemsControl ItemsSource="{Binding RecentReadingBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock x:Name="RecentReadingEmptyText" Text="还没有阅读记录，读过的漫画会出现在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+
+                        <TextBlock Text="收藏" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
+                            <ItemsControl ItemsSource="{Binding FavoriteShowcaseBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock x:Name="FavoriteShowcaseEmptyText" Text="还没有收藏作品，先在书库里挑几本真正想反复回看的漫画。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+
+                        <TextBlock Text="最近加入" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
+                            <ItemsControl ItemsSource="{Binding RecentlyAddedBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock x:Name="RecentlyAddedEmptyText" Text="这里还没有新加入的漫画，导入书库后会自动出现。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <Grid x:Name="LibraryPagePanel"
+                  Visibility="Collapsed"
+                  Background="Transparent"
+                  MouseDown="LibraryArea_MouseDown"
+                  AllowDrop="True"
+                  DragEnter="LibraryPagePanel_DragEnter"
+                  DragOver="LibraryPagePanel_DragOver"
+                  DragLeave="LibraryPagePanel_DragLeave"
+                  Drop="LibraryPagePanel_Drop">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Margin="8,0,22,16" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="False">
+                            <TextBlock x:Name="FilterSummaryText" Text="当前显示全部漫画" VerticalAlignment="Center" Foreground="#B45309" FontSize="12" FontWeight="SemiBold"/>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="导入" Click="ChooseLibrary_Click" Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
+                                <Button Content="同步" Click="Rescan_Click"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <WrapPanel Grid.Row="1" VerticalAlignment="Center" ItemHeight="44">
+                            <TextBox x:Name="BookSearchBox" Width="280" Height="44" Margin="0,0,10,0" TextChanged="BookSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标题、作者、标签"/>
+                            <ComboBox x:Name="AuthorFilterBox" Width="156" Height="44" Margin="0,0,10,0" ItemsSource="{Binding AuthorFilters}" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterPillComboBox}"/>
+                            <ComboBox x:Name="StatusFilterBox" Width="148" Height="44" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterPillComboBox}">
+                                <ComboBoxItem Content="状态：全部"/>
+                                <ComboBoxItem Content="状态：未读"/>
+                                <ComboBoxItem Content="状态：在读"/>
+                                <ComboBoxItem Content="状态：已读"/>
+                                <ComboBoxItem Content="状态：搁置"/>
+                            </ComboBox>
+                            <CheckBox x:Name="FavoriteOnlyBox" Content="只看收藏" Margin="0,0,10,0" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
+                            <ComboBox x:Name="SortBox" Width="174" Height="44" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="SortBox_SelectionChanged" Style="{StaticResource FilterPillComboBox}">
+                                <ComboBoxItem Content="排序：标题"/>
+                                <ComboBoxItem Content="排序：作者"/>
+                                <ComboBoxItem Content="排序：进度"/>
+                                <ComboBoxItem Content="排序：阅读次数"/>
+                                <ComboBoxItem Content="排序：录入时间"/>
+                                <ComboBoxItem Content="排序：出品时间"/>
+                            </ComboBox>
+                            <Button Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterPillButton}" Height="44"/>
+                        </WrapPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,10">
+                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                <CheckBox x:Name="ShowHiddenBox" Content="显示隐藏作品" Margin="0,0,10,0" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
+                            </StackPanel>
+                            <TextBlock x:Name="ActiveTagSummaryText" DockPanel.Dock="Right" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="#8D8177"/>
+                        </DockPanel>
+                        <ItemsControl x:Name="ActiveTagFilterList" ItemsSource="{Binding ActiveTagFilters}" Visibility="Collapsed" Margin="0,0,0,12">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:TagChip}">
+                                    <Border Margin="0,0,8,8"
+                                            Padding="11,6"
+                                            CornerRadius="16"
+                                            Background="{Binding Color}"
+                                            BorderBrush="#111827"
+                                            BorderThickness="1"
+                                            Cursor="Hand"
+                                            MouseLeftButtonDown="ActiveTagChip_Click">
+                                        <Border.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
+                                                <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="前往标签页" Click="TagContextOpenManager_Click"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" Foreground="#25211E" FontSize="12" FontWeight="SemiBold"/>
+                                            <TextBlock Text=" ×" Foreground="#475569" FontSize="12" FontWeight="Bold"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button DockPanel.Dock="Right" Content="添加" Click="AddTag_Click" Style="{StaticResource FilterPillButton}" Margin="8,0,0,0" Height="44"/>
+                            <TextBox x:Name="TagSearchBox" TextChanged="TagSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" Height="44" ToolTip="搜索 Tag；点添加可创建候选 Tag，选中漫画时会直接添加到漫画"/>
+                        </DockPanel>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="120" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                            <ItemsControl x:Name="TagPool" ItemsSource="{Binding VisibleTags}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:TagChip}">
+                                        <Border Margin="3" Padding="10,6" CornerRadius="16" Background="{Binding Color}" MouseMove="TagChip_MouseMove" MouseLeftButtonDown="TagChip_Click">
+                                            <Border.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                    <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
+                                                    <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="前往标签页" Click="TagContextOpenManager_Click"/>
+                                                </ContextMenu>
+                                            </Border.ContextMenu>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="Opacity" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Cursor" Value="Arrow"/>
+                                                            <Setter Property="Opacity" Value="0.38"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Category}" FontSize="11" FontWeight="SemiBold" Margin="0,0,5,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#6B7280"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#94A3B8"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#25211E"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#64748B"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="2" Margin="8,0,22,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.1*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource MetricCard}">
+                        <StackPanel>
+                            <TextBlock Text="当前列表" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="VisibleBookCountText" Text="0 本" Margin="0,10,0,0" FontSize="34" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock x:Name="TotalBookCountText" Text="共 0 本漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource MetricCard}">
+                        <StackPanel>
+                            <TextBlock Text="收藏" Foreground="#8D8177" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="FavoriteCountText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock Text="想反复回看的作品" Margin="0,6,0,0" Foreground="#6E645C"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource MetricCard}">
+                        <StackPanel>
+                            <TextBlock Text="在读" Foreground="#8D8177" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ReadingNowCountText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock Text="正在推进的漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="3" Style="{StaticResource MetricCard}" Margin="0">
+                        <StackPanel>
+                            <TextBlock Text="已读" Foreground="#8D8177" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="FinishedCountText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock Text="完成阅读的漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Grid Grid.Row="3">
+                    <ListBox x:Name="BooksList"
+                             ItemsSource="{Binding Books}"
+                             ItemContainerStyle="{StaticResource LibraryListItemStyle}"
+                             ItemTemplate="{StaticResource LibraryBookTemplate}"
+                             SelectionChanged="BooksList_SelectionChanged"
+                             MouseDoubleClick="BooksList_MouseDoubleClick"
+                             AllowDrop="True"
+                             DragEnter="LibraryPagePanel_DragEnter"
+                             DragOver="LibraryPagePanel_DragOver"
+                             DragLeave="LibraryPagePanel_DragLeave"
+                             Drop="BooksList_Drop"
+                             PreviewMouseWheel="FastItemsScrollViewer_PreviewMouseWheel"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
+
+                    <Border x:Name="ShelfEmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28" CornerRadius="28" Background="#EFFFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1">
+                        <StackPanel Width="320">
+                            <TextBlock Text="当前漫画列表是空的" FontSize="26" FontWeight="Black" Foreground="#25211E" TextAlignment="Center"/>
+                            <TextBlock x:Name="ShelfEmptyHintText" Text="可以先清空筛选，或者导入新的漫画文件夹。" Margin="0,12,0,0" TextWrapping="Wrap" Foreground="#6E645C" TextAlignment="Center" LineHeight="22"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border x:Name="ImportDropOverlay"
+                        Grid.RowSpan="4"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False"
+                        Margin="8,0,22,12"
+                        CornerRadius="34"
+                        Background="#D9111827"
+                        BorderBrush="#A7F3D0"
+                        BorderThickness="2"
+                        Panel.ZIndex="40">
+                    <Grid>
+                        <Border Width="520"
+                                Padding="34"
+                                CornerRadius="30"
+                                Background="#F8FFFC"
+                                BorderBrush="#BBF7D0"
+                                BorderThickness="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock x:Name="ImportDropTitle"
+                                           Text="松开以导入漫画文件夹"
+                                           FontSize="30"
+                                           FontWeight="Black"
+                                           Foreground="#111827"
+                                           TextAlignment="Center"/>
+                                <TextBlock x:Name="ImportDropHint"
+                                           Text="会按作者文件夹识别子目录，并在导入前弹出确认列表。"
+                                           Margin="0,12,0,0"
+                                           FontSize="14"
+                                           Foreground="#475569"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Grid x:Name="TagsPagePanel" Visibility="Collapsed">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                    <StackPanel Margin="8,0,22,12">
+                        <Border Padding="20" CornerRadius="22" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="标签管理" FontSize="30" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="这里负责全局标签治理；未关联的候选标签会出现在书库 Tag 池，可拖拽到漫画。"
+                                               Margin="0,10,0,0"
+                                               Foreground="#6B7280"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                                    <Button Content="去书库" Click="NavLibrary_Click" Style="{StaticResource GhostButton}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Grid Margin="0,16,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource MetricCard}">
+                                <StackPanel>
+                                    <TextBlock Text="全部标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerTotalCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="包含内置和用户标签" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource MetricCard}">
+                                <StackPanel>
+                                    <TextBlock Text="正在使用" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerUsedCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="至少关联 1 本漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource MetricCard}" Margin="0">
+                                <StackPanel>
+                                    <TextBlock Text="候选标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerStandaloneCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="未关联时只能作为待分配标签" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,12">
+                                    <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
+                                    <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
+                                </DockPanel>
+                                <ItemsControl x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:TagChip}">
+                                            <Border Margin="0,0,0,10" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                                                <Border.ContextMenu>
+                                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                        <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
+                                                        <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
+                                                        <Separator/>
+                                                        <MenuItem Header="按此标签筛选" Click="TagManagerFilter_Click"/>
+                                                    </ContextMenu>
+                                                </Border.ContextMenu>
+                                                <DockPanel LastChildFill="True">
+                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                        <Button Content="按此标签筛选" Click="TagManagerFilter_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+                                                        <Button Content="编辑标签" Click="RenameTagButton_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+                                                        <Button Content="删除" Click="DeleteTagButton_Click" Style="{StaticResource DangerButton}"/>
+                                                    </StackPanel>
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Background="{Binding Color}" CornerRadius="14" Padding="10,5" Margin="0,0,10,0">
+                                                                <TextBlock Text="{Binding Category}" Foreground="#25211E" FontSize="11" FontWeight="SemiBold"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="#25211E"/>
+                                                        </StackPanel>
+                                                        <TextBlock Margin="0,8,0,0" Foreground="#6B7280">
+                                                            <Run Text="已关联 "/>
+                                                            <Run Text="{Binding UsageCount}"/>
+                                                            <Run Text=" 本漫画"/>
+                                                            <Run Text=" · "/>
+                                                            <Run Text="{Binding SourceText}"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border x:Name="TagManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="18" Background="#F8FAFC">
+                                    <TextBlock Text="当前没有命中的标签，可以换个关键词，或者新建一个新的标签。"
+                                               Foreground="#6B7280"
+                                               TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <Border x:Name="DetailShell" Grid.Column="2" Visibility="Collapsed" Margin="22,26,26,26" Padding="22" CornerRadius="34" Background="#EFFFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1" Effect="{StaticResource PanelShadow}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                <Grid>
+                    <StackPanel x:Name="EmptyDetailPanel" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,80,0,0">
+                        <Border Width="96" Height="132" CornerRadius="18" Background="#F0E5DA" HorizontalAlignment="Center" Effect="{StaticResource BookShadow}"/>
+                        <TextBlock Text="选择一本书" FontSize="24" FontWeight="Black" Margin="0,24,0,0" HorizontalAlignment="Center"/>
+                        <TextBlock Text="书籍信息、标签和简介会在这里以卡片方式编辑。" Margin="24,8" Foreground="#81756B" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="DetailPanel" Visibility="Collapsed">
+                        <DockPanel Margin="0,0,0,6">
+                            <Button x:Name="EditModeButton" DockPanel.Dock="Right" Content="编辑" Click="ToggleEditMode_Click" Style="{StaticResource TinyButton}" Margin="10,0,0,0"/>
+                            <TextBlock Text="书籍详情" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        </DockPanel>
+                        <TextBlock x:Name="EditModeHintText" Text="只读模式：点击“编辑”后修改信息" Margin="0,0,0,20" Foreground="#81756B"/>
+                        <StackPanel x:Name="ReadOnlyInfoPanel">
+                            <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
+                            <TextBlock x:Name="ReadOnlyAuthorText" FontSize="18" FontWeight="Bold" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
+                            <TextBlock Text="角色名称" Style="{StaticResource LabelText}"/>
+                            <TextBlock x:Name="ReadOnlyCharacterText" FontSize="18" FontWeight="Bold" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
+                            <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
+                            <TextBlock x:Name="ReadOnlyForeignNameText" FontSize="18" FontWeight="Bold" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
+                            <Grid Margin="0,0,0,18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyStatusText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyFavoriteText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,0,0,18">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="出品时间" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyProducedAtText" FontSize="16" Foreground="#25211E"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="录入时间" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyImportedAtText" FontSize="16" Foreground="#25211E"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="Tag" Style="{StaticResource LabelText}"/>
+                            <TextBlock x:Name="ReadOnlyTagsText" FontSize="16" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
+                            <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
+                            <TextBlock x:Name="ReadOnlyCoverPageText" FontSize="16" Foreground="#25211E" Margin="0,0,0,18"/>
+                            <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
+                            <Border Padding="14" CornerRadius="18" Background="#F8F2EC" Margin="0,0,0,18">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
+                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="ReadOnlyReadCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E" VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
+                            <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
+                            <Border Padding="14" CornerRadius="18" Background="#F8F2EC" Margin="0,0,0,18">
+                                <TextBlock x:Name="ReadOnlySummaryText" TextWrapping="Wrap" Foreground="#25211E" LineHeight="22"/>
+                            </Border>
+                            <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                            <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                            <Button x:Name="HideBookButton" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                            <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                        </StackPanel>
+                        <StackPanel x:Name="EditFormPanel" Visibility="Collapsed">
+                        <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
+                        <TextBox x:Name="AuthorBox" Margin="0,0,0,12"/>
+                        <TextBlock Text="角色名称" Style="{StaticResource LabelText}"/>
+                        <TextBox x:Name="CharacterNameBox" Margin="0,0,0,12"/>
+                        <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
+                        <TextBox x:Name="ForeignNameBox" Margin="0,0,0,12"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
+                                <ComboBox x:Name="ReadingStatusBox" SelectedIndex="0">
+                                    <ComboBoxItem Content="未读" Tag="unread"/>
+                                    <ComboBoxItem Content="在读" Tag="reading"/>
+                                    <ComboBoxItem Content="已读" Tag="finished"/>
+                                    <ComboBoxItem Content="搁置" Tag="paused"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
+                                <CheckBox x:Name="FavoriteBox" Content="收藏这本漫画" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="出品时间" Style="{StaticResource LabelText}"/>
+                                <TextBox x:Name="ProducedAtBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="录入时间" Style="{StaticResource LabelText}"/>
+                                <DockPanel>
+                                    <Button x:Name="ImportedTodayButton" DockPanel.Dock="Right" Content="今日" Click="ImportedToday_Click" Style="{StaticResource GhostButton}" Margin="8,0,0,0"/>
+                                    <TextBox x:Name="ImportedAtBox"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Tag（逗号分隔）" Style="{StaticResource LabelText}"/>
+                        <TextBox x:Name="TagsBox" Margin="0,0,0,12"/>
+                        <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
+                        <TextBox x:Name="CoverPageBox" Margin="0,0,0,12"/>
+                        <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
+                        <DockPanel Margin="0,0,0,12">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                                <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
+                                <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
+                            </StackPanel>
+                            <TextBox x:Name="ReadCountBox"/>
+                        </DockPanel>
+                        <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
+                        <TextBox x:Name="SummaryBox" Height="128" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,0,18"/>
+                        <Button x:Name="SaveMetadataButton" Content="保存信息" Click="SaveMetadata_Click" Margin="0,0,0,10"/>
+                        <Button x:Name="SetCoverButton" Content="设置为封面页" Click="SetCover_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                        <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                        <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                        <Button x:Name="HideBookButtonEdit" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                        <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                        <Button Content="删除库记录" Click="DeleteBook_Click" Style="{StaticResource DangerButton}"/>
+                        </StackPanel>
+
+                        <Border Visibility="Collapsed" Margin="0,22,0,0" Padding="16" CornerRadius="22" Background="#F6EFE7">
+                            <StackPanel>
+                                <TextBlock Text="阅读快捷键" FontWeight="Black" Foreground="#25211E"/>
+                                <TextBlock Text="下一页" Style="{StaticResource LabelText}" Margin="0,12,0,6"/>
+                                <TextBox x:Name="NextShortcutBox" Text="Right,D,Space"/>
+                                <TextBlock Text="上一页" Style="{StaticResource LabelText}" Margin="0,12,0,6"/>
+                                <TextBox x:Name="PrevShortcutBox" Text="Left,A"/>
+                                <Button Content="保存快捷键" Click="SaveShortcuts_Click" Style="{StaticResource TinyButton}" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>
