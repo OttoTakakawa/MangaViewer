@@ -72,7 +72,7 @@ public partial class MainWindow : Window
         LoadShortcuts();
         SetDetailVisible(false);
         ShowHomeView();
-        StoragePathText.Text = "数据保存在 MangaReader_Data，不写入漫画文件夹。";
+        UpdateStoragePathText();
         UpdateLogPanelVisibility();
 
         ConfigureSearchDebounceTimers();
@@ -725,6 +725,53 @@ public partial class MainWindow : Window
         });
     }
 
+    private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(_storage.Root);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = $"\"{_storage.Root}\"",
+            UseShellExecute = true
+        });
+    }
+
+    private void ChooseDataFolder_Click(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new WinForms.FolderBrowserDialog
+        {
+            Description = "选择软件数据目录：数据库、封面缓存、备份、日志都会保存在这里",
+            SelectedPath = Directory.Exists(_storage.Root) ? _storage.Root : AppStorage.DefaultRoot,
+            UseDescriptionForTitle = true
+        };
+
+        if (dialog.ShowDialog() != WinForms.DialogResult.OK)
+        {
+            return;
+        }
+
+        var selectedPath = Path.GetFullPath(dialog.SelectedPath);
+        var currentPath = Path.GetFullPath(_storage.Root);
+        if (selectedPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "当前已经在使用这个数据目录。";
+            return;
+        }
+
+        try
+        {
+            AppStorage.SaveCustomRoot(selectedPath);
+            StoragePathText.Text = $"下次启动将使用：{selectedPath}";
+            StatusText.Text = "数据目录已指定，重启软件后生效。当前运行中的数据库不会热切换，避免写库过程中损坏数据。";
+            AppLogger.Info("storage", $"Data root changed for next launch: {selectedPath}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            AppLogger.Error("storage", ex, "Failed to update data root.");
+            StatusText.Text = $"数据目录设置失败：{ex.Message}";
+        }
+    }
+
     private void Relocate_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
@@ -1269,6 +1316,12 @@ public partial class MainWindow : Window
         {
             LogPanelToggleButton.Content = _isLogPanelVisible ? "收起日志" : "日志";
         }
+    }
+
+    private void UpdateStoragePathText()
+    {
+        var mode = _storage.UsesCustomRoot ? "自定义数据目录" : "默认数据目录";
+        StoragePathText.Text = $"{mode}：{_storage.Root}";
     }
 
     private void EditSelectedAuthor_Click(object sender, RoutedEventArgs e)

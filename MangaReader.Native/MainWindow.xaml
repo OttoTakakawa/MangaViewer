@@ -770,6 +770,15 @@
                                        TextWrapping="Wrap"
                                        FontSize="12"
                                        Foreground="#8D8177"/>
+                            <WrapPanel Margin="0,10,0,0">
+                                <Button Content="打开数据"
+                                        Click="OpenDataFolder_Click"
+                                        Style="{StaticResource TinyButton}"
+                                        Margin="0,0,8,0"/>
+                                <Button Content="指定数据"
+                                        Click="ChooseDataFolder_Click"
+                                        Style="{StaticResource TinyButton}"/>
+                            </WrapPanel>
                             <TextBlock x:Name="StatusText"
                                        Margin="0,8,0,0"
                                        TextWrapping="Wrap"

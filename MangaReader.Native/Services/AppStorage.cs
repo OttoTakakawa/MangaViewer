@@ -2,15 +2,22 @@ namespace MangaReader.Native.Services;
 
 public sealed class AppStorage
 {
+    private const string DataLocationFileName = "MangaReader_DataLocation.txt";
+
     public string Root { get; }
     public string DatabasePath { get; }
     public string CoverCachePath { get; }
     public string LogsPath { get; }
     public string BackupPath { get; }
+    public bool UsesCustomRoot { get; }
+
+    public static string DefaultRoot => Path.Combine(AppContext.BaseDirectory, "MangaReader_Data");
+    public static string DataLocationPath => Path.Combine(AppContext.BaseDirectory, DataLocationFileName);
 
     public AppStorage()
     {
-        Root = Path.Combine(AppContext.BaseDirectory, "MangaReader_Data");
+        Root = ResolveRoot();
+        UsesCustomRoot = !Path.GetFullPath(Root).Equals(Path.GetFullPath(DefaultRoot), StringComparison.OrdinalIgnoreCase);
         DatabasePath = Path.Combine(Root, "app.db");
         CoverCachePath = Path.Combine(Root, "cache", "covers");
         LogsPath = Path.Combine(Root, "logs");
@@ -23,5 +30,40 @@ public sealed class AppStorage
         Directory.CreateDirectory(CoverCachePath);
         Directory.CreateDirectory(LogsPath);
         Directory.CreateDirectory(BackupPath);
+    }
+
+    public static void SaveCustomRoot(string root)
+    {
+        var normalized = Path.GetFullPath(root.Trim());
+        Directory.CreateDirectory(normalized);
+        File.WriteAllText(DataLocationPath, normalized);
+    }
+
+    public static void ResetToDefaultRoot()
+    {
+        if (File.Exists(DataLocationPath))
+        {
+            File.Delete(DataLocationPath);
+        }
+    }
+
+    private static string ResolveRoot()
+    {
+        try
+        {
+            if (!File.Exists(DataLocationPath))
+            {
+                return DefaultRoot;
+            }
+
+            var configuredRoot = File.ReadAllText(DataLocationPath).Trim();
+            return string.IsNullOrWhiteSpace(configuredRoot)
+                ? DefaultRoot
+                : Path.GetFullPath(configuredRoot);
+        }
+        catch
+        {
+            return DefaultRoot;
+        }
     }
 }

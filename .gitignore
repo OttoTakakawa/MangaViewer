@@ -2,6 +2,7 @@ bin/
 obj/
 _release/
 MangaReader_Data/
+MangaReader_DataLocation.txt
 node_modules/
 dist/
 .trae/
