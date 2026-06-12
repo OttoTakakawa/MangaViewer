@@ -828,8 +828,24 @@ public partial class MainWindow : Window
         {
             AppStorage.SaveCustomRoot(selectedPath);
             StoragePathText.Text = $"下次启动将使用：{selectedPath}";
-            StatusText.Text = "数据目录已指定，重启软件后生效。当前运行中的数据库不会热切换，避免写库过程中损坏数据。";
             AppLogger.Info("storage", $"Data root changed for next launch: {selectedPath}");
+
+            var result = System.Windows.MessageBox.Show(
+                @"数据目录已指定。需要立即重启软件以生效，是否现在重启?",
+                @"重启软件",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question,
+                MessageBoxResult.Yes);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                System.Diagnostics.Process.Start(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                Environment.Exit(0);
+            }
+            else
+            {
+                StatusText.Text = "数据目录已指定，重启软件后生效。当前运行中的数据库不会热切换，避免写库过程中损坏数据。";
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
