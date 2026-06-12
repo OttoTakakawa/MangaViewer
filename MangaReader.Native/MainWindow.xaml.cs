@@ -780,6 +780,19 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var result = System.Windows.MessageBox.Show(
+                $"{update.Message}\n\n当前版本：{UpdateService.CurrentVersionText}\n更新包：{update.AssetName}\n\n是否现在下载并安装？安装时软件会关闭，更新完成后自动重启。",
+                "检查更新",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question,
+                MessageBoxResult.Yes);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                StatusText.Text = $"已取消安装更新：{update.LatestVersion}。";
+                return;
+            }
+
             StatusText.Text = $"{update.Message} 正在下载更新包...";
             var progress = new Progress<double>(value =>
             {
@@ -792,7 +805,7 @@ public partial class MainWindow : Window
             _updateService.LaunchUpdater(packagePath);
             Close();
         }
-        catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or IOException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException)
+        catch (Exception ex)
         {
             AppLogger.Error("update", ex, "Update failed.");
             StatusText.Text = $"更新失败：{ex.Message}";

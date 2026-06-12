@@ -46,7 +46,7 @@ public sealed class UpdateService
             return UpdateCheckResult.UpToDate(release.TagName, currentVersion);
         }
 
-        var asset = release.Assets
+        var asset = (release.Assets ?? [])
             .Where(item => item.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(item => item.Name.Contains("win-x64", StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
@@ -174,7 +174,7 @@ public sealed class UpdateService
 
     private sealed record GitHubRelease(
         [property: System.Text.Json.Serialization.JsonPropertyName("tag_name")] string TagName,
-        [property: System.Text.Json.Serialization.JsonPropertyName("assets")] IReadOnlyList<GitHubAsset> Assets);
+        [property: System.Text.Json.Serialization.JsonPropertyName("assets")] IReadOnlyList<GitHubAsset>? Assets);
 
     private sealed record GitHubAsset(
         [property: System.Text.Json.Serialization.JsonPropertyName("name")] string Name,
