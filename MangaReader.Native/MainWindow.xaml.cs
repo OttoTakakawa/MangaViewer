@@ -625,6 +625,23 @@ public partial class MainWindow : Window
         ChangeReadCount(-1);
     }
 
+    private void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null)
+        {
+            return;
+        }
+
+        _currentBook.IsFavorite = !_currentBook.IsFavorite;
+        _database.SaveMetadata(_currentBook);
+        _currentBook.NotifyAll();
+        FillMetadataEditors(_currentBook);
+        RefreshBookFilter();
+        StatusText.Text = _currentBook.IsFavorite
+            ? $"已收藏《{_currentBook.Title}》。"
+            : $"已取消收藏《{_currentBook.Title}》。";
+    }
+
     private void ChangeReadCount(int delta)
     {
         if (_currentBook is null)
@@ -636,7 +653,8 @@ public partial class MainWindow : Window
         _database.SaveReadCount(_currentBook);
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
-        ApplyBookSort();
+        ApplyBookSort(refresh: false);
+        RefreshBookFilter();
         StatusText.Text = $"《{_currentBook.Title}》已标记为读过 {_currentBook.ReadCount} 次。";
     }
 
@@ -1166,6 +1184,7 @@ public partial class MainWindow : Window
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
         HideBookButtonEdit.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
+        ToggleFavoriteButton.Content = book.IsFavorite ? "取消收藏" : "收藏";
     }
 
     private void SetDetailVisible(bool visible)
@@ -1443,56 +1462,6 @@ public partial class MainWindow : Window
         StoragePathText.Text = $"{mode}：{_storage.Root}";
     }
 
-    private void EditSelectedAuthor_Click(object sender, RoutedEventArgs e)
-    {
-        var oldAuthor = AuthorFilterBox?.SelectedItem as string;
-        if (string.IsNullOrWhiteSpace(oldAuthor) || oldAuthor == "全部作者")
-        {
-            StatusText.Text = "请先在作者筛选中选择一个具体作者，再批量编辑。";
-            return;
-        }
-
-        var affectedBooks = Books
-            .Where(book => string.Equals(book.Author, oldAuthor, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (affectedBooks.Count == 0)
-        {
-            StatusText.Text = $"没有找到作者为“{oldAuthor}”的漫画。";
-            return;
-        }
-
-        var dialog = new TagNameDialog(oldAuthor, $"批量编辑作者（{affectedBooks.Count} 本）") { Owner = this };
-        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
-        {
-            StatusText.Text = "没有修改作者。";
-            return;
-        }
-
-        var newAuthor = dialog.TagName.Trim();
-        if (string.Equals(oldAuthor, newAuthor, StringComparison.OrdinalIgnoreCase))
-        {
-            StatusText.Text = "作者名没有变化。";
-            return;
-        }
-
-        _database.SaveBookAuthorsBatch(
-            affectedBooks.Select(book => (book.Id, newAuthor)).ToList(),
-            "before-author-batch-rename");
-
-        foreach (var book in affectedBooks)
-        {
-            book.Author = newAuthor;
-            book.NotifyAll();
-        }
-
-        RefreshLibraryViews(sort: true);
-        if (AuthorFilterBox is not null)
-        {
-            AuthorFilterBox.SelectedItem = newAuthor;
-        }
-        StatusText.Text = $"已将作者“{oldAuthor}”批量改为“{newAuthor}”，影响 {affectedBooks.Count} 本漫画。";
-    }
-
     private void RefreshBookFilter()
     {
         _booksView?.Refresh();
@@ -1530,7 +1499,7 @@ public partial class MainWindow : Window
         }
         if (sort)
         {
-            ApplyBookSort();
+            ApplyBookSort(refresh: !filter);
         }
         if (filter)
         {
@@ -1626,7 +1595,7 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void ApplyBookSort()
+    private void ApplyBookSort(bool refresh = true)
     {
         if (_booksView is null || SortBox is null)
         {
@@ -1661,7 +1630,10 @@ public partial class MainWindow : Window
                 break;
         }
 
-        _booksView.Refresh();
+        if (refresh)
+        {
+            _booksView.Refresh();
+        }
     }
 
     private bool FilterBook(object item)

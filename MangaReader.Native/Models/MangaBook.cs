@@ -13,6 +13,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     private BitmapSource? _coverImage;
     private string _tags = "";
     private string _readingStatus = "unread";
+    private bool _isFavorite;
 
     public string Id { get; set; } = "";
     public string Title { get; set; } = "";
@@ -38,7 +39,22 @@ public sealed class MangaBook : INotifyPropertyChanged
     public int BookStyle { get; set; } = -1;
     public bool IsMissing { get; set; }
     public bool IsHidden { get; set; }
-    public bool IsFavorite { get; set; }
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set
+        {
+            if (_isFavorite == value)
+            {
+                return;
+            }
+
+            _isFavorite = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FavoriteStarText));
+            OnPropertyChanged(nameof(StatusBadgeText));
+        }
+    }
     public ObservableCollection<string> Pages { get; } = [];
     public ObservableCollection<TagChip> TagItems { get; } = [];
 
@@ -50,6 +66,7 @@ public sealed class MangaBook : INotifyPropertyChanged
             _lastReadPageIndex = Math.Clamp(value, 0, Math.Max(PageCount - 1, 0));
             OnPropertyChanged();
             OnPropertyChanged(nameof(ProgressText));
+            OnPropertyChanged(nameof(ReadingMetaText));
         }
     }
 
@@ -62,6 +79,8 @@ public sealed class MangaBook : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(ReadCountText));
             OnPropertyChanged(nameof(ReadCountBadgeText));
+            OnPropertyChanged(nameof(ReadStateText));
+            OnPropertyChanged(nameof(ReadingMetaText));
         }
     }
 
@@ -74,6 +93,8 @@ public sealed class MangaBook : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(ReadingStatusText));
             OnPropertyChanged(nameof(StatusBadgeText));
+            OnPropertyChanged(nameof(ReadStateText));
+            OnPropertyChanged(nameof(ReadingMetaText));
         }
     }
 
@@ -90,6 +111,8 @@ public sealed class MangaBook : INotifyPropertyChanged
     public string ProgressText => PageCount <= 0 ? "0 / 0" : $"{LastReadPageIndex + 1} / {PageCount}";
     public string ReadCountText => ReadCount <= 0 ? "未标记读过" : $"读过 {ReadCount} 次";
     public string ReadCountBadgeText => ReadCount <= 0 ? "" : ReadCountText;
+    public string ReadStateText => ReadCount > 0 ? $"读过 {ReadCount} 次" : ReadingStatusText;
+    public string ReadingMetaText => $"{ReadStateText} · {ProgressText}";
     public string ReadingStatusText => ReadingStatus switch
     {
         "reading" => "在读",
@@ -97,7 +120,8 @@ public sealed class MangaBook : INotifyPropertyChanged
         "paused" => "搁置",
         _ => "未读"
     };
-    public string StatusBadgeText => IsFavorite ? $"收藏 · {ReadingStatusText}" : ReadingStatusText;
+    public string StatusBadgeText => ReadingStatusText;
+    public string FavoriteStarText => IsFavorite ? "★" : "";
     public string MissingText => IsMissing ? "路径失效" : "";
     public string HiddenText => IsHidden ? "已隐藏" : "";
     public int BookStyleIndex => BookStyle >= 0 ? BookStyle % 4 : (Id.GetHashCode() & 0x7FFFFFFF) % 4;
@@ -162,6 +186,7 @@ public sealed class MangaBook : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsMissing));
         OnPropertyChanged(nameof(IsHidden));
         OnPropertyChanged(nameof(IsFavorite));
+        OnPropertyChanged(nameof(FavoriteStarText));
         OnPropertyChanged(nameof(ReadingStatus));
         OnPropertyChanged(nameof(ReadingStatusText));
         OnPropertyChanged(nameof(StatusBadgeText));
@@ -171,6 +196,8 @@ public sealed class MangaBook : INotifyPropertyChanged
         OnPropertyChanged(nameof(ReadCount));
         OnPropertyChanged(nameof(ReadCountText));
         OnPropertyChanged(nameof(ReadCountBadgeText));
+        OnPropertyChanged(nameof(ReadStateText));
+        OnPropertyChanged(nameof(ReadingMetaText));
         OnPropertyChanged(nameof(BookStyleIndex));
         OnPropertyChanged(nameof(BookWidth));
         OnPropertyChanged(nameof(BookHeight));
