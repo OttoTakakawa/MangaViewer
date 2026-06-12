@@ -174,7 +174,6 @@ public partial class ReaderWindow : Window
         var doublePageMode = IsDoublePageMode();
         var rightToLeft = IsRightToLeftMode();
         PageText.Text = $"正在读取 {safeIndex + 1} / {_book.PageCount}...";
-        ShowReaderMessage("正在读取页面", $"{safeIndex + 1} / {_book.PageCount}\n{firstPath}");
 
         try
         {

@@ -746,6 +746,7 @@
                     <Button Content="同步书架" Click="Rescan_Click" Style="{StaticResource SidebarActionButton}"/>
                     <Button Content="立即备份" Click="ManualBackup_Click" Style="{StaticResource SidebarActionButton}"/>
                     <Button Content="打开备份" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}"/>
+                    <Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}"/>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,18,0,0">

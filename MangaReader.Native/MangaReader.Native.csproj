@@ -3,6 +3,10 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <Version>0.3.80</Version>
+    <AssemblyVersion>0.3.80.0</AssemblyVersion>
+    <FileVersion>0.3.80.0</FileVersion>
+    <InformationalVersion>0.3.80</InformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -12,5 +16,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
+
+  <Target Name="PublishUpdater" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64' and '$(PublishUpdater)' != 'false'">
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectDirectory)\..\MangaReader.Updater\MangaReader.Updater.csproj&quot; -c $(Configuration) -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishUpdater=false -o &quot;$(PublishDir)Updater&quot;" />
+  </Target>
 
 </Project>

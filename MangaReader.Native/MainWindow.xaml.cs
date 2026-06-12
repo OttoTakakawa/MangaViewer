@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly LibraryDatabase _database;
     private readonly CoverCache _coverCache;
     private readonly CoverThumbnailPipeline _coverPipeline;
+    private readonly UpdateService _updateService;
     private MangaBook? _currentBook;
     private CancellationTokenSource? _scanCancellation;
     private List<Key> _nextKeys = [Key.Right, Key.D, Key.Space];
@@ -44,6 +45,7 @@ public partial class MainWindow : Window
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
     private bool _isDetailDrawerCollapsed;
+    private bool _isCheckingForUpdates;
     private string _currentNavigationKey = "home";
 
     public ObservableCollection<MangaBook> Books { get; } = [];
@@ -65,6 +67,7 @@ public partial class MainWindow : Window
 
         _storage.EnsureCreated();
         _database = new LibraryDatabase(_storage);
+        _updateService = new UpdateService(_storage);
         _database.Initialize();
         LoadManagedTags();
         _coverCache = new CoverCache(_storage);
@@ -745,6 +748,50 @@ public partial class MainWindow : Window
             Arguments = $"\"{_storage.Root}\"",
             UseShellExecute = true
         });
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isCheckingForUpdates)
+        {
+            return;
+        }
+
+        _isCheckingForUpdates = true;
+        CheckUpdateButton.IsEnabled = false;
+        StatusText.Text = $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...";
+
+        try
+        {
+            var update = await _updateService.CheckLatestAsync();
+            if (!update.HasUpdate)
+            {
+                StatusText.Text = update.Message;
+                return;
+            }
+
+            StatusText.Text = $"{update.Message} 正在下载更新包...";
+            var progress = new Progress<double>(value =>
+            {
+                StatusText.Text = $"{update.Message} 下载中 {value:P0}...";
+            });
+
+            var packagePath = await _updateService.DownloadPackageAsync(update, progress);
+            StatusText.Text = "更新包下载完成，软件即将关闭并自动替换文件。";
+            AppLogger.Info("update", $"Launching updater for {update.LatestVersion}: {packagePath}");
+            _updateService.LaunchUpdater(packagePath);
+            Close();
+        }
+        catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or IOException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException)
+        {
+            AppLogger.Error("update", ex, "Update failed.");
+            StatusText.Text = $"更新失败：{ex.Message}";
+        }
+        finally
+        {
+            _isCheckingForUpdates = false;
+            CheckUpdateButton.IsEnabled = true;
+        }
     }
 
     private void ChooseDataFolder_Click(object sender, RoutedEventArgs e)

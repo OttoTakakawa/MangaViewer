@@ -13,6 +13,7 @@ Windows 本地漫画管理与图片查看器。
 ## 项目结构
 
 - `MangaReader.Native/`：当前主线 WPF 应用源码。
+- `MangaReader.Updater/`：自动更新器，负责在主程序退出后替换发布目录文件。
 - `漫画阅读器开发文档.md`：开发记录、架构约束与后续路线。
 
 ## 本地运行
@@ -41,7 +42,18 @@ dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 ## 发布测试版
 
 ```powershell
-dotnet publish .\MangaReader.Native\MangaReader.Native.csproj -c Release -r win-x64 --self-contained true -o .\_release\MangaReader-Test
+dotnet publish .\MangaReader.Native\MangaReader.Native.csproj -c Release -r win-x64 --self-contained true -o .\_release\0.3.xx
 ```
+
+发布目录会自动包含 `Updater\MangaReader.Updater.exe`。主程序侧边栏的 `检查更新` 会读取 GitHub 最新 Release，并下载其中的 `MangaReader-win-x64-v*.zip` 资产进行自动更新。
+
+正式发布建议推送版本 Tag：
+
+```powershell
+git tag v0.3.xx
+git push origin v0.3.xx
+```
+
+GitHub Actions 会自动构建 Windows x64 zip 并上传到对应 Release。
 
 `_release/` 已加入 `.gitignore`，不会上传发布产物。
