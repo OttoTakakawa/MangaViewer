@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _bookSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _tagSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _tagManagerSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
+    private readonly DispatcherTimer _authorSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private bool _isRefreshingAuthorFilters;
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
@@ -53,6 +54,7 @@ public partial class MainWindow : Window
     public ObservableCollection<TagChip> VisibleTags { get; } = [];
     public ObservableCollection<TagChip> ActiveTagFilters { get; } = [];
     public ObservableCollection<TagChip> TagManagerItems { get; } = [];
+    public ObservableCollection<AuthorItem> AuthorManagerItems { get; } = [];
     public ObservableCollection<string> AuthorFilters { get; } = [];
     public ObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
     public ObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
@@ -1087,6 +1089,11 @@ public partial class MainWindow : Window
         RestartDebounceTimer(_tagManagerSearchDebounceTimer);
     }
 
+    private void AuthorSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        RestartDebounceTimer(_authorSearchDebounceTimer);
+    }
+
     private void CreateManagedTag_Click(object sender, RoutedEventArgs e)
     {
         if (!TryResolveTagForCreate(TagManagerSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
@@ -1313,6 +1320,11 @@ public partial class MainWindow : Window
             _tagManagerSearchDebounceTimer.Stop();
             RefreshTagManagementItems();
         };
+        _authorSearchDebounceTimer.Tick += (_, _) =>
+        {
+            _authorSearchDebounceTimer.Stop();
+            RefreshAuthorManagementItems(AuthorSearchBox?.Text?.Trim());
+        };
     }
 
     private static void RestartDebounceTimer(DispatcherTimer timer)
@@ -1326,6 +1338,7 @@ public partial class MainWindow : Window
         _bookSearchDebounceTimer.Stop();
         _tagSearchDebounceTimer.Stop();
         _tagManagerSearchDebounceTimer.Stop();
+        _authorSearchDebounceTimer.Stop();
     }
 
     private void BookFilter_Changed(object sender, RoutedEventArgs e)
@@ -1951,12 +1964,18 @@ public partial class MainWindow : Window
         ShowTagsView();
     }
 
+    private void NavAuthors_Click(object sender, RoutedEventArgs e)
+    {
+        ShowAuthorsView();
+    }
+
     private void ShowHomeView()
     {
         _currentNavigationKey = "home";
         if (HomePagePanel is not null) MotionService.ShowWithFade(HomePagePanel);
         if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
+        if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
         SetDetailVisible(false);
         RefreshHomeShelves();
         UpdateNavigationVisuals();
@@ -1968,6 +1987,7 @@ public partial class MainWindow : Window
         if (HomePagePanel is not null) MotionService.HideWithFade(HomePagePanel);
         if (LibraryPagePanel is not null) MotionService.ShowWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
+        if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
         SetDetailVisible(_currentBook is not null && BooksList.SelectedItem is not null);
         UpdateNavigationVisuals();
         RefreshBookFilter();
@@ -1980,8 +2000,21 @@ public partial class MainWindow : Window
         if (HomePagePanel is not null) MotionService.HideWithFade(HomePagePanel);
         if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.ShowWithFade(TagsPagePanel);
+        if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
         SetDetailVisible(false);
         RefreshLibraryViews(tags: false, tagManager: true, authors: false, filter: false);
+        UpdateNavigationVisuals();
+    }
+
+    private void ShowAuthorsView()
+    {
+        _currentNavigationKey = "authors";
+        if (HomePagePanel is not null) MotionService.HideWithFade(HomePagePanel);
+        if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
+        if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
+        if (AuthorsPagePanel is not null) MotionService.ShowWithFade(AuthorsPagePanel);
+        SetDetailVisible(false);
+        RefreshAuthorManagementItems();
         UpdateNavigationVisuals();
     }
 
@@ -2021,6 +2054,15 @@ public partial class MainWindow : Window
         ShelfEmptyHintText.Text = $"已识别 {Books.Count} 本漫画，但视图没有显示。请重新同步书架；如果仍为空，这是列表视图刷新问题。";
     }
 
+    private void SetAuthorFilter(string authorName)
+    {
+        if (AuthorFilterBox is not null && AuthorFilters.Contains(authorName))
+        {
+            AuthorFilterBox.SelectedItem = authorName;
+            RefreshBookFilter();
+        }
+    }
+
     private bool HasActiveLibraryFilter()
     {
         var selectedAuthor = AuthorFilterBox?.SelectedItem as string;
@@ -2038,6 +2080,7 @@ public partial class MainWindow : Window
         SetNavButtonState(HomeNavButton, _currentNavigationKey == "home");
         SetNavButtonState(LibraryNavButton, _currentNavigationKey == "library");
         SetNavButtonState(TagsNavButton, _currentNavigationKey == "tags");
+        SetNavButtonState(AuthorsNavButton, _currentNavigationKey == "authors");
     }
 
     private static void SetNavButtonState(System.Windows.Controls.Button? button, bool active)
@@ -2415,6 +2458,39 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RefreshAuthorManagementItems(string? filter = null)
+    {
+        var query = Books
+            .Where(b => !string.IsNullOrWhiteSpace(b.Author))
+            .GroupBy(b => b.Author, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new AuthorItem { Name = g.Key, BookCount = g.Count() });
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            query = query.Where(a => a.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var sorted = query.OrderBy(a => a.Name).ToList();
+        AuthorManagerItems.Clear();
+        foreach (var item in sorted)
+        {
+            AuthorManagerItems.Add(item);
+        }
+
+        if (AuthorTotalText is not null)
+        {
+            AuthorTotalText.Text = $"{AuthorManagerItems.Count} 位";
+        }
+        if (AuthorBookTotalText is not null)
+        {
+            AuthorBookTotalText.Text = $"{Books.Count(b => !string.IsNullOrWhiteSpace(b.Author))} 本";
+        }
+        if (AuthorManagerEmptyState is not null)
+        {
+            AuthorManagerEmptyState.Visibility = AuthorManagerItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
     private List<MangaBook> GetTagBooks(string tag)
     {
         return _tagBooksByName.TryGetValue(tag, out var books)
@@ -2511,6 +2587,48 @@ public partial class MainWindow : Window
         {
             DeleteTagAcrossLibrary(chip);
         }
+    }
+
+    private void RenameAuthor_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: AuthorItem item })
+        {
+            return;
+        }
+
+        var dialog = new RenameDialog(item.Name) { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.NewName == item.Name)
+        {
+            return;
+        }
+
+        var booksToUpdate = Books
+            .Where(b => string.Equals(b.Author, item.Name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var updates = booksToUpdate.Select(b => (b.Id, dialog.NewName)).ToList();
+
+        _database.SaveBookAuthorsBatch(updates, "rename-author");
+        foreach (var book in booksToUpdate)
+        {
+            book.Author = dialog.NewName;
+            book.NotifyAll();
+        }
+
+        RefreshLibraryViews(sort: true);
+        RefreshAuthorManagementItems(AuthorSearchBox?.Text?.Trim());
+        StatusText.Text = $@"已将「{item.Name}」重命名为「{dialog.NewName}」，更新了 {updates.Count} 本书籍。";
+    }
+
+    private void FilterByAuthor_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: AuthorItem item })
+        {
+            return;
+        }
+
+        ShowLibraryView("author");
+        SetAuthorFilter(item.Name);
+        StatusText.Text = $@"已在书库按作者查看：{item.Name}";
     }
 
     private void TagManagerFilter_Click(object sender, RoutedEventArgs e)
