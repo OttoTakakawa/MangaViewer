@@ -21,6 +21,9 @@ public partial class ReaderWindow : Window
     private string _boundaryHint = "";
     private bool _controlsHidden;
     private bool _isHoldZoomActive;
+    private bool _isFullscreen;
+    private WindowStyle _previousWindowStyle;
+    private WindowState _previousWindowState;
     private bool _fitPendingInitialLoad = true;
     private double _holdZoomBaseValue = 1;
     private int _pageLoadRequestId;
@@ -156,10 +159,18 @@ public partial class ReaderWindow : Window
             WheelModeBox.SelectedIndex = 2;
             e.Handled = true;
         }
-        else if (e.Key == Key.Escape && _controlsHidden)
+        else if (e.Key == Key.Escape)
         {
-            SetControlsHidden(false);
-            e.Handled = true;
+            if (_isFullscreen)
+            {
+                ToggleFullscreen();
+                e.Handled = true;
+            }
+            else if (_controlsHidden)
+            {
+                SetControlsHidden(false);
+                e.Handled = true;
+            }
         }
     }
 
@@ -569,5 +580,31 @@ public partial class ReaderWindow : Window
     private void PlayPageFade()
     {
         MotionService.PlayPageSwapFeedback(ImageHost);
+    }
+
+    private void FullscreenButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleFullscreen();
+    }
+
+    private void ToggleFullscreen()
+    {
+        if (_isFullscreen)
+        {
+            _isFullscreen = false;
+            WindowStyle = _previousWindowStyle;
+            WindowState = _previousWindowState;
+            FullscreenButton.Content = "全屏";
+        }
+        else
+        {
+            _isFullscreen = true;
+            _previousWindowStyle = WindowStyle;
+            _previousWindowState = WindowState;
+            WindowStyle = WindowStyle.None;
+            WindowState = WindowState.Maximized;
+            FullscreenButton.Content = "退出";
+            SetControlsHidden(true);
+        }
     }
 }

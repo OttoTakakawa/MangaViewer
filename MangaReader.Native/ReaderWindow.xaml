@@ -292,6 +292,7 @@
                         <ComboBoxItem Content="从右到左"/>
                     </ComboBox>
                     <Button x:Name="ToggleControlsButton" Content="隐藏" Click="ToggleControlsButton_Click"/>
+                    <Button x:Name="FullscreenButton" Content="全屏" Click="FullscreenButton_Click"/>
                 </StackPanel>
             </Grid>
         </Border>
