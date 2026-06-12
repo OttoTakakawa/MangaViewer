@@ -1893,13 +1893,13 @@ public partial class MainWindow : Window
             .OrderByDescending(book => book.ReadingStatus == "reading")
             .ThenByDescending(book => book.LastReadPageIndex)
             .ThenByDescending(book => book.ReadCount)
-            .Take(8));
+            .Take(3));
 
         ReplaceBooks(RecentReadingBooks, homeBooks
             .Where(book => book.LastReadPageIndex > 0 || book.ReadCount > 0 || book.ReadingStatus == "finished")
             .OrderByDescending(book => book.LastReadPageIndex)
             .ThenByDescending(book => book.ReadCount)
-            .Take(12));
+            .Take(4));
 
         ReplaceBooks(FavoriteShowcaseBooks, homeBooks
             .Where(book => book.IsFavorite)

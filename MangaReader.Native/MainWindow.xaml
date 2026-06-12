@@ -744,11 +744,11 @@
 
                         <TextBlock Text="工具" Foreground="#81756B" FontSize="12" FontWeight="SemiBold" Margin="4,0,0,8"/>
                         <Button Content="导入书库" Click="ChooseLibrary_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button Content="同步书架" Click="Rescan_Click" Style="{StaticResource SidebarActionButton}"/>
                         <Button Content="立即备份" Click="ManualBackup_Click" Style="{StaticResource SidebarActionButton}"/>
                         <Button Content="打开备份" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}"/>
+                        <Button Content="打开数据" Click="OpenDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
                         <Button Content="指定数据" Click="ChooseDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}"/>
+                        <Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}" ToolTip="从 GitHub Release 下载最新 Windows x64 发布包。"/>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -774,22 +774,13 @@
                                        TextWrapping="Wrap"
                                        FontSize="12"
                                        Foreground="#8D8177"/>
-                            <WrapPanel Margin="0,10,0,0">
-                                <Button Content="打开数据"
-                                        Click="OpenDataFolder_Click"
-                                        Style="{StaticResource TinyButton}"
-                                        Margin="0,0,8,0"/>
-                                <Button Content="指定数据"
-                                        Click="ChooseDataFolder_Click"
-                                        Style="{StaticResource TinyButton}"/>
-                            </WrapPanel>
-                            <TextBlock x:Name="StatusText"
-                                       Margin="0,8,0,0"
-                                       TextWrapping="Wrap"
-                                       FontSize="12"
-                                       Foreground="#9A5A36"/>
                         </StackPanel>
                     </Border>
+                    <TextBlock x:Name="StatusText"
+                               Margin="2,10,0,0"
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Foreground="#9A5A36"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -856,11 +847,11 @@
                         <TextBlock x:Name="FavoriteShowcaseEmptyText" Text="还没有收藏作品，先在书库里挑几本真正想反复回看的漫画。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
 
                         <TextBlock Text="最近加入" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
                             <ItemsControl ItemsSource="{Binding RecentlyAddedBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal"/>
+                                        <StackPanel Orientation="Horizontal"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
@@ -898,7 +889,6 @@
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button x:Name="LibraryChromeToggleButton" Content="专注浏览" Click="ToggleLibraryChrome_Click" Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
                                 <Button Content="导入" Click="ChooseLibrary_Click" Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
-                                <Button Content="同步" Click="Rescan_Click"/>
                             </StackPanel>
                         </DockPanel>
                         <WrapPanel x:Name="LibraryFilterControlsPanel" Grid.Row="1" VerticalAlignment="Center" ItemHeight="44">
