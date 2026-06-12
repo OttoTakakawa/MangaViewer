@@ -841,7 +841,19 @@ public partial class MainWindow : Window
 
             if (result == MessageBoxResult.Yes)
             {
-                System.Diagnostics.Process.Start(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                var executablePath = Environment.ProcessPath;
+                if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+                {
+                    StatusText.Text = "数据目录已指定。自动重启失败，请手动重启软件后生效。";
+                    return;
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = executablePath,
+                    WorkingDirectory = AppContext.BaseDirectory,
+                    UseShellExecute = true
+                });
                 Environment.Exit(0);
             }
             else
