@@ -136,6 +136,10 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
         var slotWidth = ItemWidth + HorizontalSpacing;
         var slotHeight = ItemHeight + VerticalSpacing;
         var generator = ItemContainerGenerator;
+        if (generator is null)
+        {
+            return finalSize;
+        }
 
         for (var childIndex = 0; childIndex < InternalChildren.Count; childIndex++)
         {
@@ -220,6 +224,11 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
     private void RealizeItems(int firstIndex, int lastIndex)
     {
         var generator = ItemContainerGenerator;
+        if (generator is null || firstIndex < 0 || lastIndex < firstIndex)
+        {
+            return;
+        }
+
         var startPosition = generator.GeneratorPositionFromIndex(firstIndex);
         var childIndex = startPosition.Offset == 0 ? startPosition.Index : startPosition.Index + 1;
         childIndex = Math.Max(0, childIndex);
@@ -253,6 +262,11 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
     private void CleanUpItems(int firstIndex, int lastIndex)
     {
         var generator = ItemContainerGenerator;
+        if (generator is null)
+        {
+            return;
+        }
+
         for (var childIndex = InternalChildren.Count - 1; childIndex >= 0; childIndex--)
         {
             var generatorPosition = new GeneratorPosition(childIndex, 0);

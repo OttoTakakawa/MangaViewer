@@ -1273,7 +1273,7 @@
                                                             <TextBlock Text=" · " Foreground="#6B7280"/>
                                                             <TextBlock Text="{Binding SourceText}" Foreground="#6B7280"/>
                                                             <TextBlock Text=" · " Foreground="#6B7280"/>
-                                                            <TextBlock Text="{Binding TypeText}" Foreground="#6B7280"/>
+                                                            <TextBlock Text="{Binding TypeText, Mode=OneWay}" Foreground="#6B7280"/>
                                                         </WrapPanel>
                                                     </StackPanel>
                                                 </DockPanel>
