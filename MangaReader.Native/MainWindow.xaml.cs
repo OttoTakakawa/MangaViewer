@@ -534,12 +534,10 @@ public partial class MainWindow : Window
         if (_currentBook is null) return;
         if (!_isEditMode)
         {
-            StatusText.Text = "当前是只读模式，请先点击“编辑”。";
+            StatusText.Text = "当前是只读模式，请先点击编辑。";
             return;
         }
 
-        _currentBook.Author = AuthorBox.Text.Trim();
-        _currentBook.CharacterName = CharacterNameBox.Text.Trim();
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
         _currentBook.ReadingStatus = GetSelectedReadingStatus();
         _currentBook.IsFavorite = FavoriteBox.IsChecked == true;
@@ -588,7 +586,7 @@ public partial class MainWindow : Window
         if (_currentBook is null) return;
         if (!_isEditMode)
         {
-            StatusText.Text = "当前是只读模式，请先点击“编辑”。";
+            StatusText.Text = "当前是只读模式，请先点击编辑。";
             return;
         }
         if (!int.TryParse(CoverPageBox.Text.Trim(), out var coverPage))
@@ -1098,7 +1096,6 @@ public partial class MainWindow : Window
     private void FillMetadataEditors(MangaBook book)
     {
         AuthorBox.Text = book.Author;
-        CharacterNameBox.Text = book.CharacterName;
         ForeignNameBox.Text = book.ForeignName;
         ProducedAtBox.Text = book.ProducedAt;
         ImportedAtBox.Text = book.ImportedAt;
@@ -1109,10 +1106,10 @@ public partial class MainWindow : Window
         FavoriteBox.IsChecked = book.IsFavorite;
         SummaryBox.Text = book.Summary;
         ReadOnlyAuthorText.Text = EmptyAsPlaceholder(book.Author);
-        ReadOnlyCharacterText.Text = EmptyAsPlaceholder(book.CharacterName);
         ReadOnlyForeignNameText.Text = EmptyAsPlaceholder(book.ForeignName);
         ReadOnlyStatusText.Text = book.ReadingStatusText;
         ReadOnlyFavoriteText.Text = book.IsFavorite ? "已收藏" : "未收藏";
+        ReadOnlyPageCountText.Text = book.PageCount.ToString();
         ReadOnlyProducedAtText.Text = EmptyAsPlaceholder(book.ProducedAt);
         ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(book.ImportedAt);
         ReadOnlyTagsText.Text = EmptyAsPlaceholder(book.Tags);
@@ -1186,7 +1183,7 @@ public partial class MainWindow : Window
         SetCoverButton.IsEnabled = enabled;
         ImportedTodayButton.IsEnabled = enabled;
 
-        foreach (var box in new[] { AuthorBox, CharacterNameBox, ForeignNameBox, ProducedAtBox, ImportedAtBox, TagsBox, CoverPageBox, ReadCountBox, SummaryBox })
+        foreach (var box in new[] { ForeignNameBox, ProducedAtBox, ImportedAtBox, TagsBox, CoverPageBox, ReadCountBox, SummaryBox })
         {
             box.IsReadOnly = !enabled;
             box.Opacity = enabled ? 1.0 : 0.78;

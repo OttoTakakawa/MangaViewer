@@ -39,7 +39,6 @@ public partial class ReaderWindow : Window
         Closing += ReaderWindow_Closing;
         Loaded += ReaderWindow_Loaded;
         LoadViewerPreferences();
-        PageText.Text = "正在准备阅读器...";
     }
 
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
