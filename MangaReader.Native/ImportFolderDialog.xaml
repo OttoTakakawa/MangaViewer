@@ -80,75 +80,86 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="32" Background="#F6F7F9" BorderBrush="#FFFFFF" BorderThickness="1" Padding="26" Effect="{StaticResource DialogShadow}" MouseLeftButtonDown="DialogRoot_MouseLeftButtonDown">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid Margin="22">
+        <Border CornerRadius="36"
+                Background="#01000000"
+                Effect="{StaticResource DialogShadow}"/>
+        <Border CornerRadius="32"
+                Background="#F6F7F9"
+                BorderBrush="#FFFFFF"
+                BorderThickness="1"
+                Padding="26"
+                SnapsToDevicePixels="True"
+                MouseLeftButtonDown="DialogRoot_MouseLeftButtonDown">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Content="×" Width="42" MinWidth="42" Padding="0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
-                <StackPanel>
-                    <TextBlock Text="添加漫画" FontSize="30" FontWeight="Black" Foreground="#111827"/>
-                    <TextBlock Text="拖入作者文件夹或漫画文件夹；也可以粘贴本地路径。" Margin="0,6,0,0" Foreground="#6B7280"/>
-                </StackPanel>
-            </DockPanel>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="×" Width="42" MinWidth="42" Padding="0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
+                    <StackPanel>
+                        <TextBlock Text="添加漫画" FontSize="30" FontWeight="Black" Foreground="#111827"/>
+                        <TextBlock Text="拖入作者文件夹或漫画文件夹；也可以粘贴本地路径。" Margin="0,6,0,0" Foreground="#6B7280"/>
+                    </StackPanel>
+                </DockPanel>
 
-            <Border Grid.Row="1" Margin="0,24,0,0" Padding="22" CornerRadius="26" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="把文件夹拖到这里" FontSize="22" FontWeight="Black" Foreground="#111827" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Row="1"
-                               Text="支持多文件夹；会继续进入作者批量导入确认窗口。"
-                               Margin="0,8,0,0"
-                               Foreground="#6B7280"
-                               HorizontalAlignment="Center"/>
+                <Border Grid.Row="1" Margin="0,24,0,0" Padding="22" CornerRadius="26" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="把文件夹拖到这里" FontSize="22" FontWeight="Black" Foreground="#111827" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Row="1"
+                                   Text="支持多文件夹；会继续进入作者批量导入确认窗口。"
+                                   Margin="0,8,0,0"
+                                   Foreground="#6B7280"
+                                   HorizontalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="2" Margin="0,18,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="FolderPathBox" Style="{StaticResource DialogTextBox}" ToolTip="粘贴文件夹路径"/>
+                    <Button Grid.Column="2" Content="加入路径" Click="AddPath_Click" Style="{StaticResource DialogGhostButton}"/>
                 </Grid>
-            </Border>
 
-            <Grid Grid.Row="2" Margin="0,18,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="FolderPathBox" Style="{StaticResource DialogTextBox}" ToolTip="粘贴文件夹路径"/>
-                <Button Grid.Column="2" Content="加入路径" Click="AddPath_Click" Style="{StaticResource DialogGhostButton}"/>
+                <Border Grid.Row="3" Margin="0,18,0,0" CornerRadius="24" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14">
+                    <Grid>
+                        <ItemsControl x:Name="FolderList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" Padding="14,10" CornerRadius="18" Background="#F8FAFC" BorderBrush="#EEF2F7" BorderThickness="1">
+                                        <TextBlock Text="{Binding}" Foreground="#111827" TextTrimming="CharacterEllipsis"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="EmptyText"
+                                   Text="尚未选择文件夹"
+                                   Foreground="#9CA3AF"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <DockPanel Grid.Row="4" Margin="0,20,0,0">
+                    <TextBlock x:Name="HintText" Foreground="#6B7280" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
+                        <Button Content="继续导入" Width="124" Click="Confirm_Click" Style="{StaticResource DialogButton}"/>
+                    </StackPanel>
+                </DockPanel>
             </Grid>
-
-            <Border Grid.Row="3" Margin="0,18,0,0" CornerRadius="24" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14">
-                <Grid>
-                    <ItemsControl x:Name="FolderList">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="14,10" CornerRadius="18" Background="#F8FAFC" BorderBrush="#EEF2F7" BorderThickness="1">
-                                    <TextBlock Text="{Binding}" Foreground="#111827" TextTrimming="CharacterEllipsis"/>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock x:Name="EmptyText"
-                               Text="尚未选择文件夹"
-                               Foreground="#9CA3AF"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-
-            <DockPanel Grid.Row="4" Margin="0,20,0,0">
-                <TextBlock x:Name="HintText" Foreground="#6B7280" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
-                    <Button Content="继续导入" Width="124" Click="Confirm_Click" Style="{StaticResource DialogButton}"/>
-                </StackPanel>
-            </DockPanel>
-        </Grid>
-    </Border>
+        </Border>
+    </Grid>
 </Window>

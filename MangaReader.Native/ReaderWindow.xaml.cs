@@ -2,7 +2,6 @@ using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Controls;
@@ -22,7 +21,9 @@ public partial class ReaderWindow : Window
     private string _boundaryHint = "";
     private bool _controlsHidden;
     private bool _isHoldZoomActive;
+    private bool _fitPendingInitialLoad = true;
     private double _holdZoomBaseValue = 1;
+    private int _pageLoadRequestId;
 
     public ReaderWindow(MangaBook book, LibraryDatabase database, List<Key> nextKeys, List<Key> prevKeys)
     {
@@ -38,21 +39,21 @@ public partial class ReaderWindow : Window
         Closing += ReaderWindow_Closing;
         Loaded += ReaderWindow_Loaded;
         LoadViewerPreferences();
-        LoadPage(_book.LastReadPageIndex);
+        PageText.Text = "正在准备阅读器...";
     }
 
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        var storyboard = new Storyboard();
-        AddAnimation(storyboard, this, Window.OpacityProperty, 0, 1, 160);
-        storyboard.Begin();
-        Dispatcher.InvokeAsync(() => FitHeight_Click(this, new RoutedEventArgs()), DispatcherPriority.Loaded);
+        AppLogger.Info("reader-open", $"Reader loaded: {_book.Title}, pages={_book.Pages.Count}, start={_book.LastReadPageIndex + 1}");
+        MotionService.FadeIn(this, Window.OpacityProperty, 0.94, 1);
+        Dispatcher.InvokeAsync(() => LoadPage(_book.LastReadPageIndex), DispatcherPriority.ApplicationIdle);
         UpdateZoomText();
         RestartControlsRevealTimer();
     }
 
     private void ReaderWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _controlsRevealTimer.Stop();
         _database.SaveProgress(_book);
         _database.SaveShortcut("reader.wheelmode", WheelModeBox.SelectedIndex.ToString());
     }
@@ -164,46 +165,71 @@ public partial class ReaderWindow : Window
         }
     }
 
-    private void LoadPage(int pageIndex)
+    private async void LoadPage(int pageIndex)
     {
         if (_book.Pages.Count == 0) return;
+        var requestId = ++_pageLoadRequestId;
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _boundaryHint = "";
         var firstPath = _book.Pages[safeIndex];
+        var doublePageMode = IsDoublePageMode();
+        var rightToLeft = IsRightToLeftMode();
+        PageText.Text = $"正在读取 {safeIndex + 1} / {_book.PageCount}...";
 
         try
         {
-            var first = ImageLoader.LoadBitmap(firstPath, 2600);
-            var useDouble = IsDoublePageMode() && safeIndex + 1 < _book.Pages.Count && !IsLandscape(first);
+            var page = await Task.Run(() =>
+            {
+                var first = ImageLoader.LoadBitmap(firstPath, 2600);
+                var useDouble = doublePageMode && safeIndex + 1 < _book.Pages.Count && !IsLandscape(first);
+                BitmapSource? second = null;
+                if (useDouble)
+                {
+                    second = ImageLoader.LoadBitmap(_book.Pages[safeIndex + 1], 2600);
+                }
 
-            ReaderImage.Source = first;
+                return new LoadedPage(first, second, useDouble);
+            });
+
+            if (requestId != _pageLoadRequestId)
+            {
+                return;
+            }
+
+            ReaderImage.Source = page.First;
             ReaderImageRight.Source = null;
             ReaderImageRight.Visibility = Visibility.Collapsed;
             _displayedPageCount = 1;
 
-            if (useDouble)
+            if (page.UseDouble && page.Second is not null)
             {
-                var second = ImageLoader.LoadBitmap(_book.Pages[safeIndex + 1], 2600);
                 _displayedPageCount = 2;
                 ReaderImageRight.Visibility = Visibility.Visible;
-                if (IsRightToLeftMode())
+                if (rightToLeft)
                 {
-                    ReaderImage.Source = second;
-                    ReaderImageRight.Source = first;
+                    ReaderImage.Source = page.Second;
+                    ReaderImageRight.Source = page.First;
                 }
                 else
                 {
-                    ReaderImageRight.Source = second;
+                    ReaderImageRight.Source = page.Second;
                 }
             }
 
             _book.LastReadPageIndex = safeIndex;
             _database.SaveProgress(_book);
             UpdateNavigationState();
+            if (_fitPendingInitialLoad)
+            {
+                _fitPendingInitialLoad = false;
+                FitHeight_Click(this, new RoutedEventArgs());
+            }
             PlayPageFade();
+            AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
         }
         catch (Exception ex)
         {
+            AppLogger.Error("reader-load-page", ex, $"Failed to load page for {_book.Title}.");
             PageText.Text = $"图片读取失败：{ex.Message}";
         }
     }
@@ -212,6 +238,7 @@ public partial class ReaderWindow : Window
     private bool IsRightToLeftMode() => (DirectionBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "从右到左";
     private int GetPreviousStep() => IsDoublePageMode() ? 2 : 1;
     private static bool IsLandscape(BitmapSource image) => image.PixelWidth > image.PixelHeight * 1.15;
+    private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
 
     private double GetDisplayedPixelWidth()
     {
@@ -355,9 +382,17 @@ public partial class ReaderWindow : Window
 
         _isHoldZoomActive = true;
         _holdZoomBaseValue = ZoomSlider.Value;
-        Mouse.Capture(ReaderScrollViewer);
-        UpdateHoldZoom(e.GetPosition(ImageHost), e.GetPosition(ReaderScrollViewer));
-        e.Handled = true;
+        try
+        {
+            Mouse.Capture(ReaderScrollViewer);
+            UpdateHoldZoom(e.GetPosition(ImageHost), e.GetPosition(ReaderScrollViewer));
+            e.Handled = true;
+        }
+        catch
+        {
+            ReleaseHoldZoom();
+            throw;
+        }
     }
 
     private void ReaderScrollViewer_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
@@ -481,25 +516,6 @@ public partial class ReaderWindow : Window
 
     private void PlayPageFade()
     {
-        ImageHost.BeginAnimation(OpacityProperty, null);
-        ImageHost.Opacity = 0.72;
-        ImageHost.BeginAnimation(
-            OpacityProperty,
-            new DoubleAnimation(1, TimeSpan.FromMilliseconds(120))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            });
-    }
-
-    private static void AddAnimation(Storyboard storyboard, DependencyObject target, DependencyProperty property, double from, double to, int milliseconds, int delay = 0)
-    {
-        var animation = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(milliseconds))
-        {
-            BeginTime = TimeSpan.FromMilliseconds(delay),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        Storyboard.SetTarget(animation, target);
-        Storyboard.SetTargetProperty(animation, new PropertyPath(property));
-        storyboard.Children.Add(animation);
+        MotionService.PlayPageSwapFeedback(ImageHost);
     }
 }

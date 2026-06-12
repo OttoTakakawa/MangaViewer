@@ -32,7 +32,8 @@ public static class TagService
     public static bool IsMutuallyExclusiveCategory(string category)
     {
         return string.Equals(category, "内容形态", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(category, "色彩规格", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(category, "色彩规格", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(category, "画质规格", StringComparison.OrdinalIgnoreCase);
     }
 
     public static int CategoryOrder(string category)

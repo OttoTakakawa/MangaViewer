@@ -100,7 +100,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     public string StatusBadgeText => IsFavorite ? $"收藏 · {ReadingStatusText}" : ReadingStatusText;
     public string MissingText => IsMissing ? "路径失效" : "";
     public string HiddenText => IsHidden ? "已隐藏" : "";
-    public int BookStyleIndex => BookStyle >= 0 ? BookStyle % 4 : Math.Abs(Id.GetHashCode()) % 4;
+    public int BookStyleIndex => BookStyle >= 0 ? BookStyle % 4 : (Id.GetHashCode() & 0x7FFFFFFF) % 4;
     public double BookWidth => BookStyleIndex switch
     {
         1 => 138,

@@ -1,0 +1,105 @@
+<Window x:Class="MangaReader.Native.TagCreateDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="新建标签"
+        Width="520"
+        Height="360"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+    <Window.Resources>
+        <Style x:Key="DialogTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+        <Style x:Key="DialogComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style x:Key="DialogPillButton" TargetType="Button">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="18,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#201B17"/>
+            <Setter Property="Foreground" Value="#FFF8EF"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="21">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="32" Background="#F3EDE4" BorderBrush="#FFF8EF" BorderThickness="1" Padding="26">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.22"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="新建标签" FontSize="30" FontWeight="Black" Foreground="#201B17"/>
+            <TextBlock Grid.Row="1"
+                       Text="互斥标签：同一分组只允许一本书保留一个；不互斥标签适合题材、主题、风格。"
+                       Margin="0,8,0,0"
+                       Foreground="#7C6F64"
+                       TextWrapping="Wrap"/>
+
+            <Grid Grid.Row="2" Margin="0,24,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="标签名称" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                    <TextBox x:Name="TagNameBox" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
+                </StackPanel>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="标签分组" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource DialogComboBox}">
+                            <ComboBoxItem Content="内容形态"/>
+                            <ComboBoxItem Content="色彩规格"/>
+                            <ComboBoxItem Content="画质规格"/>
+                            <ComboBoxItem Content="自定义"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="规则" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                        <ComboBox x:Name="TagTypeBox" Margin="0,8,0,0" Style="{StaticResource DialogComboBox}">
+                            <ComboBoxItem Content="互斥"/>
+                            <ComboBoxItem Content="不互斥"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+                <Button Content="取消" Width="96" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogPillButton}" Background="#FFFFFF" Foreground="#5E5249"/>
+                <Button Content="创建" Width="96" Click="Confirm_Click" Style="{StaticResource DialogPillButton}"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

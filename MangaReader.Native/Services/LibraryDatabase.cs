@@ -6,6 +6,28 @@ namespace MangaReader.Native.Services;
 public sealed class LibraryDatabase
 {
     private const int MaxBackupFiles = 40;
+    private const string UpsertBookSql =
+        """
+        INSERT INTO books(id, title, author, character_name, foreign_name, tags, produced_at, imported_at, summary,
+                          folder_path, page_count, cover_page_index, last_read_page_index, is_missing, updated_at)
+        VALUES ($id, $title, $author, $characterName, $foreignName, $tags, $producedAt, $importedAt, $summary,
+                $folderPath, $pageCount, $coverPageIndex, $lastReadPageIndex, $isMissing, $updatedAt)
+        ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            author = excluded.author,
+            character_name = excluded.character_name,
+            foreign_name = excluded.foreign_name,
+            tags = CASE WHEN books.tags = '' THEN excluded.tags ELSE books.tags END,
+            produced_at = excluded.produced_at,
+            imported_at = CASE WHEN books.imported_at = '' THEN excluded.imported_at ELSE books.imported_at END,
+            summary = excluded.summary,
+            folder_path = excluded.folder_path,
+            page_count = excluded.page_count,
+            cover_page_index = excluded.cover_page_index,
+            last_read_page_index = excluded.last_read_page_index,
+            is_missing = excluded.is_missing,
+            updated_at = excluded.updated_at;
+        """;
     private static readonly TimeSpan MetadataBackupInterval = TimeSpan.FromMinutes(10);
     private readonly string _connectionString;
     private readonly string _databasePath;
@@ -69,6 +91,7 @@ public sealed class LibraryDatabase
             CREATE TABLE IF NOT EXISTS managed_tags (
                 name TEXT PRIMARY KEY,
                 category TEXT NOT NULL DEFAULT '自定义',
+                is_exclusive INTEGER NOT NULL DEFAULT 0,
                 updated_at TEXT NOT NULL
             );
 
@@ -95,6 +118,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "is_favorite", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
+        EnsureColumn(connection, "managed_tags", "is_exclusive", "INTEGER NOT NULL DEFAULT 0");
     }
 
     public void SaveLibraryRoot(string path)
@@ -174,30 +198,31 @@ public sealed class LibraryDatabase
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText =
-            """
-            INSERT INTO books(id, title, author, character_name, foreign_name, tags, produced_at, imported_at, summary,
-                              folder_path, page_count, cover_page_index, last_read_page_index, is_missing, updated_at)
-            VALUES ($id, $title, $author, $characterName, $foreignName, $tags, $producedAt, $importedAt, $summary,
-                    $folderPath, $pageCount, $coverPageIndex, $lastReadPageIndex, $isMissing, $updatedAt)
-            ON CONFLICT(id) DO UPDATE SET
-                title = excluded.title,
-                author = excluded.author,
-                character_name = excluded.character_name,
-                foreign_name = excluded.foreign_name,
-                tags = CASE WHEN books.tags = '' THEN excluded.tags ELSE books.tags END,
-                produced_at = excluded.produced_at,
-                imported_at = CASE WHEN books.imported_at = '' THEN excluded.imported_at ELSE books.imported_at END,
-                summary = excluded.summary,
-                folder_path = excluded.folder_path,
-                page_count = excluded.page_count,
-                cover_page_index = excluded.cover_page_index,
-                last_read_page_index = excluded.last_read_page_index,
-                is_missing = excluded.is_missing,
-                updated_at = excluded.updated_at;
-            """;
+        command.CommandText = UpsertBookSql;
         AddBookParameters(command, book);
         command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public void UpsertBooksBatch(IReadOnlyCollection<MangaBook> books)
+    {
+        if (books.Count == 0)
+        {
+            return;
+        }
+
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = UpsertBookSql;
+        foreach (var book in books)
+        {
+            command.Parameters.Clear();
+            AddBookParameters(command, book);
+            command.ExecuteNonQuery();
+        }
+
         transaction.Commit();
     }
 
@@ -271,20 +296,55 @@ public sealed class LibraryDatabase
         BackupDatabase(reason, force: true);
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            UPDATE books
+            SET tags = $tags,
+                updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        var updatedAt = DateTimeOffset.Now.ToString("O");
         foreach (var (bookId, tags) in updates)
         {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText =
-                """
-                UPDATE books
-                SET tags = $tags,
-                    updated_at = $updatedAt
-                WHERE id = $id;
-                """;
+            command.Parameters.Clear();
             command.Parameters.AddWithValue("$id", bookId);
             command.Parameters.AddWithValue("$tags", tags);
-            command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+            command.Parameters.AddWithValue("$updatedAt", updatedAt);
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        _lastMetadataBackupAt = DateTimeOffset.Now;
+    }
+
+    public void SaveBookAuthorsBatch(IReadOnlyCollection<(string BookId, string Author)> updates, string reason)
+    {
+        if (updates.Count == 0)
+        {
+            return;
+        }
+
+        BackupDatabase(reason, force: true);
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        var updatedAt = DateTimeOffset.Now.ToString("O");
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            UPDATE books
+            SET author = $author,
+                updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        foreach (var (bookId, author) in updates)
+        {
+            command.Parameters.Clear();
+            command.Parameters.AddWithValue("$id", bookId);
+            command.Parameters.AddWithValue("$author", author);
+            command.Parameters.AddWithValue("$updatedAt", updatedAt);
             command.ExecuteNonQuery();
         }
 
@@ -384,12 +444,12 @@ public sealed class LibraryDatabase
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT name, category, updated_at FROM managed_tags ORDER BY updated_at DESC, name ASC;";
+        command.CommandText = "SELECT name, category, is_exclusive, updated_at FROM managed_tags ORDER BY updated_at DESC, name ASC;";
         using var reader = command.ExecuteReader();
         var result = new List<ManagedTagRecord>();
         while (reader.Read())
         {
-            result.Add(new ManagedTagRecord(reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+            result.Add(new ManagedTagRecord(reader.GetString(0), reader.GetString(1), reader.GetInt32(2) == 1, reader.GetString(3)));
         }
         return result;
     }
@@ -408,7 +468,7 @@ public sealed class LibraryDatabase
         return result;
     }
 
-    public void SaveManagedTag(string tag, string category = "自定义")
+    public void SaveManagedTag(string tag, string category = "自定义", bool isExclusive = false)
     {
         BackupDatabase("before-managed-tag-save", force: ShouldCreateMetadataBackup());
         using var connection = Open();
@@ -418,14 +478,16 @@ public sealed class LibraryDatabase
             command.Transaction = transaction;
             command.CommandText =
                 """
-                INSERT INTO managed_tags(name, category, updated_at)
-                VALUES ($name, $category, $updatedAt)
+                INSERT INTO managed_tags(name, category, is_exclusive, updated_at)
+                VALUES ($name, $category, $isExclusive, $updatedAt)
                 ON CONFLICT(name) DO UPDATE SET
                     category = excluded.category,
+                    is_exclusive = excluded.is_exclusive,
                     updated_at = excluded.updated_at;
                 """;
             command.Parameters.AddWithValue("$name", tag);
             command.Parameters.AddWithValue("$category", category);
+            command.Parameters.AddWithValue("$isExclusive", isExclusive ? 1 : 0);
             command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
             command.ExecuteNonQuery();
         }
@@ -440,7 +502,7 @@ public sealed class LibraryDatabase
         _lastMetadataBackupAt = DateTimeOffset.Now;
     }
 
-    public void RenameManagedTag(string oldName, string newName, string category = "自定义")
+    public void RenameManagedTag(string oldName, string newName, string category = "自定义", bool isExclusive = false)
     {
         BackupDatabase("before-managed-tag-rename", force: true);
         using var connection = Open();
@@ -459,14 +521,16 @@ public sealed class LibraryDatabase
             upsertCommand.Transaction = transaction;
             upsertCommand.CommandText =
                 """
-                INSERT INTO managed_tags(name, category, updated_at)
-                VALUES ($newName, $category, $updatedAt)
+                INSERT INTO managed_tags(name, category, is_exclusive, updated_at)
+                VALUES ($newName, $category, $isExclusive, $updatedAt)
                 ON CONFLICT(name) DO UPDATE SET
                     category = excluded.category,
+                    is_exclusive = excluded.is_exclusive,
                     updated_at = excluded.updated_at;
                 """;
             upsertCommand.Parameters.AddWithValue("$newName", newName);
             upsertCommand.Parameters.AddWithValue("$category", category);
+            upsertCommand.Parameters.AddWithValue("$isExclusive", isExclusive ? 1 : 0);
             upsertCommand.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
             upsertCommand.ExecuteNonQuery();
         }
@@ -614,7 +678,7 @@ public sealed class LibraryDatabase
     }
 
 
-public sealed record ManagedTagRecord(string Name, string Category, string UpdatedAt);
+public sealed record ManagedTagRecord(string Name, string Category, bool IsExclusive, string UpdatedAt);
 
     private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
     {

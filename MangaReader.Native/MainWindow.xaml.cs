@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using WinForms = System.Windows.Forms;
 
 namespace MangaReader.Native;
@@ -14,12 +15,14 @@ namespace MangaReader.Native;
 public partial class MainWindow : Window
 {
     private const double WheelScrollMultiplier = 1.45;
+    private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
     private readonly AppStorage _storage = new();
     private readonly LibraryScanner _scanner = new();
     private readonly BatchImportAnalyzer _batchImportAnalyzer = new();
     private readonly LibraryDatabase _database;
     private readonly CoverCache _coverCache;
+    private readonly CoverThumbnailPipeline _coverPipeline;
     private MangaBook? _currentBook;
     private CancellationTokenSource? _scanCancellation;
     private List<Key> _nextKeys = [Key.Right, Key.D, Key.Space];
@@ -29,10 +32,18 @@ public partial class MainWindow : Window
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagCategories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, bool> _managedTagIsExclusive = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagUpdatedAt = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<MangaBook>> _tagBooksByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _suppressedTags = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _visibleCoverReferences = new(StringComparer.OrdinalIgnoreCase);
+    private readonly DispatcherTimer _bookSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
+    private readonly DispatcherTimer _tagSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
+    private readonly DispatcherTimer _tagManagerSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private bool _isRefreshingAuthorFilters;
+    private bool _libraryChromeCollapsed;
+    private bool _isLogPanelVisible;
+    private bool _isDetailDrawerCollapsed;
     private string _currentNavigationKey = "home";
 
     public ObservableCollection<MangaBook> Books { get; } = [];
@@ -57,27 +68,42 @@ public partial class MainWindow : Window
         _database.Initialize();
         LoadManagedTags();
         _coverCache = new CoverCache(_storage);
+        _coverPipeline = new CoverThumbnailPipeline(_coverCache);
         LoadShortcuts();
         SetDetailVisible(false);
         ShowHomeView();
-
         StoragePathText.Text = "数据保存在 MangaReader_Data，不写入漫画文件夹。";
+        UpdateLogPanelVisibility();
+
+        ConfigureSearchDebounceTimers();
         Loaded += MainWindow_Loaded;
-        Closing += (_, _) => SaveCurrentProgress();
+        Closing += (_, _) =>
+        {
+            StopSearchDebounceTimers();
+            SaveCurrentProgress();
+        };
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
-        if (roots.Count == 0)
+        try
         {
-            StatusText.Text = "请选择漫画库文件夹。漫画路径不会直接显示在界面里。";
-            RefreshLibraryViews(sort: false, filter: false);
-            RefreshShelfOverview();
-            return;
-        }
+            var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
+            if (roots.Count == 0)
+            {
+                StatusText.Text = "请选择漫画库文件夹。漫画路径不会直接显示在界面里。";
+                RefreshLibraryViews(sort: false, filter: false);
+                RefreshShelfOverview();
+                return;
+            }
 
-        await ScanRootsAsync(roots);
+            await ScanRootsAsync(roots);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("startup-scan", ex, "Startup scan failed.");
+            StatusText.Text = $"启动扫描失败：{ex.Message}";
+        }
     }
 
     private async void ChooseLibrary_Click(object sender, RoutedEventArgs e)
@@ -92,7 +118,22 @@ public partial class MainWindow : Window
             return;
         }
 
-        await ImportSelectedFoldersAsync(dialog.FolderPaths.ToList());
+        await TryImportSelectedFoldersAsync(dialog.FolderPaths.ToList(), "choose-library");
+    }
+
+    private async Task TryImportSelectedFoldersAsync(IReadOnlyList<string> folderPaths, string scope)
+    {
+        try
+        {
+            await ImportSelectedFoldersAsync(folderPaths);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(scope, ex, "Folder import failed.");
+            HideImportProgress();
+            HideImportDropFeedback();
+            StatusText.Text = $"导入失败：{ex.Message}";
+        }
     }
 
     private async Task ImportSelectedFoldersAsync(IReadOnlyList<string> folderPaths)
@@ -139,20 +180,28 @@ public partial class MainWindow : Window
     private async Task ImportAuthorBatchAsync(string rootPath, string authorName, IReadOnlyList<BatchImportCandidate> candidates)
     {
         StatusText.Text = $"正在批量导入：{authorName}...";
+        ShowImportProgress(authorName, 0, candidates.Count, "准备导入...");
         _database.SaveLibraryRoot(rootPath);
         var savedBooks = _database.LoadBooksByPath();
         var booksByPath = Books.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
         var importedCount = 0;
         var failures = new List<string>();
+        var booksToSave = new List<(MangaBook Book, bool IsAlreadyVisible)>();
+        var processedCount = 0;
 
         foreach (var candidate in candidates)
         {
+            processedCount++;
+            ShowImportProgress(authorName, processedCount - 1, candidates.Count, $"正在处理：{candidate.Title}");
+            await System.Windows.Threading.Dispatcher.Yield();
             try
             {
-                var pages = Directory.EnumerateFiles(candidate.FolderPath)
-                    .Where(ImageLoader.IsSupportedImage)
-                    .OrderBy(path => path, new NaturalPathComparer())
-                    .ToList();
+                var pages = candidate.Pages.Count > 0
+                    ? candidate.Pages
+                    : Directory.EnumerateFiles(candidate.FolderPath)
+                        .Where(ImageLoader.IsSupportedImage)
+                        .OrderBy(path => path, new NaturalPathComparer())
+                        .ToList();
                 if (pages.Count == 0)
                 {
                     continue;
@@ -183,22 +232,31 @@ public partial class MainWindow : Window
                     book.Pages.Add(page);
                 }
 
-                _database.UpsertBook(book);
-                book.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
-                book.NotifyAll();
-                if (!isAlreadyVisible)
-                {
-                    Books.Add(book);
-                    booksByPath[book.FolderPath] = book;
-                }
+                booksToSave.Add((book, isAlreadyVisible));
                 importedCount++;
+                ShowImportProgress(authorName, processedCount, candidates.Count, $"已导入：{candidate.Title}");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
             {
+                AppLogger.Warn("author-import", $"{candidate.Title} failed: {ex}");
                 failures.Add($"{candidate.Title}：{ex.Message}");
+                ShowImportProgress(authorName, processedCount, candidates.Count, $"导入失败：{candidate.Title}");
             }
         }
 
+        ShowImportProgress(authorName, processedCount, candidates.Count, "正在批量写入数据库...");
+        await Task.Run(() => _database.UpsertBooksBatch(booksToSave.Select(item => item.Book).ToList()));
+        foreach (var (book, isAlreadyVisible) in booksToSave)
+        {
+            book.NotifyAll();
+            if (!isAlreadyVisible)
+            {
+                Books.Add(book);
+                booksByPath[book.FolderPath] = book;
+            }
+        }
+
+        HideImportProgress();
         RefreshLibraryViews(sort: true);
         EnsureLibraryViewCanShowBooks();
         StatusText.Text = failures.Count == 0
@@ -214,6 +272,93 @@ public partial class MainWindow : Window
             }
             System.Windows.MessageBox.Show(this, detail, "部分漫画导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void ShowImportProgress(string authorName, int completed, int total, string detail)
+    {
+        if (ImportProgressPanel is null)
+        {
+            return;
+        }
+
+        var safeTotal = Math.Max(1, total);
+        if (ImportProgressPanel.Visibility != Visibility.Visible)
+        {
+            MotionService.ShowWithFade(ImportProgressPanel);
+        }
+        ImportProgressTitle.Text = $"正在导入：{authorName}";
+        ImportProgressBar.Minimum = 0;
+        ImportProgressBar.Maximum = safeTotal;
+        ImportProgressBar.Value = Math.Clamp(completed, 0, safeTotal);
+        ImportProgressText.Text = $"{Math.Clamp(completed, 0, safeTotal)} / {safeTotal} · {detail}";
+        StatusText.Text = ImportProgressText.Text;
+    }
+
+    private void HideImportProgress()
+    {
+        if (ImportProgressPanel is not null)
+        {
+            MotionService.HideWithFade(ImportProgressPanel);
+        }
+    }
+
+    private async void BookCoverHost_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MangaBook book })
+        {
+            return;
+        }
+
+        var key = GetCoverReferenceKey(book);
+        _visibleCoverReferences[key] = _visibleCoverReferences.TryGetValue(key, out var count) ? count + 1 : 1;
+        if (book.CoverImage is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            var image = await _coverPipeline.LoadAsync(book);
+            if (_visibleCoverReferences.ContainsKey(key) && image is not null)
+            {
+                book.CoverImage = image;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
+        {
+            AppLogger.Warn("cover-thumbnail", $"{book.Title} failed: {ex}");
+            if (_visibleCoverReferences.ContainsKey(key))
+            {
+                StatusText.Text = $"封面缩略图加载失败：{book.Title}";
+            }
+        }
+    }
+
+    private void BookCoverHost_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: MangaBook book })
+        {
+            return;
+        }
+
+        var key = GetCoverReferenceKey(book);
+        if (!_visibleCoverReferences.TryGetValue(key, out var count))
+        {
+            return;
+        }
+
+        if (count <= 1)
+        {
+            _visibleCoverReferences.Remove(key);
+            return;
+        }
+
+        _visibleCoverReferences[key] = count - 1;
+    }
+
+    private static string GetCoverReferenceKey(MangaBook book)
+    {
+        return string.IsNullOrWhiteSpace(book.Id) ? book.FolderPath : book.Id;
     }
 
     private async void Rescan_Click(object sender, RoutedEventArgs e)
@@ -233,7 +378,8 @@ public partial class MainWindow : Window
         _scanCancellation = new CancellationTokenSource();
         var token = _scanCancellation.Token;
 
-        StatusText.Text = "正在扫描漫画库并生成封面缓存...";
+        StatusText.Text = "正在扫描漫画库...";
+        _visibleCoverReferences.Clear();
         Books.Clear();
         _currentBook = null;
         SetDetailVisible(false);
@@ -252,21 +398,29 @@ public partial class MainWindow : Window
                 return all;
             }, token);
 
+            var scannedPaths = scanned.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var missingBooks = savedBooks.Values
+                .Where(book => !scannedPaths.Contains(book.FolderPath) && !Directory.Exists(book.FolderPath))
+                .ToList();
+            foreach (var missing in missingBooks)
+            {
+                token.ThrowIfCancellationRequested();
+                missing.IsMissing = true;
+                missing.Pages.Clear();
+                missing.NotifyAll();
+            }
+
+            var booksToSave = scanned.Concat(missingBooks).ToList();
+            await Task.Run(() => _database.UpsertBooksBatch(booksToSave), token);
             foreach (var book in scanned)
             {
                 token.ThrowIfCancellationRequested();
-                _database.UpsertBook(book);
-                book.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book), token);
                 Books.Add(book);
             }
 
-            var scannedPaths = scanned.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var missing in savedBooks.Values.Where(book => !scannedPaths.Contains(book.FolderPath) && !Directory.Exists(book.FolderPath)))
+            foreach (var missing in missingBooks)
             {
-                missing.IsMissing = true;
-                missing.Pages.Clear();
-                _database.UpsertBook(missing);
-                missing.NotifyAll();
+                token.ThrowIfCancellationRequested();
                 Books.Add(missing);
             }
 
@@ -280,6 +434,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLogger.Error("library-scan", ex, "Library scan failed.");
             StatusText.Text = $"扫描失败：{ex.Message}";
         }
     }
@@ -294,6 +449,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        _isDetailDrawerCollapsed = false;
         SetDetailVisible(true);
         FillMetadataEditors(_currentBook);
         SetEditMode(false);
@@ -308,6 +464,38 @@ public partial class MainWindow : Window
         }
 
         OpenBook(book);
+    }
+
+    private void BookCard_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.ScaleTo(element, 1.025);
+        }
+    }
+
+    private void BookCard_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.ScaleTo(element, 1.0);
+        }
+    }
+
+    private void BookCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.PressBounce(element);
+        }
+    }
+
+    private void BookCard_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.ScaleTo(element, element.IsMouseOver ? 1.025 : 1.0, MotionService.Fast);
+        }
     }
 
     private void LibraryArea_MouseDown(object sender, MouseButtonEventArgs e)
@@ -356,7 +544,7 @@ public partial class MainWindow : Window
         _currentBook.ProducedAt = producedAt;
         _currentBook.ImportedAt = string.IsNullOrWhiteSpace(importedAt) ? DateTime.Today.ToString("yyyy-MM-dd") : importedAt;
         _currentBook.Summary = SummaryBox.Text.Trim();
-        _currentBook.Tags = TagsBox.Text.Trim();
+        _currentBook.Tags = NormalizeTagsRespectingRules(TagService.ParseTags(TagsBox.Text.Trim()));
         TagsBox.Text = _currentBook.Tags;
         if (int.TryParse(CoverPageBox.Text.Trim(), out var coverPage))
         {
@@ -607,16 +795,15 @@ public partial class MainWindow : Window
 
     private void AddTag_Click(object sender, RoutedEventArgs e)
     {
-        var tag = TagSearchBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(tag))
+        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
         {
             return;
         }
 
-        UpsertManagedTag(tag);
+        UpsertManagedTag(tag, category, isExclusive);
         if (_currentBook is not null)
         {
-            _currentBook.AddTag(tag);
+            AddTagToBookRespectingRules(_currentBook, tag);
             TagsBox.Text = _currentBook.Tags;
             _database.SaveMetadata(_currentBook);
             _currentBook.NotifyAll();
@@ -630,7 +817,7 @@ public partial class MainWindow : Window
 
     private void TagSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        RefreshVisibleTags();
+        RestartDebounceTimer(_tagSearchDebounceTimer);
     }
 
     private void TagChip_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
@@ -650,7 +837,7 @@ public partial class MainWindow : Window
         if (folders.Count > 0)
         {
             e.Handled = true;
-            await ImportSelectedFoldersAsync(folders);
+            await TryImportSelectedFoldersAsync(folders, "books-list-drop-import");
             return;
         }
 
@@ -668,7 +855,7 @@ public partial class MainWindow : Window
         }
 
         UpsertManagedTag(tag);
-        book.AddTag(tag);
+        AddTagToBookRespectingRules(book, tag);
         _database.SaveMetadata(book);
         book.NotifyAll();
         if (ReferenceEquals(book, _currentBook))
@@ -686,7 +873,7 @@ public partial class MainWindow : Window
         if (folders.Count > 0)
         {
             e.Handled = true;
-            await ImportSelectedFoldersAsync(folders);
+            await TryImportSelectedFoldersAsync(folders, "library-drop-import");
         }
     }
 
@@ -768,33 +955,26 @@ public partial class MainWindow : Window
 
     private void TagManagerSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        RefreshTagManagementItems();
+        RestartDebounceTimer(_tagManagerSearchDebounceTimer);
     }
 
     private void CreateManagedTag_Click(object sender, RoutedEventArgs e)
     {
-        var tag = TagManagerSearchBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(tag))
+        if (!TryResolveTagForCreate(TagManagerSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
         {
-            var dialog = new TagNameDialog("", "新建候选标签") { Owner = this };
-            if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
-            {
-                StatusText.Text = "没有创建标签：标签名不能为空。";
-                return;
-            }
-            tag = dialog.TagName;
+            return;
         }
 
         if (EnumerateKnownTags().Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
         {
-            UpsertManagedTag(tag);
+            UpsertManagedTag(tag, category, isExclusive);
             TagManagerSearchBox.Clear();
             RefreshLibraryViews(authors: false, sort: false, filter: false);
             StatusText.Text = $"标签已存在：{tag}";
             return;
         }
 
-        UpsertManagedTag(tag);
+        UpsertManagedTag(tag, category, isExclusive);
         TagManagerSearchBox.Clear();
         RefreshLibraryViews(authors: false, sort: false, filter: false);
         StatusText.Text = $"已创建候选标签：{tag}。它会出现在书库 Tag 池，可拖拽到漫画或添加到当前漫画。";
@@ -830,18 +1010,49 @@ public partial class MainWindow : Window
 
     private void SetDetailVisible(bool visible)
     {
-        if (DetailPanel is null || DetailShell is null || DetailColumn is null)
+        if (DetailPanel is null || DetailShell is null || DetailColumn is null || DetailDrawerToggleButton is null)
         {
             return;
         }
 
-        DetailShell.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        DetailColumn.Width = visible ? new GridLength(378) : new GridLength(0);
-        DetailPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        DetailColumn.Width = new GridLength(0);
+        DetailDrawerToggleButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        DetailDrawerToggleButton.Content = _isDetailDrawerCollapsed ? "‹" : "›";
+        DetailDrawerToggleButton.ToolTip = _isDetailDrawerCollapsed ? "展开详情" : "收起详情";
+        DetailDrawerToggleButton.Margin = _isDetailDrawerCollapsed
+            ? new Thickness(0, 0, 26, 0)
+            : new Thickness(0, 0, 404, 0);
+        DetailPanel.Visibility = visible && !_isDetailDrawerCollapsed ? Visibility.Visible : Visibility.Collapsed;
+
+        if (visible && !_isDetailDrawerCollapsed)
+        {
+            MotionService.ShowDrawer(DetailShell);
+        }
+        else if (DetailShell.Visibility == Visibility.Visible)
+        {
+            MotionService.HideDrawer(DetailShell);
+        }
+        else
+        {
+            DetailShell.Visibility = Visibility.Collapsed;
+        }
+
         if (!visible)
         {
+            _isDetailDrawerCollapsed = false;
             SetEditMode(false);
         }
+    }
+
+    private void ToggleDetailDrawer_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null || BooksList.SelectedItem is null)
+        {
+            return;
+        }
+
+        _isDetailDrawerCollapsed = !_isDetailDrawerCollapsed;
+        SetDetailVisible(true);
     }
 
     private void SetEditMode(bool enabled)
@@ -954,7 +1165,39 @@ public partial class MainWindow : Window
 
     private void BookSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        RefreshBookFilter();
+        RestartDebounceTimer(_bookSearchDebounceTimer);
+    }
+
+    private void ConfigureSearchDebounceTimers()
+    {
+        _bookSearchDebounceTimer.Tick += (_, _) =>
+        {
+            _bookSearchDebounceTimer.Stop();
+            RefreshBookFilter();
+        };
+        _tagSearchDebounceTimer.Tick += (_, _) =>
+        {
+            _tagSearchDebounceTimer.Stop();
+            RefreshVisibleTags();
+        };
+        _tagManagerSearchDebounceTimer.Tick += (_, _) =>
+        {
+            _tagManagerSearchDebounceTimer.Stop();
+            RefreshTagManagementItems();
+        };
+    }
+
+    private static void RestartDebounceTimer(DispatcherTimer timer)
+    {
+        timer.Stop();
+        timer.Start();
+    }
+
+    private void StopSearchDebounceTimers()
+    {
+        _bookSearchDebounceTimer.Stop();
+        _tagSearchDebounceTimer.Stop();
+        _tagManagerSearchDebounceTimer.Stop();
     }
 
     private void BookFilter_Changed(object sender, RoutedEventArgs e)
@@ -965,6 +1208,117 @@ public partial class MainWindow : Window
         }
 
         RefreshLibraryViews(tagManager: false, sort: false);
+    }
+
+    private void ToggleLibraryChrome_Click(object sender, RoutedEventArgs e)
+    {
+        SetLibraryChromeCollapsed(!_libraryChromeCollapsed);
+    }
+
+    private void ToggleStatusPanel_Click(object sender, RoutedEventArgs e)
+    {
+        _isLogPanelVisible = !_isLogPanelVisible;
+        UpdateLogPanelVisibility();
+    }
+
+    private void BooksList_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
+    {
+        if (Books.Count < 80)
+        {
+            return;
+        }
+
+        if (e.VerticalOffset > 2 && !_libraryChromeCollapsed)
+        {
+            SetLibraryChromeCollapsed(true);
+        }
+    }
+
+    private void SetLibraryChromeCollapsed(bool collapsed)
+    {
+        _libraryChromeCollapsed = collapsed;
+        if (LibraryFilterControlsPanel is not null)
+        {
+            LibraryFilterControlsPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        }
+        if (LibraryTagPanel is not null)
+        {
+            LibraryTagPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        }
+        if (LibraryMetricPanel is not null)
+        {
+            LibraryMetricPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        }
+        if (LibraryChromeToggleButton is not null)
+        {
+            LibraryChromeToggleButton.Content = collapsed ? "展开筛选" : "专注浏览";
+        }
+        StatusText.Text = collapsed
+            ? "已进入专注浏览：筛选控件、Tag 池和统计卡片已收起，点击“展开筛选”可恢复。"
+            : "已展开筛选区。";
+    }
+
+    private void UpdateLogPanelVisibility()
+    {
+        if (LogPanel is not null)
+        {
+            LogPanel.Visibility = _isLogPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (LogPanelToggleButton is not null)
+        {
+            LogPanelToggleButton.Content = _isLogPanelVisible ? "收起日志" : "日志";
+        }
+    }
+
+    private void EditSelectedAuthor_Click(object sender, RoutedEventArgs e)
+    {
+        var oldAuthor = AuthorFilterBox?.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(oldAuthor) || oldAuthor == "全部作者")
+        {
+            StatusText.Text = "请先在作者筛选中选择一个具体作者，再批量编辑。";
+            return;
+        }
+
+        var affectedBooks = Books
+            .Where(book => string.Equals(book.Author, oldAuthor, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (affectedBooks.Count == 0)
+        {
+            StatusText.Text = $"没有找到作者为“{oldAuthor}”的漫画。";
+            return;
+        }
+
+        var dialog = new TagNameDialog(oldAuthor, $"批量编辑作者（{affectedBooks.Count} 本）") { Owner = this };
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
+        {
+            StatusText.Text = "没有修改作者。";
+            return;
+        }
+
+        var newAuthor = dialog.TagName.Trim();
+        if (string.Equals(oldAuthor, newAuthor, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "作者名没有变化。";
+            return;
+        }
+
+        _database.SaveBookAuthorsBatch(
+            affectedBooks.Select(book => (book.Id, newAuthor)).ToList(),
+            "before-author-batch-rename");
+
+        foreach (var book in affectedBooks)
+        {
+            book.Author = newAuthor;
+            book.NotifyAll();
+        }
+
+        RefreshLibraryViews(sort: true);
+        if (AuthorFilterBox is not null)
+        {
+            AuthorFilterBox.SelectedItem = newAuthor;
+        }
+        StatusText.Text = $"已将作者“{oldAuthor}”批量改为“{newAuthor}”，影响 {affectedBooks.Count} 本漫画。";
     }
 
     private void RefreshBookFilter()
@@ -1026,8 +1380,8 @@ public partial class MainWindow : Window
 
         if (_currentBook is not null)
         {
-            UpsertManagedTag(chip.Name, chip.Category);
-            _currentBook.AddTag(chip.Name);
+            UpsertManagedTag(chip.Name, chip.Category, chip.IsExclusive);
+            AddTagToBookRespectingRules(_currentBook, chip.Name);
             TagsBox.Text = _currentBook.Tags;
             _database.SaveMetadata(_currentBook);
             _currentBook.NotifyAll();
@@ -1044,9 +1398,9 @@ public partial class MainWindow : Window
         else
         {
             var category = TagCategory(chip.Name);
-            if (IsMutuallyExclusiveTagCategory(category))
+            if (IsExclusiveTag(chip.Name))
             {
-                RemoveActiveTagsInCategory(category);
+                RemoveActiveTagsInExclusiveGroup(category);
             }
             _activeTagFilters.Add(chip.Name);
             StatusText.Text = $"已追加 Tag：{chip.Name}";
@@ -1071,6 +1425,7 @@ public partial class MainWindow : Window
 
     private void ClearFilters_Click(object sender, RoutedEventArgs e)
     {
+        StopSearchDebounceTimers();
         BookSearchBox.Text = "";
         TagSearchBox.Text = "";
         _activeTagFilters.Clear();
@@ -1430,6 +1785,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        AppLogger.Info("reader-open", $"Opening reader: {book.Title}, pages={book.Pages.Count}, folder={book.FolderPath}");
         var reader = new ReaderWindow(book, _database, _nextKeys, _prevKeys)
         {
             Owner = this
@@ -1464,9 +1820,9 @@ public partial class MainWindow : Window
     private void ShowHomeView()
     {
         _currentNavigationKey = "home";
-        if (HomePagePanel is not null) HomePagePanel.Visibility = Visibility.Visible;
-        if (LibraryPagePanel is not null) LibraryPagePanel.Visibility = Visibility.Collapsed;
-        if (TagsPagePanel is not null) TagsPagePanel.Visibility = Visibility.Collapsed;
+        if (HomePagePanel is not null) MotionService.ShowWithFade(HomePagePanel);
+        if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
+        if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
         SetDetailVisible(false);
         RefreshHomeShelves();
         UpdateNavigationVisuals();
@@ -1475,9 +1831,9 @@ public partial class MainWindow : Window
     private void ShowLibraryView(string navigationKey)
     {
         _currentNavigationKey = navigationKey;
-        if (HomePagePanel is not null) HomePagePanel.Visibility = Visibility.Collapsed;
-        if (LibraryPagePanel is not null) LibraryPagePanel.Visibility = Visibility.Visible;
-        if (TagsPagePanel is not null) TagsPagePanel.Visibility = Visibility.Collapsed;
+        if (HomePagePanel is not null) MotionService.HideWithFade(HomePagePanel);
+        if (LibraryPagePanel is not null) MotionService.ShowWithFade(LibraryPagePanel);
+        if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
         SetDetailVisible(_currentBook is not null && BooksList.SelectedItem is not null);
         UpdateNavigationVisuals();
         RefreshBookFilter();
@@ -1487,9 +1843,9 @@ public partial class MainWindow : Window
     private void ShowTagsView()
     {
         _currentNavigationKey = "tags";
-        if (HomePagePanel is not null) HomePagePanel.Visibility = Visibility.Collapsed;
-        if (LibraryPagePanel is not null) LibraryPagePanel.Visibility = Visibility.Collapsed;
-        if (TagsPagePanel is not null) TagsPagePanel.Visibility = Visibility.Visible;
+        if (HomePagePanel is not null) MotionService.HideWithFade(HomePagePanel);
+        if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
+        if (TagsPagePanel is not null) MotionService.ShowWithFade(TagsPagePanel);
         SetDetailVisible(false);
         RefreshLibraryViews(tags: false, tagManager: true, authors: false, filter: false);
         UpdateNavigationVisuals();
@@ -1497,6 +1853,7 @@ public partial class MainWindow : Window
 
     private void ResetLibraryFilters()
     {
+        StopSearchDebounceTimers();
         BookSearchBox.Text = "";
         TagSearchBox.Text = "";
         _activeTagFilters.Clear();
@@ -1722,11 +2079,13 @@ public partial class MainWindow : Window
     {
         _managedTags.Clear();
         _managedTagCategories.Clear();
+        _managedTagIsExclusive.Clear();
         _managedTagUpdatedAt.Clear();
         foreach (var tag in _database.LoadManagedTags().Where(tag => !string.IsNullOrWhiteSpace(tag.Name)))
         {
             _managedTags.Add(tag.Name);
             _managedTagCategories[tag.Name] = tag.Category;
+            _managedTagIsExclusive[tag.Name] = tag.IsExclusive;
             _managedTagUpdatedAt[tag.Name] = tag.UpdatedAt;
         }
 
@@ -1737,14 +2096,82 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpsertManagedTag(string tag, string? category = null)
+    private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null)
     {
         var resolvedCategory = category ?? TagCategory(tag);
+        var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
         _suppressedTags.Remove(tag);
         _managedTags.Add(tag);
         _managedTagCategories[tag] = resolvedCategory;
+        _managedTagIsExclusive[tag] = resolvedExclusive;
         _managedTagUpdatedAt[tag] = DateTimeOffset.Now.ToString("O");
-        _database.SaveManagedTag(tag, resolvedCategory);
+        _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive);
+    }
+
+    private bool TryResolveTagForCreate(string initialValue, out string tag, out string category, out bool isExclusive)
+    {
+        tag = "";
+        category = "自定义";
+        isExclusive = false;
+
+        if (EnumerateKnownTags().Any(name => string.Equals(name, initialValue, StringComparison.OrdinalIgnoreCase)))
+        {
+            tag = initialValue.Trim();
+            category = TagCategory(tag);
+            isExclusive = IsExclusiveTag(tag);
+            return true;
+        }
+
+        var dialog = new TagCreateDialog(initialValue) { Owner = this };
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
+        {
+            StatusText.Text = "没有创建标签。";
+            return false;
+        }
+
+        tag = dialog.TagName;
+        category = dialog.TagCategory;
+        isExclusive = dialog.IsExclusive;
+        return true;
+    }
+
+    private void AddTagToBookRespectingRules(MangaBook book, string tag)
+    {
+        var names = TagService.ParseTags(book.Tags).ToList();
+        if (names.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (IsExclusiveTag(tag))
+        {
+            var category = TagCategory(tag);
+            names = names
+                .Where(name => !IsExclusiveTag(name) || !string.Equals(TagCategory(name), category, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        names.Add(tag);
+        book.Tags = TagService.FormatTags(names);
+    }
+
+    private string NormalizeTagsRespectingRules(IEnumerable<string> tags)
+    {
+        var normalized = new List<string>();
+        foreach (var tag in tags)
+        {
+            if (IsExclusiveTag(tag))
+            {
+                var category = TagCategory(tag);
+                normalized.RemoveAll(name => IsExclusiveTag(name) && string.Equals(TagCategory(name), category, StringComparison.OrdinalIgnoreCase));
+            }
+            if (!normalized.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
+            {
+                normalized.Add(tag);
+            }
+        }
+
+        return TagService.FormatTags(normalized);
     }
 
     private static string TagColor(string tag)
@@ -1764,6 +2191,7 @@ public partial class MainWindow : Window
                 Name = preset.Name,
                 Category = category,
                 Color = preset.Color,
+                IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
                 UsageCount = usageCount,
                 IsBuiltIn = isBuiltIn,
@@ -1776,6 +2204,7 @@ public partial class MainWindow : Window
                 Name = tag,
                 Category = category,
                 Color = TagColor(tag),
+                IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
                 UsageCount = usageCount,
                 IsBuiltIn = false,
@@ -1879,14 +2308,32 @@ public partial class MainWindow : Window
         return TagService.GetCategory(tag);
     }
 
-    private static bool IsMutuallyExclusiveTagCategory(string category)
+    private bool IsExclusiveTag(string tag)
+    {
+        if (_managedTagIsExclusive.TryGetValue(tag, out var isExclusive))
+        {
+            return isExclusive;
+        }
+
+        var preset = DefaultTagPresets.FirstOrDefault(item => string.Equals(item.Name, tag, StringComparison.OrdinalIgnoreCase));
+        if (preset is not null)
+        {
+            return preset.IsExclusive;
+        }
+
+        return false;
+    }
+
+    private bool IsMutuallyExclusiveTagCategory(string category)
     {
         return TagService.IsMutuallyExclusiveCategory(category);
     }
 
-    private void RemoveActiveTagsInCategory(string category)
+    private void RemoveActiveTagsInExclusiveGroup(string category)
     {
-        foreach (var tag in _activeTagFilters.Where(tag => string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase)).ToList())
+        foreach (var tag in _activeTagFilters
+            .Where(tag => IsExclusiveTag(tag) && string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase))
+            .ToList())
         {
             _activeTagFilters.Remove(tag);
         }
@@ -1939,9 +2386,9 @@ public partial class MainWindow : Window
             return;
         }
         ShowLibraryView("library");
-        if (IsMutuallyExclusiveTagCategory(chip.Category))
+        if (chip.IsExclusive)
         {
-            RemoveActiveTagsInCategory(chip.Category);
+            RemoveActiveTagsInExclusiveGroup(chip.Category);
         }
         _activeTagFilters.Add(chip.Name);
         RefreshLibraryViews(tagManager: false, authors: false, activeTags: true);
@@ -1979,6 +2426,7 @@ public partial class MainWindow : Window
 
         var newName = dialog.TagName;
         var newCategory = dialog.TagCategory;
+        var newIsExclusive = dialog.IsExclusive;
         if (string.IsNullOrWhiteSpace(newName))
         {
             StatusText.Text = "标签名不能为空。";
@@ -1986,7 +2434,8 @@ public partial class MainWindow : Window
         }
 
         if (string.Equals(chip.Name, newName, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(chip.Category, newCategory, StringComparison.OrdinalIgnoreCase))
+            && string.Equals(chip.Category, newCategory, StringComparison.OrdinalIgnoreCase)
+            && chip.IsExclusive == newIsExclusive)
         {
             StatusText.Text = "标签没有变化。";
             return;
@@ -2008,7 +2457,7 @@ public partial class MainWindow : Window
         }
 
         var affectedBooks = new List<(MangaBook Book, string Tags)>();
-        if (renamedTag)
+        if (renamedTag || newIsExclusive)
         {
             foreach (var book in Books)
             {
@@ -2018,8 +2467,19 @@ public partial class MainWindow : Window
                     continue;
                 }
 
-                var renamed = tags.Select(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase) ? newName : tag);
-                affectedBooks.Add((book, string.Join(", ", renamed.Distinct(StringComparer.OrdinalIgnoreCase))));
+                var normalized = tags
+                    .Select(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase) ? newName : tag)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (newIsExclusive)
+                {
+                    normalized = normalized
+                        .Where(tag => string.Equals(tag, newName, StringComparison.OrdinalIgnoreCase)
+                            || !IsExclusiveTag(tag)
+                            || !string.Equals(TagCategory(tag), newCategory, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
+                affectedBooks.Add((book, TagService.FormatTags(normalized)));
             }
         }
 
@@ -2030,8 +2490,9 @@ public partial class MainWindow : Window
         if (renamedTag && _managedTags.Remove(chip.Name))
         {
             _managedTagCategories.Remove(chip.Name);
+            _managedTagIsExclusive.Remove(chip.Name);
             _managedTagUpdatedAt.Remove(chip.Name);
-            _database.RenameManagedTag(chip.Name, newName, newCategory);
+            _database.RenameManagedTag(chip.Name, newName, newCategory, newIsExclusive);
         }
         else
         {
@@ -2040,10 +2501,11 @@ public partial class MainWindow : Window
                 _suppressedTags.Add(chip.Name);
                 _database.SuppressTag(chip.Name);
             }
-            _database.SaveManagedTag(newName, newCategory);
+            _database.SaveManagedTag(newName, newCategory, newIsExclusive);
         }
         _managedTags.Add(newName);
         _managedTagCategories[newName] = newCategory;
+        _managedTagIsExclusive[newName] = newIsExclusive;
         _managedTagUpdatedAt[newName] = DateTimeOffset.Now.ToString("O");
 
         foreach (var (book, tags) in affectedBooks)
@@ -2054,9 +2516,9 @@ public partial class MainWindow : Window
 
         if (_activeTagFilters.Remove(chip.Name))
         {
-            if (IsMutuallyExclusiveTagCategory(newCategory))
+            if (newIsExclusive)
             {
-                RemoveActiveTagsInCategory(newCategory);
+                RemoveActiveTagsInExclusiveGroup(newCategory);
             }
             _activeTagFilters.Add(newName);
         }
@@ -2071,7 +2533,7 @@ public partial class MainWindow : Window
             ? existing
                 ? $"已将标签“{chip.Name}”合并到“{newName}”，影响 {affectedBooks.Count} 本漫画。"
                 : $"已将标签“{chip.Name}”重命名为“{newName}”，影响 {affectedBooks.Count} 本漫画。"
-            : $"已将标签“{chip.Name}”重新分组为“{newCategory}”。";
+            : $"已将标签“{chip.Name}”更新为“{newCategory} / {(newIsExclusive ? "互斥" : "不互斥")}”。";
     }
 
     private void DeleteTagAcrossLibrary(TagChip chip)
@@ -2104,6 +2566,7 @@ public partial class MainWindow : Window
             "before-tag-delete");
         _managedTags.Remove(chip.Name);
         _managedTagCategories.Remove(chip.Name);
+        _managedTagIsExclusive.Remove(chip.Name);
         _managedTagUpdatedAt.Remove(chip.Name);
         _database.DeleteManagedTag(chip.Name);
         if (chip.IsBuiltIn)

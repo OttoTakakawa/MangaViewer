@@ -189,7 +189,9 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="210"/>
+                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="156"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="标签名称" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
@@ -202,6 +204,13 @@
                         <ComboBoxItem Content="色彩规格"/>
                         <ComboBoxItem Content="画质规格"/>
                         <ComboBoxItem Content="自定义"/>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="规则" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                    <ComboBox x:Name="TagTypeBox" Margin="0,8,0,0" Style="{StaticResource DialogComboBox}">
+                        <ComboBoxItem Content="互斥"/>
+                        <ComboBoxItem Content="不互斥"/>
                     </ComboBox>
                 </StackPanel>
             </Grid>

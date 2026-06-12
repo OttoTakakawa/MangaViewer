@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:MangaReader.Native.Controls"
         xmlns:models="clr-namespace:MangaReader.Native.Models"
         mc:Ignorable="d"
         Title="漫画库" Height="900" Width="1500" MinHeight="760" MinWidth="1180"
@@ -83,6 +84,26 @@
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Padding" Value="11,6"/>
             <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style x:Key="PillProgressBar" TargetType="ProgressBar">
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid x:Name="TemplateRoot">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="5"/>
+                            <Border x:Name="PART_Track" CornerRadius="5"/>
+                            <Border x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="5"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="FilterPillTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="MinHeight" Value="44"/>
@@ -415,35 +436,61 @@
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
         <Style x:Key="LibraryListItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Width" Value="198"/>
+            <Setter Property="Width" Value="214"/>
+            <Setter Property="Height" Value="378"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="SelectionFrame" Padding="4" Background="Transparent" BorderBrush="Transparent" BorderThickness="2" CornerRadius="28">
+                        <Border x:Name="SelectionFrame" Padding="4" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" CornerRadius="28">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="#33FFFFFF"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="#0D111827"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="SelectionFrame" Property="BorderBrush" Value="#D0B89F"/>
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="#55FFFFFF"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="#18111827"/>
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="#24111827"/>
+                            </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         <DataTemplate x:Key="LibraryBookTemplate">
-            <Grid Margin="6,8" Width="176">
+            <Border x:Name="LibraryBookCard"
+                    Width="198"
+                    Height="360"
+                    Padding="12"
+                    CornerRadius="24"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    RenderTransformOrigin="0.5,0.5"
+                    MouseEnter="BookCard_MouseEnter"
+                    MouseLeave="BookCard_MouseLeave"
+                    PreviewMouseLeftButtonDown="BookCard_PreviewMouseLeftButtonDown"
+                    PreviewMouseLeftButtonUp="BookCard_PreviewMouseLeftButtonUp"
+                    Loaded="BookCoverHost_Loaded"
+                    Unloaded="BookCoverHost_Unloaded">
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Border.RenderTransform>
                 <StackPanel>
-                    <Grid Height="218" HorizontalAlignment="Center">
-                        <Grid Width="148" Height="210" VerticalAlignment="Top" Effect="{StaticResource BookShadow}">
+                    <Grid Width="162" Height="220" HorizontalAlignment="Center">
+                        <Grid Width="150" Height="214" VerticalAlignment="Top" Effect="{StaticResource BookShadow}">
                             <Grid x:Name="GrooveCover">
                                 <Grid.Style>
                                     <Style TargetType="Grid">
@@ -458,8 +505,8 @@
                                 <Border CornerRadius="5" ClipToBounds="True" Background="Transparent">
                                     <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
                                 </Border>
-                                <Rectangle Width="2" Margin="23,10,0,10" HorizontalAlignment="Left" Fill="#66000000" RadiusX="1" RadiusY="1"/>
-                                <Rectangle Width="1" Margin="27,12,0,12" HorizontalAlignment="Left" Fill="#66FFFFFF" RadiusX="1" RadiusY="1"/>
+                                <Rectangle Width="3" Margin="34,12,0,12" HorizontalAlignment="Left" Fill="#66000000" RadiusX="1.5" RadiusY="1.5"/>
+                                <Rectangle Width="1" Margin="39,14,0,14" HorizontalAlignment="Left" Fill="#66FFFFFF" RadiusX="1" RadiusY="1"/>
                             </Grid>
 
                             <Grid x:Name="BoundMangaCover">
@@ -476,7 +523,7 @@
                                 <Border CornerRadius="4" ClipToBounds="True" Background="Transparent">
                                     <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
                                 </Border>
-                                <Border Width="30" HorizontalAlignment="Left" CornerRadius="4,0,0,4">
+                                <Border Width="42" HorizontalAlignment="Left" CornerRadius="4,0,0,4">
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                             <GradientStop Color="#70000000" Offset="0"/>
@@ -486,7 +533,7 @@
                                         </LinearGradientBrush>
                                     </Border.Background>
                                 </Border>
-                                <Rectangle Width="10" HorizontalAlignment="Left" Margin="18,4,0,4" RadiusX="5" RadiusY="5" Opacity="0.38">
+                                <Rectangle Width="12" HorizontalAlignment="Left" Margin="27,5,0,5" RadiusX="6" RadiusY="6" Opacity="0.38">
                                     <Rectangle.Fill>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                             <GradientStop Color="#00000000" Offset="0"/>
@@ -532,67 +579,63 @@
                             </Grid>
                         </Grid>
                     </Grid>
-                    <TextBlock Text="{Binding Title}" Margin="0,8,0,0" FontWeight="Black" FontSize="15" Foreground="#25211E" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Author}" Margin="0,3,0,0" Foreground="#81756B" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding StatusBadgeText}" Margin="0,3,0,0" Foreground="#7E6A58" FontSize="12" FontWeight="SemiBold" TextAlignment="Center"/>
-                    <TextBlock Text="{Binding ReadCountBadgeText}" Foreground="#9A6F25" FontSize="12" FontWeight="SemiBold" TextAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Margin" Value="0,3,0,0"/>
-                                <Style.Triggers>
-                                    <Trigger Property="Text" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Setter Property="Margin" Value="0"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Text="{Binding MissingText}" Foreground="#B44A36" FontWeight="SemiBold" TextAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Margin" Value="0,3,0,0"/>
-                                <Style.Triggers>
-                                    <Trigger Property="Text" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Setter Property="Margin" Value="0"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Text="{Binding HiddenText}" Foreground="#9A6F25" FontWeight="SemiBold" TextAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Margin" Value="0,3,0,0"/>
-                                <Style.Triggers>
-                                    <Trigger Property="Text" Value="">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Setter Property="Margin" Value="0"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <ItemsControl ItemsSource="{Binding TagItems}" Margin="0,6,0,0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel HorizontalAlignment="Center"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="2" Padding="7,3" CornerRadius="10" Background="{Binding Color}">
-                                    <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#2B2520"/>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+
+                    <StackPanel Margin="0,10,0,0">
+                        <TextBlock Text="{Binding Title}" FontWeight="Black" FontSize="14" Foreground="#25211E" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                        <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="#81756B" FontSize="12" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                        <TextBlock Text="{Binding StatusBadgeText}" Margin="0,7,0,0" Foreground="#7E6A58" FontSize="11" FontWeight="SemiBold" TextAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding ProgressText}" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding ReadCountBadgeText}" Foreground="#9A6F25" FontSize="12" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding MissingText}" Foreground="#B44A36" FontWeight="SemiBold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Margin" Value="0,6,0,0"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding HiddenText}" Foreground="#9A6F25" FontWeight="SemiBold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Margin" Value="0,6,0,0"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding TagItems}" Margin="0,8,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,5,5" Padding="7,3" CornerRadius="10" Background="{Binding Color}">
+                                        <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#2B2520"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
-            </Grid>
+            </Border>
         </DataTemplate>
         <DataTemplate x:Key="HomeWideBookTemplate">
-            <Border Width="430" Height="208" Margin="0,0,18,0" CornerRadius="22" Background="#26201B" BorderBrush="#22FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click" ClipToBounds="True">
+            <Border Width="430" Height="208" Margin="0,0,18,0" CornerRadius="22" Background="#26201B" BorderBrush="#22FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click" ClipToBounds="True"
+                    Loaded="BookCoverHost_Loaded"
+                    Unloaded="BookCoverHost_Unloaded">
                 <Grid>
                     <Grid.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -633,7 +676,9 @@
             </Border>
         </DataTemplate>
         <DataTemplate x:Key="HomeCompactBookTemplate">
-            <Border Width="286" Height="104" Margin="0,0,14,0" Padding="10" CornerRadius="18" Background="#FDFBF8" BorderBrush="#55FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click">
+            <Border Width="286" Height="104" Margin="0,0,14,0" Padding="10" CornerRadius="18" Background="#FDFBF8" BorderBrush="#55FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click"
+                    Loaded="BookCoverHost_Loaded"
+                    Unloaded="BookCoverHost_Unloaded">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="78"/>
@@ -703,13 +748,36 @@
                     <Button Content="打开备份" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}"/>
                 </StackPanel>
 
-                <Border DockPanel.Dock="Bottom" Padding="12" Margin="0,18,0,0" CornerRadius="18" Background="#F8FAFC" BorderBrush="#E5E7EB" BorderThickness="1">
-                    <StackPanel>
-                        <TextBlock Text="本地存档已启用" FontWeight="Bold" Foreground="#25211E"/>
-                        <TextBlock x:Name="StoragePathText" Text="数据保存在软件同级目录" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="12" Foreground="#8D8177"/>
-                        <TextBlock x:Name="StatusText" Margin="0,8,0,0" TextWrapping="Wrap" FontSize="12" Foreground="#9A5A36"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,18,0,0">
+                    <Button x:Name="LogPanelToggleButton"
+                            Content="日志"
+                            Click="ToggleStatusPanel_Click"
+                            Style="{StaticResource TinyButton}"
+                            HorizontalAlignment="Left"/>
+                    <Border x:Name="LogPanel"
+                            Padding="12"
+                            Margin="0,10,0,0"
+                            CornerRadius="18"
+                            Background="#F8FAFC"
+                            BorderBrush="#E5E7EB"
+                            BorderThickness="1"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="本地存档已启用" FontWeight="Bold" Foreground="#25211E"/>
+                            <TextBlock x:Name="StoragePathText"
+                                       Text="数据保存在软件同级目录"
+                                       Margin="0,5,0,0"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Foreground="#8D8177"/>
+                            <TextBlock x:Name="StatusText"
+                                       Margin="0,8,0,0"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Foreground="#9A5A36"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </DockPanel>
         </Border>
 
@@ -806,7 +874,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Margin="8,0,22,16" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border x:Name="LibraryFilterPanel" Grid.Row="0" Margin="8,0,22,16" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -815,13 +883,15 @@
                         <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="False">
                             <TextBlock x:Name="FilterSummaryText" Text="当前显示全部漫画" VerticalAlignment="Center" Foreground="#B45309" FontSize="12" FontWeight="SemiBold"/>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button x:Name="LibraryChromeToggleButton" Content="专注浏览" Click="ToggleLibraryChrome_Click" Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
                                 <Button Content="导入" Click="ChooseLibrary_Click" Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
                                 <Button Content="同步" Click="Rescan_Click"/>
                             </StackPanel>
                         </DockPanel>
-                        <WrapPanel Grid.Row="1" VerticalAlignment="Center" ItemHeight="44">
+                        <WrapPanel x:Name="LibraryFilterControlsPanel" Grid.Row="1" VerticalAlignment="Center" ItemHeight="44">
                             <TextBox x:Name="BookSearchBox" Width="280" Height="44" Margin="0,0,10,0" TextChanged="BookSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标题、作者、标签"/>
                             <ComboBox x:Name="AuthorFilterBox" Width="156" Height="44" Margin="0,0,10,0" ItemsSource="{Binding AuthorFilters}" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterPillComboBox}"/>
+                            <Button Content="编辑作者" Click="EditSelectedAuthor_Click" Style="{StaticResource FilterPillButton}" Height="44" Margin="0,0,10,0"/>
                             <ComboBox x:Name="StatusFilterBox" Width="148" Height="44" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterPillComboBox}">
                                 <ComboBoxItem Content="状态：全部"/>
                                 <ComboBoxItem Content="状态：未读"/>
@@ -843,7 +913,7 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="20" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,10">
                             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
@@ -951,7 +1021,7 @@
                     </StackPanel>
                 </Border>
 
-                <Grid Grid.Row="2" Margin="8,0,22,16">
+                <Grid x:Name="LibraryMetricPanel" Grid.Row="2" Margin="8,0,22,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2.1*"/>
                         <ColumnDefinition Width="*"/>
@@ -1001,13 +1071,23 @@
                              DragLeave="LibraryPagePanel_DragLeave"
                              Drop="BooksList_Drop"
                              PreviewMouseWheel="FastItemsScrollViewer_PreviewMouseWheel"
+                             ScrollViewer.ScrollChanged="BooksList_ScrollChanged"
                              Background="Transparent"
                              BorderThickness="0"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.CacheLength="4"
+                             VirtualizingPanel.CacheLengthUnit="Page"
+                             ScrollViewer.CanContentScroll="True"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel/>
+                                <controls:VirtualizingWrapPanel ItemWidth="214"
+                                                                ItemHeight="378"
+                                                                HorizontalSpacing="18"
+                                                                VerticalSpacing="14"
+                                                                OverscanRows="2"/>
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                     </ListBox>
@@ -1019,6 +1099,49 @@
                         </StackPanel>
                     </Border>
                 </Grid>
+
+                <Border x:Name="ImportProgressPanel"
+                        Grid.RowSpan="4"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False"
+                        Margin="8,0,22,12"
+                        CornerRadius="34"
+                        Background="#BDF8FAFC"
+                        BorderBrush="#E5E7EB"
+                        BorderThickness="1"
+                        Panel.ZIndex="35">
+                    <Border Width="520"
+                            Padding="28"
+                            CornerRadius="28"
+                            Background="#FFFFFF"
+                            BorderBrush="#E5E7EB"
+                            BorderThickness="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Effect="{StaticResource PanelShadow}">
+                        <StackPanel>
+                            <TextBlock x:Name="ImportProgressTitle"
+                                       Text="正在导入"
+                                       FontSize="26"
+                                       FontWeight="Black"
+                                       Foreground="#111827"
+                                       TextAlignment="Center"/>
+                            <ProgressBar x:Name="ImportProgressBar"
+                                         Style="{StaticResource PillProgressBar}"
+                                         Margin="0,18,0,0"
+                                         Minimum="0"
+                                         Maximum="1"
+                                         Value="0"/>
+                            <TextBlock x:Name="ImportProgressText"
+                                       Text="准备中..."
+                                       Margin="0,14,0,0"
+                                       FontSize="13"
+                                       Foreground="#475569"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Border>
 
                 <Border x:Name="ImportDropOverlay"
                         Grid.RowSpan="4"
@@ -1143,13 +1266,15 @@
                                                             </Border>
                                                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="#25211E"/>
                                                         </StackPanel>
-                                                        <TextBlock Margin="0,8,0,0" Foreground="#6B7280">
-                                                            <Run Text="已关联 "/>
-                                                            <Run Text="{Binding UsageCount}"/>
-                                                            <Run Text=" 本漫画"/>
-                                                            <Run Text=" · "/>
-                                                            <Run Text="{Binding SourceText}"/>
-                                                        </TextBlock>
+                                                        <WrapPanel Margin="0,8,0,0">
+                                                            <TextBlock Text="已关联 " Foreground="#6B7280"/>
+                                                            <TextBlock Text="{Binding UsageCount}" Foreground="#6B7280"/>
+                                                            <TextBlock Text=" 本漫画" Foreground="#6B7280"/>
+                                                            <TextBlock Text=" · " Foreground="#6B7280"/>
+                                                            <TextBlock Text="{Binding SourceText}" Foreground="#6B7280"/>
+                                                            <TextBlock Text=" · " Foreground="#6B7280"/>
+                                                            <TextBlock Text="{Binding TypeText}" Foreground="#6B7280"/>
+                                                        </WrapPanel>
                                                     </StackPanel>
                                                 </DockPanel>
                                             </Border>
@@ -1168,7 +1293,24 @@
             </Grid>
         </Grid>
 
-        <Border x:Name="DetailShell" Grid.Column="2" Visibility="Collapsed" Margin="22,26,26,26" Padding="22" CornerRadius="34" Background="#EFFFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1" Effect="{StaticResource PanelShadow}">
+        <Border x:Name="DetailShell"
+                Grid.Column="1"
+                Grid.ColumnSpan="2"
+                Width="378"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                Panel.ZIndex="10"
+                Visibility="Collapsed"
+                Margin="22,26,26,26"
+                Padding="22"
+                CornerRadius="34"
+                Background="#FFFFFF"
+                BorderBrush="#E5E7EB"
+                BorderThickness="1"
+                Effect="{StaticResource PanelShadow}">
+            <Border.RenderTransform>
+                <TranslateTransform X="0"/>
+            </Border.RenderTransform>
             <ScrollViewer VerticalScrollBarVisibility="Auto" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
                 <Grid>
                     <StackPanel x:Name="EmptyDetailPanel" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,80,0,0">
@@ -1327,5 +1469,18 @@
                 </Grid>
             </ScrollViewer>
         </Border>
+        <Button x:Name="DetailDrawerToggleButton"
+                Grid.Column="1"
+                Grid.ColumnSpan="2"
+                Width="36"
+                Height="76"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Panel.ZIndex="11"
+                Visibility="Collapsed"
+                Content="‹"
+                Click="ToggleDetailDrawer_Click"
+                Style="{StaticResource TinyButton}"
+                Margin="0,0,26,0"/>
     </Grid>
 </Window>

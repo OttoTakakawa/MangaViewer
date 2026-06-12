@@ -8,6 +8,7 @@ public partial class TagEditDialog : Window
 {
     public string TagName => TagNameBox.Text.Trim();
     public string TagCategory => (TagCategoryBox.SelectedItem as ComboBoxItem)?.Content as string ?? "自定义";
+    public bool IsExclusive => ((TagTypeBox.SelectedItem as ComboBoxItem)?.Content as string) == "互斥";
     public bool OpenMoreRequested { get; private set; }
 
     public TagEditDialog(TagChip tag, IReadOnlyList<MangaBook> relatedBooks)
@@ -20,6 +21,7 @@ public partial class TagEditDialog : Window
         PreviewBooksList.ItemsSource = previews;
         EmptyPreviewText.Visibility = previews.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SelectCategory(tag.Category);
+        TagTypeBox.SelectedIndex = tag.IsExclusive ? 0 : 1;
 
         Loaded += (_, _) =>
         {

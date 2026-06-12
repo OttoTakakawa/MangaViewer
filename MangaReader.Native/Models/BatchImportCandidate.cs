@@ -11,6 +11,7 @@ public sealed class BatchImportCandidate : INotifyPropertyChanged
     public string FolderName { get; set; } = "";
     public int PageCount { get; set; }
     public string Tags { get; set; } = "";
+    public IReadOnlyList<string> Pages { get; set; } = [];
 
     public string Title
     {

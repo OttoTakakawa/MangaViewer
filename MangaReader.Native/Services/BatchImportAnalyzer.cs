@@ -6,8 +6,10 @@ namespace MangaReader.Native.Services;
 
 public sealed class BatchImportAnalyzer
 {
-    private const long HighQualityBytes = 1L * 1024 * 1024;
-    private const long UltraQualityBytes = 3L * 1024 * 1024;
+    private const int AnalysisDecodePixelWidth = 160;
+    private const double LandscapeRatioThreshold = 1.2;
+    private const long HighQualityBytes = 2L * 1024 * 1024;
+    private const long UltraQualityBytes = 5L * 1024 * 1024;
     private readonly NaturalPathComparer _pathComparer = new();
 
     public List<BatchImportCandidate> AnalyzeAuthorFolder(string authorFolder)
@@ -65,6 +67,7 @@ public sealed class BatchImportAnalyzer
             FolderName = folderName,
             Title = folderName,
             PageCount = pages.Count,
+            Pages = pages,
             Tags = string.Join(", ", tags)
         };
     }
@@ -157,32 +160,42 @@ public sealed class BatchImportAnalyzer
 
     private static IEnumerable<string> PickSamplePages(IReadOnlyList<string> pages)
     {
-        var start = Math.Min(9, Math.Max(0, pages.Count - 1));
-        var end = Math.Min(19, pages.Count - 1);
-        if (start <= end)
+        var picked = new HashSet<int>();
+        foreach (var index in PickSampleIndices(pages.Count))
         {
-            var mid = start + (end - start) / 2;
-            yield return pages[start];
-            if (mid != start)
+            if (picked.Add(index))
             {
-                yield return pages[mid];
+                yield return pages[index];
             }
+        }
+    }
+
+    private static IEnumerable<int> PickSampleIndices(int pageCount)
+    {
+        if (pageCount <= 0)
+        {
             yield break;
         }
 
-        yield return pages[0];
-        if (pages.Count > 1)
+        if (pageCount < 20)
         {
-            yield return pages[^1];
+            yield return 0;
+            yield return pageCount / 2;
+            yield return pageCount - 1;
+            yield break;
         }
+
+        yield return 9;
+        yield return 14;
+        yield return 19;
     }
 
     private static (bool IsColor, bool IsWide)? AnalyzeImage(string path)
     {
         try
         {
-            var image = ImageLoader.LoadBitmap(path, 96);
-            var isWide = image.PixelWidth > image.PixelHeight;
+            var image = ImageLoader.LoadBitmap(path, AnalysisDecodePixelWidth);
+            var isWide = image.PixelWidth > image.PixelHeight * LandscapeRatioThreshold;
             var converted = new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0);
             var stride = converted.PixelWidth * 4;
             var pixels = new byte[stride * converted.PixelHeight];

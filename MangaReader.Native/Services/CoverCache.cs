@@ -30,6 +30,17 @@ public sealed class CoverCache
         return File.Exists(cachePath) ? ImageLoader.LoadBitmap(cachePath, 240) : null;
     }
 
+    public string GetCacheKey(MangaBook book)
+    {
+        if (book.Pages.Count == 0)
+        {
+            return book.Id;
+        }
+
+        var coverPage = book.Pages[Math.Clamp(book.CoverPageIndex, 0, book.Pages.Count - 1)];
+        return GetCachePath(book, coverPage);
+    }
+
     private string GetCachePath(MangaBook book, string coverPage)
     {
         var modifiedTicks = File.GetLastWriteTimeUtc(coverPage).Ticks;

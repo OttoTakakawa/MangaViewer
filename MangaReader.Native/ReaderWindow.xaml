@@ -190,7 +190,11 @@
                           PreviewMouseLeftButtonUp="ReaderScrollViewer_PreviewMouseLeftButtonUp"
                           PreviewMouseMove="ReaderScrollViewer_PreviewMouseMove">
                 <Grid x:Name="ImageScrollContent">
-                    <StackPanel x:Name="ImageHost" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel x:Name="ImageHost"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="#FDFBF7">
                         <Image x:Name="ReaderImage" Margin="4" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality"/>
                         <Image x:Name="ReaderImageRight" Margin="4" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality"/>
                         <StackPanel.LayoutTransform>
