@@ -304,27 +304,35 @@ public sealed class LibraryDatabase
         BackupDatabase(reason, force: true);
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText =
-            """
-            UPDATE books
-            SET tags = $tags,
-                updated_at = $updatedAt
-            WHERE id = $id;
-            """;
-        var updatedAt = DateTimeOffset.Now.ToString("O");
-        foreach (var (bookId, tags) in updates)
+        try
         {
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("$id", bookId);
-            command.Parameters.AddWithValue("$tags", tags);
-            command.Parameters.AddWithValue("$updatedAt", updatedAt);
-            command.ExecuteNonQuery();
-        }
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                UPDATE books
+                SET tags = $tags,
+                    updated_at = $updatedAt
+                WHERE id = $id;
+                """;
+            var updatedAt = DateTimeOffset.Now.ToString("O");
+            foreach (var (bookId, tags) in updates)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$id", bookId);
+                command.Parameters.AddWithValue("$tags", tags);
+                command.Parameters.AddWithValue("$updatedAt", updatedAt);
+                command.ExecuteNonQuery();
+            }
 
-        transaction.Commit();
-        _lastMetadataBackupAt = DateTimeOffset.Now;
+            transaction.Commit();
+            _lastMetadataBackupAt = DateTimeOffset.Now;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public void SaveBookAuthorsBatch(IReadOnlyCollection<(string BookId, string Author)> updates, string reason)
@@ -337,27 +345,35 @@ public sealed class LibraryDatabase
         BackupDatabase(reason, force: true);
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
-        var updatedAt = DateTimeOffset.Now.ToString("O");
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText =
-            """
-            UPDATE books
-            SET author = $author,
-                updated_at = $updatedAt
-            WHERE id = $id;
-            """;
-        foreach (var (bookId, author) in updates)
+        try
         {
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("$id", bookId);
-            command.Parameters.AddWithValue("$author", author);
-            command.Parameters.AddWithValue("$updatedAt", updatedAt);
-            command.ExecuteNonQuery();
-        }
+            var updatedAt = DateTimeOffset.Now.ToString("O");
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                UPDATE books
+                SET author = $author,
+                    updated_at = $updatedAt
+                WHERE id = $id;
+                """;
+            foreach (var (bookId, author) in updates)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$id", bookId);
+                command.Parameters.AddWithValue("$author", author);
+                command.Parameters.AddWithValue("$updatedAt", updatedAt);
+                command.ExecuteNonQuery();
+            }
 
-        transaction.Commit();
-        _lastMetadataBackupAt = DateTimeOffset.Now;
+            transaction.Commit();
+            _lastMetadataBackupAt = DateTimeOffset.Now;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public void SaveReadCount(MangaBook book)

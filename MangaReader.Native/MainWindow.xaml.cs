@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly UpdateService _updateService;
     private MangaBook? _currentBook;
     private CancellationTokenSource? _scanCancellation;
+    private CancellationTokenSource? _importCancellation;
     private List<Key> _nextKeys = [Key.Right, Key.D, Key.Space];
     private List<Key> _prevKeys = [Key.Left, Key.A];
     private bool _isEditMode;
@@ -176,11 +177,13 @@ public partial class MainWindow : Window
         var dialog = new AuthorBatchImportDialog(folderPath, authorName, candidates) { Owner = this };
         if (dialog.ShowDialog() == true)
         {
-            await ImportAuthorBatchAsync(folderPath, dialog.AuthorName, dialog.Candidates.ToList());
+            _importCancellation?.Cancel();
+            _importCancellation = new CancellationTokenSource();
+            await ImportAuthorBatchAsync(folderPath, dialog.AuthorName, dialog.Candidates.ToList(), _importCancellation.Token);
         }
     }
 
-    private async Task ImportAuthorBatchAsync(string rootPath, string authorName, IReadOnlyList<BatchImportCandidate> candidates)
+    private async Task ImportAuthorBatchAsync(string rootPath, string authorName, IReadOnlyList<BatchImportCandidate> candidates, CancellationToken token)
     {
         StatusText.Text = $"正在批量导入：{authorName}...";
         ShowImportProgress(authorName, 0, candidates.Count, "准备导入...");
@@ -194,6 +197,7 @@ public partial class MainWindow : Window
 
         foreach (var candidate in candidates)
         {
+            token.ThrowIfCancellationRequested();
             processedCount++;
             ShowImportProgress(authorName, processedCount - 1, candidates.Count, $"正在处理：{candidate.Title}");
             await System.Windows.Threading.Dispatcher.Yield();
@@ -248,9 +252,10 @@ public partial class MainWindow : Window
         }
 
         ShowImportProgress(authorName, processedCount, candidates.Count, "正在批量写入数据库...");
-        await Task.Run(() => _database.UpsertBooksBatch(booksToSave.Select(item => item.Book).ToList()));
+        await Task.Run(() => _database.UpsertBooksBatch(booksToSave.Select(item => item.Book).ToList()), token);
         foreach (var (book, isAlreadyVisible) in booksToSave)
         {
+            token.ThrowIfCancellationRequested();
             book.NotifyAll();
             if (!isAlreadyVisible)
             {
@@ -401,30 +406,35 @@ public partial class MainWindow : Window
                 return all;
             }, token);
 
-            var scannedPaths = scanned.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var missingBooks = savedBooks.Values
-                .Where(book => !scannedPaths.Contains(book.FolderPath) && !Directory.Exists(book.FolderPath))
-                .ToList();
-            foreach (var missing in missingBooks)
+            var missingBooks = await Task.Run(() =>
             {
-                token.ThrowIfCancellationRequested();
-                missing.IsMissing = true;
-                missing.Pages.Clear();
-                missing.NotifyAll();
-            }
+                var scannedPaths = scanned.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var missing = savedBooks.Values
+                    .Where(book => !scannedPaths.Contains(book.FolderPath) && !Directory.Exists(book.FolderPath))
+                    .ToList();
+                foreach (var book in missing)
+                {
+                    token.ThrowIfCancellationRequested();
+                    book.IsMissing = true;
+                    book.Pages.Clear();
+                    book.NotifyAll();
+                }
+                return missing;
+            }, token);
 
             var booksToSave = scanned.Concat(missingBooks).ToList();
             await Task.Run(() => _database.UpsertBooksBatch(booksToSave), token);
+
             foreach (var book in scanned)
             {
                 token.ThrowIfCancellationRequested();
                 Books.Add(book);
             }
 
-            foreach (var missing in missingBooks)
+            foreach (var book in missingBooks)
             {
                 token.ThrowIfCancellationRequested();
-                Books.Add(missing);
+                Books.Add(book);
             }
 
             RefreshLibraryViews(sort: true);
