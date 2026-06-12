@@ -19,7 +19,8 @@ public sealed class CoverCache
             return null;
         }
 
-        var coverPage = book.Pages[Math.Clamp(book.CoverPageIndex, 0, book.Pages.Count - 1)];
+        var coverIndex = Math.Clamp(book.CoverPageIndex, 0, book.Pages.Count - 1);
+        var coverPage = book.Pages[coverIndex];
         var cachePath = GetCachePath(book, coverPage);
 
         if (!File.Exists(cachePath))
@@ -37,7 +38,8 @@ public sealed class CoverCache
             return book.Id;
         }
 
-        var coverPage = book.Pages[Math.Clamp(book.CoverPageIndex, 0, book.Pages.Count - 1)];
+        var coverIndex = Math.Clamp(book.CoverPageIndex, 0, book.Pages.Count - 1);
+        var coverPage = book.Pages[coverIndex];
         return GetCachePath(book, coverPage);
     }
 

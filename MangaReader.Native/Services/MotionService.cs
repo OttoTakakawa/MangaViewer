@@ -25,9 +25,11 @@ public static class MotionService
         element.BeginAnimation(UIElement.OpacityProperty, null);
         element.Opacity = 0;
         element.Visibility = Visibility.Visible;
-        element.BeginAnimation(
-            UIElement.OpacityProperty,
-            CreateDoubleAnimation(1, Normal, StandardEase));
+        var animation = new DoubleAnimation(0, 1, Normal)
+        {
+            EasingFunction = StandardEase
+        };
+        element.BeginAnimation(UIElement.OpacityProperty, animation);
     }
 
     public static void HideWithFade(UIElement element)
@@ -46,9 +48,11 @@ public static class MotionService
     {
         element.BeginAnimation(UIElement.OpacityProperty, null);
         element.Opacity = 0.72;
-        element.BeginAnimation(
-            UIElement.OpacityProperty,
-            CreateDoubleAnimation(1, Fast, MicroEase));
+        var animation = new DoubleAnimation(0.72, 1, Fast)
+        {
+            EasingFunction = MicroEase
+        };
+        element.BeginAnimation(UIElement.OpacityProperty, animation);
     }
 
     public static void ScaleTo(UIElement element, double scale, TimeSpan? duration = null)

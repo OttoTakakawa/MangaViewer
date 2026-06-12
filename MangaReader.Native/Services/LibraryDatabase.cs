@@ -213,17 +213,25 @@ public sealed class LibraryDatabase
 
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = UpsertBookSql;
-        foreach (var book in books)
+        try
         {
-            command.Parameters.Clear();
-            AddBookParameters(command, book);
-            command.ExecuteNonQuery();
-        }
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = UpsertBookSql;
+            foreach (var book in books)
+            {
+                command.Parameters.Clear();
+                AddBookParameters(command, book);
+                command.ExecuteNonQuery();
+            }
 
-        transaction.Commit();
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public void SaveProgress(MangaBook book)

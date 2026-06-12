@@ -45,7 +45,6 @@ public partial class ReaderWindow : Window
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
     {
         AppLogger.Info("reader-open", $"Reader loaded: {_book.Title}, pages={_book.Pages.Count}, start={_book.LastReadPageIndex + 1}");
-        MotionService.FadeIn(this, Window.OpacityProperty, 0.94, 1);
         Dispatcher.InvokeAsync(() => LoadPage(_book.LastReadPageIndex), DispatcherPriority.ApplicationIdle);
         UpdateZoomText();
         RestartControlsRevealTimer();
@@ -175,6 +174,7 @@ public partial class ReaderWindow : Window
         var doublePageMode = IsDoublePageMode();
         var rightToLeft = IsRightToLeftMode();
         PageText.Text = $"正在读取 {safeIndex + 1} / {_book.PageCount}...";
+        ShowReaderMessage("正在读取页面", $"{safeIndex + 1} / {_book.PageCount}\n{firstPath}");
 
         try
         {
@@ -200,6 +200,9 @@ public partial class ReaderWindow : Window
             ReaderImageRight.Source = null;
             ReaderImageRight.Visibility = Visibility.Collapsed;
             _displayedPageCount = 1;
+            AppLogger.Info(
+                "reader-load-page",
+                $"Decoded page {safeIndex + 1} for {_book.Title}. size={page.First.PixelWidth}x{page.First.PixelHeight}, path={firstPath}");
 
             if (page.UseDouble && page.Second is not null)
             {
@@ -224,14 +227,29 @@ public partial class ReaderWindow : Window
                 _fitPendingInitialLoad = false;
                 FitHeight_Click(this, new RoutedEventArgs());
             }
+            HideReaderMessage();
             PlayPageFade();
             AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
         }
         catch (Exception ex)
         {
-            AppLogger.Error("reader-load-page", ex, $"Failed to load page for {_book.Title}.");
-            PageText.Text = $"图片读取失败：{ex.Message}";
+            AppLogger.Error("reader-load-page", ex, $"Failed to load page for {_book.Title}. page={safeIndex + 1}, path={firstPath}");
+            var message = $"图片读取失败：{ex.Message}";
+            PageText.Text = message;
+            ShowReaderMessage("图片读取失败", $"{message}\n\n{firstPath}");
         }
+    }
+
+    private void ShowReaderMessage(string title, string message)
+    {
+        ReaderMessageTitle.Text = title;
+        ReaderMessageText.Text = message;
+        ReaderMessagePanel.Visibility = Visibility.Visible;
+    }
+
+    private void HideReaderMessage()
+    {
+        ReaderMessagePanel.Visibility = Visibility.Collapsed;
     }
 
     private bool IsDoublePageMode() => (ReadingModeBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "双页";
@@ -350,11 +368,19 @@ public partial class ReaderWindow : Window
                     ZoomSlider.Value + (e.Delta > 0 ? WheelZoomStep : -WheelZoomStep),
                     ZoomSlider.Minimum,
                     ZoomSlider.Maximum);
-                RestartControlsRevealTimer();
+                if (!_controlsHidden)
+                {
+                    RestartControlsRevealTimer();
+                }
+
                 e.Handled = true;
                 break;
             case 2:
-                RestartControlsRevealTimer();
+                if (!_controlsHidden)
+                {
+                    RestartControlsRevealTimer();
+                }
+
                 break;
             default:
                 if (e.Delta > 0)
@@ -365,7 +391,12 @@ public partial class ReaderWindow : Window
                 {
                     NextPage_Click(sender, new RoutedEventArgs());
                 }
-                RestartControlsRevealTimer();
+
+                if (!_controlsHidden)
+                {
+                    RestartControlsRevealTimer();
+                }
+
                 e.Handled = true;
                 break;
         }
