@@ -173,7 +173,6 @@ public partial class ReaderWindow : Window
         var firstPath = _book.Pages[safeIndex];
         var doublePageMode = IsDoublePageMode();
         var rightToLeft = IsRightToLeftMode();
-        PageText.Text = $"正在读取 {safeIndex + 1} / {_book.PageCount}...";
 
         try
         {
@@ -227,6 +226,7 @@ public partial class ReaderWindow : Window
                 FitHeight_Click(this, new RoutedEventArgs());
             }
             HideReaderMessage();
+            PageText.Text = "";
             PlayPageFade();
             AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
         }
