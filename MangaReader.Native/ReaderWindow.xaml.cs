@@ -380,6 +380,14 @@ public partial class ReaderWindow : Window
             return;
         }
 
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+        {
+            NavigateByClickPosition(e.GetPosition(ReaderScrollViewer));
+            RestartControlsRevealTimer();
+            e.Handled = true;
+            return;
+        }
+
         _isHoldZoomActive = true;
         _holdZoomBaseValue = ZoomSlider.Value;
         try
@@ -393,6 +401,21 @@ public partial class ReaderWindow : Window
             ReleaseHoldZoom();
             throw;
         }
+    }
+
+    private void NavigateByClickPosition(System.Windows.Point pointerInViewport)
+    {
+        var viewportWidth = ReaderScrollViewer.ActualWidth > 0
+            ? ReaderScrollViewer.ActualWidth
+            : ActualWidth;
+
+        if (pointerInViewport.X < viewportWidth * 0.36)
+        {
+            PreviousPage_Click(this, new RoutedEventArgs());
+            return;
+        }
+
+        NextPage_Click(this, new RoutedEventArgs());
     }
 
     private void ReaderScrollViewer_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)

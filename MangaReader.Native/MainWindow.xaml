@@ -1389,6 +1389,7 @@
                             <Border Padding="14" CornerRadius="18" Background="#F8F2EC" Margin="0,0,0,18">
                                 <TextBlock x:Name="ReadOnlySummaryText" TextWrapping="Wrap" Foreground="#25211E" LineHeight="22"/>
                             </Border>
+                            <Button Content="开始阅读" Click="OpenCurrentBook_Click" Margin="0,0,0,10"/>
                             <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
                             <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
                             <Button x:Name="HideBookButton" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
@@ -1456,6 +1457,7 @@
                         <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
                         <TextBox x:Name="SummaryBox" Height="128" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,0,18"/>
                         <Button x:Name="SaveMetadataButton" Content="保存信息" Click="SaveMetadata_Click" Margin="0,0,0,10"/>
+                        <Button Content="开始阅读" Click="OpenCurrentBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
                         <Button x:Name="SetCoverButton" Content="设置为封面页" Click="SetCover_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
                         <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
                         <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>

@@ -702,6 +702,17 @@ public partial class MainWindow : Window
         });
     }
 
+    private void OpenCurrentBook_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null)
+        {
+            StatusText.Text = "请先选择一本漫画。";
+            return;
+        }
+
+        OpenBook(_currentBook);
+    }
+
     private void ManualBackup_Click(object sender, RoutedEventArgs e)
     {
         var backupPath = _database.CreateManualBackup();
