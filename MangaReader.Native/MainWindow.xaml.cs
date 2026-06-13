@@ -49,17 +49,23 @@ public partial class MainWindow : Window
     private bool _isDetailDrawerCollapsed;
     private bool _isCheckingForUpdates;
     private string _currentNavigationKey = "home";
+    private string _cachedSearchQuery = "";
+    private string _cachedStatusFilter = "";
+    private string _cachedAuthorFilter = "";
+    private bool _cachedFavoriteOnly;
+    private bool _cachedShowHidden;
+    private string[] _cachedActiveTagFilters = [];
 
-    public ObservableCollection<MangaBook> Books { get; } = [];
+    public RangeObservableCollection<MangaBook> Books { get; } = [];
     public ObservableCollection<TagChip> VisibleTags { get; } = [];
     public ObservableCollection<TagChip> ActiveTagFilters { get; } = [];
     public ObservableCollection<TagChip> TagManagerItems { get; } = [];
     public ObservableCollection<AuthorItem> AuthorManagerItems { get; } = [];
     public ObservableCollection<string> AuthorFilters { get; } = [];
-    public ObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
-    public ObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
-    public ObservableCollection<MangaBook> FavoriteShowcaseBooks { get; } = [];
-    public ObservableCollection<MangaBook> RecentlyAddedBooks { get; } = [];
+    public RangeObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
+    public RangeObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
+    public RangeObservableCollection<MangaBook> FavoriteShowcaseBooks { get; } = [];
+    public RangeObservableCollection<MangaBook> RecentlyAddedBooks { get; } = [];
 
     public MainWindow()
     {
@@ -190,7 +196,7 @@ public partial class MainWindow : Window
         StatusText.Text = $"正在批量导入：{authorName}...";
         ShowImportProgress(authorName, 0, candidates.Count, "准备导入...");
         _database.SaveLibraryRoot(rootPath);
-        var savedBooks = _database.LoadBooksByPath();
+        var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
         var booksByPath = Books.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
         var importedCount = 0;
         var failures = new List<string>();
@@ -255,19 +261,22 @@ public partial class MainWindow : Window
 
         ShowImportProgress(authorName, processedCount, candidates.Count, "正在批量写入数据库...");
         await Task.Run(() => _database.UpsertBooksBatch(booksToSave.Select(item => item.Book).ToList()), token);
+        var newBooks = new List<MangaBook>();
         foreach (var (book, isAlreadyVisible) in booksToSave)
         {
             token.ThrowIfCancellationRequested();
             book.NotifyAll();
             if (!isAlreadyVisible)
             {
-                Books.Add(book);
+                newBooks.Add(book);
                 booksByPath[book.FolderPath] = book;
             }
         }
+        Books.AddRange(newBooks);
 
         HideImportProgress();
         RefreshLibraryViews(sort: true);
+        RefreshHomeShelves();
         EnsureLibraryViewCanShowBooks();
         StatusText.Text = failures.Count == 0
             ? $"批量导入完成：{authorName} · 新增/更新 {importedCount} 本，当前书库 {Books.Count} 本漫画。"
@@ -396,21 +405,17 @@ public partial class MainWindow : Window
 
         try
         {
-            var savedBooks = _database.LoadBooksByPath();
             var scanned = await Task.Run(() =>
             {
+                var savedBooks = _database.LoadBooksByPath();
                 var all = new List<MangaBook>();
                 foreach (var root in roots)
                 {
                     token.ThrowIfCancellationRequested();
                     all.AddRange(_scanner.Scan(root, savedBooks));
                 }
-                return all;
-            }, token);
 
-            var missingBooks = await Task.Run(() =>
-            {
-                var scannedPaths = scanned.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var scannedPaths = all.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var missing = savedBooks.Values
                     .Where(book => !scannedPaths.Contains(book.FolderPath) && !Directory.Exists(book.FolderPath))
                     .ToList();
@@ -421,25 +426,17 @@ public partial class MainWindow : Window
                     book.Pages.Clear();
                     book.NotifyAll();
                 }
-                return missing;
+                return (Scanned: all, MissingBooks: missing);
             }, token);
 
-            var booksToSave = scanned.Concat(missingBooks).ToList();
-            await Task.Run(() => _database.UpsertBooksBatch(booksToSave), token);
+            var missingBooks = scanned.MissingBooks;
+            var visibleBooks = scanned.Scanned.Concat(missingBooks).ToList();
+            await Task.Run(() => _database.UpsertBooksBatch(visibleBooks), token);
 
-            foreach (var book in scanned)
-            {
-                token.ThrowIfCancellationRequested();
-                Books.Add(book);
-            }
-
-            foreach (var book in missingBooks)
-            {
-                token.ThrowIfCancellationRequested();
-                Books.Add(book);
-            }
+            Books.AddRange(visibleBooks);
 
             RefreshLibraryViews(sort: true);
+            RefreshHomeShelves();
             EnsureLibraryViewCanShowBooks();
             StatusText.Text = $"扫描完成：{Books.Count} 本漫画。";
         }
@@ -581,6 +578,7 @@ public partial class MainWindow : Window
         _database.SaveMetadata(_currentBook);
         _currentBook.NotifyAll();
         RefreshLibraryViews(tagManager: false, sort: true);
+        RefreshHomeShelves();
         SetEditMode(false);
         StatusText.Text = "书籍信息已保存。";
     }
@@ -645,6 +643,7 @@ public partial class MainWindow : Window
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
         RefreshBookFilter();
+        RefreshHomeShelves();
         StatusText.Text = _currentBook.IsFavorite
             ? $"已收藏《{_currentBook.Title}》。"
             : $"已取消收藏《{_currentBook.Title}》。";
@@ -663,6 +662,7 @@ public partial class MainWindow : Window
         FillMetadataEditors(_currentBook);
         ApplyBookSort(refresh: false);
         RefreshBookFilter();
+        RefreshHomeShelves();
         StatusText.Text = $"《{_currentBook.Title}》已标记为读过 {_currentBook.ReadCount} 次。";
     }
 
@@ -675,6 +675,7 @@ public partial class MainWindow : Window
         _database.SetHidden(book, book.IsHidden);
         book.NotifyAll();
         RefreshLibraryViews(tagManager: false, sort: false);
+        RefreshHomeShelves();
 
         if (book.IsHidden && ShowHiddenBox.IsChecked != true)
         {
@@ -711,6 +712,7 @@ public partial class MainWindow : Window
         BooksList.SelectedItem = null;
         SetDetailVisible(false);
         RefreshLibraryViews(tagManager: false, authors: true);
+        RefreshHomeShelves();
         StatusText.Text = $"已删除《{book.Title}》的库记录，源文件未删除。";
     }
 
@@ -1473,9 +1475,19 @@ public partial class MainWindow : Window
 
     private void RefreshBookFilter()
     {
+        CacheBookFilterState();
         _booksView?.Refresh();
         RefreshShelfOverview();
-        RefreshHomeShelves();
+    }
+
+    private void CacheBookFilterState()
+    {
+        _cachedSearchQuery = BookSearchBox?.Text.Trim() ?? "";
+        _cachedStatusFilter = GetSelectedStatusFilter();
+        _cachedAuthorFilter = AuthorFilterBox?.SelectedItem as string ?? "";
+        _cachedFavoriteOnly = FavoriteOnlyBox?.IsChecked == true;
+        _cachedShowHidden = ShowHiddenBox?.IsChecked == true;
+        _cachedActiveTagFilters = _activeTagFilters.ToArray();
     }
 
     private void RefreshLibraryViews(
@@ -1652,55 +1664,52 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (book.IsHidden && ShowHiddenBox?.IsChecked != true)
+        if (book.IsHidden && !_cachedShowHidden)
         {
             return false;
         }
 
-        if (FavoriteOnlyBox?.IsChecked == true && !book.IsFavorite)
+        if (_cachedFavoriteOnly && !book.IsFavorite)
         {
             return false;
         }
 
-        var selectedStatus = GetSelectedStatusFilter();
-        if (!string.IsNullOrWhiteSpace(selectedStatus)
-            && !string.Equals(book.ReadingStatus, selectedStatus, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(_cachedStatusFilter)
+            && !string.Equals(book.ReadingStatus, _cachedStatusFilter, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        var selectedAuthor = AuthorFilterBox?.SelectedItem as string;
-        if (!string.IsNullOrWhiteSpace(selectedAuthor)
-            && selectedAuthor != "全部作者"
-            && !string.Equals(book.Author, selectedAuthor, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(_cachedAuthorFilter)
+            && _cachedAuthorFilter != "全部作者"
+            && !string.Equals(book.Author, _cachedAuthorFilter, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        if (_activeTagFilters.Count > 0
-            && !_activeTagFilters.All(activeTag =>
+        if (_cachedActiveTagFilters.Length > 0
+            && !_cachedActiveTagFilters.All(activeTag =>
                 book.TagItems.Any(tag => string.Equals(tag.Name, activeTag, StringComparison.OrdinalIgnoreCase))))
         {
             return false;
         }
 
-        var query = BookSearchBox?.Text.Trim();
-        if (string.IsNullOrWhiteSpace(query))
+        if (string.IsNullOrWhiteSpace(_cachedSearchQuery))
         {
             return true;
         }
 
-        return Contains(book.Title, query)
-            || Contains(book.Author, query)
-            || Contains(book.CharacterName, query)
-            || Contains(book.ForeignName, query)
-            || Contains(book.Tags, query)
-            || Contains(book.Summary, query)
-            || Contains(book.ProducedAt, query)
-            || Contains(book.ImportedAt, query)
-            || Contains(book.ReadingStatusText, query)
-            || Contains(book.IsFavorite ? "收藏" : "", query)
-            || Contains(book.ReadCountText, query);
+        return Contains(book.Title, _cachedSearchQuery)
+            || Contains(book.Author, _cachedSearchQuery)
+            || Contains(book.CharacterName, _cachedSearchQuery)
+            || Contains(book.ForeignName, _cachedSearchQuery)
+            || Contains(book.Tags, _cachedSearchQuery)
+            || Contains(book.Summary, _cachedSearchQuery)
+            || Contains(book.ProducedAt, _cachedSearchQuery)
+            || Contains(book.ImportedAt, _cachedSearchQuery)
+            || Contains(book.ReadingStatusText, _cachedSearchQuery)
+            || Contains(book.IsFavorite ? "收藏" : "", _cachedSearchQuery)
+            || Contains(book.ReadCountText, _cachedSearchQuery);
     }
 
     private string GetSelectedReadingStatus()
@@ -1760,21 +1769,42 @@ public partial class MainWindow : Window
             return;
         }
 
-        var includeHidden = ShowHiddenBox?.IsChecked == true;
-        var libraryBooks = Books.Where(book => includeHidden || !book.IsHidden).ToList();
-        var visibleCount = _booksView?.Cast<object>().Count() ?? libraryBooks.Count;
-        var favoriteCount = libraryBooks.Count(book => book.IsFavorite);
-        var readingNowCount = libraryBooks.Count(book => book.ReadingStatus == "reading");
-        var finishedCount = libraryBooks.Count(book => book.ReadingStatus == "finished");
+        var libraryCount = 0;
+        var favoriteCount = 0;
+        var readingNowCount = 0;
+        var finishedCount = 0;
+        foreach (var book in Books)
+        {
+            if (book.IsHidden && !_cachedShowHidden)
+            {
+                continue;
+            }
+
+            libraryCount++;
+            if (book.IsFavorite)
+            {
+                favoriteCount++;
+            }
+            if (book.ReadingStatus == "reading")
+            {
+                readingNowCount++;
+            }
+            if (book.ReadingStatus == "finished")
+            {
+                finishedCount++;
+            }
+        }
+
+        var visibleCount = _booksView?.Cast<object>().Count() ?? libraryCount;
 
         VisibleBookCountText.Text = $"{visibleCount} 本";
-        TotalBookCountText.Text = includeHidden
+        TotalBookCountText.Text = _cachedShowHidden
             ? $"/ 共 {Books.Count} 本"
-            : $"/ 共 {libraryBooks.Count} 本";
+            : $"/ 共 {libraryCount} 本";
         FavoriteCountText.Text = $"{favoriteCount} 本";
         ReadingNowCountText.Text = $"{readingNowCount} 本";
         FinishedCountText.Text = $"{finishedCount} 本";
-        FilterSummaryText.Text = BuildFilterSummary(visibleCount, libraryBooks.Count);
+        FilterSummaryText.Text = BuildFilterSummary(visibleCount, libraryCount);
 
         var isEmpty = visibleCount == 0;
         ShelfEmptyState.Visibility = isEmpty ? Visibility.Visible : Visibility.Collapsed;
@@ -1784,35 +1814,32 @@ public partial class MainWindow : Window
     private string BuildFilterSummary(int visibleCount, int libraryCount)
     {
         var parts = new List<string>();
-        var query = BookSearchBox?.Text.Trim();
-        if (!string.IsNullOrWhiteSpace(query))
+        if (!string.IsNullOrWhiteSpace(_cachedSearchQuery))
         {
-            parts.Add($"搜索“{query}”");
+            parts.Add($"搜索“{_cachedSearchQuery}”");
         }
 
-        var selectedAuthor = AuthorFilterBox?.SelectedItem as string;
-        if (!string.IsNullOrWhiteSpace(selectedAuthor) && selectedAuthor != "全部作者")
+        if (!string.IsNullOrWhiteSpace(_cachedAuthorFilter) && _cachedAuthorFilter != "全部作者")
         {
-            parts.Add($"作者 {selectedAuthor}");
+            parts.Add($"作者 {_cachedAuthorFilter}");
         }
 
-        var status = GetSelectedStatusFilter();
-        if (!string.IsNullOrWhiteSpace(status))
+        if (!string.IsNullOrWhiteSpace(_cachedStatusFilter))
         {
-            parts.Add($"状态 {MapStatusText(status)}");
+            parts.Add($"状态 {MapStatusText(_cachedStatusFilter)}");
         }
 
-        if (_activeTagFilters.Count > 0)
+        if (_cachedActiveTagFilters.Length > 0)
         {
-            parts.Add($"Tag {string.Join(" + ", _activeTagFilters.OrderBy(tag => tag))}");
+            parts.Add($"Tag {string.Join(" + ", _cachedActiveTagFilters.OrderBy(tag => tag))}");
         }
 
-        if (FavoriteOnlyBox?.IsChecked == true)
+        if (_cachedFavoriteOnly)
         {
             parts.Add("只看收藏");
         }
 
-        if (ShowHiddenBox?.IsChecked == true)
+        if (_cachedShowHidden)
         {
             parts.Add("含隐藏作品");
         }
@@ -1828,23 +1855,23 @@ public partial class MainWindow : Window
     private string BuildEmptyHint()
     {
         var reasons = new List<string>();
-        if (!string.IsNullOrWhiteSpace(BookSearchBox?.Text.Trim()))
+        if (!string.IsNullOrWhiteSpace(_cachedSearchQuery))
         {
             reasons.Add("搜索词");
         }
-        if ((AuthorFilterBox?.SelectedItem as string) is string author && author != "全部作者")
+        if (!string.IsNullOrWhiteSpace(_cachedAuthorFilter) && _cachedAuthorFilter != "全部作者")
         {
             reasons.Add("作者筛选");
         }
-        if (!string.IsNullOrWhiteSpace(GetSelectedStatusFilter()))
+        if (!string.IsNullOrWhiteSpace(_cachedStatusFilter))
         {
             reasons.Add("状态筛选");
         }
-        if (_activeTagFilters.Count > 0)
+        if (_cachedActiveTagFilters.Length > 0)
         {
             reasons.Add("Tag 筛选");
         }
-        if (FavoriteOnlyBox?.IsChecked == true)
+        if (_cachedFavoriteOnly)
         {
             reasons.Add("收藏筛选");
         }
@@ -1921,13 +1948,9 @@ public partial class MainWindow : Window
         RecentlyAddedEmptyText.Visibility = RecentlyAddedBooks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void ReplaceBooks(ObservableCollection<MangaBook> target, IEnumerable<MangaBook> source)
+    private static void ReplaceBooks(RangeObservableCollection<MangaBook> target, IEnumerable<MangaBook> source)
     {
-        target.Clear();
-        foreach (var book in source)
-        {
-            target.Add(book);
-        }
+        target.ReplaceRange(source.ToList());
     }
 
     private void OpenBook(MangaBook book)
@@ -1942,6 +1965,13 @@ public partial class MainWindow : Window
         var reader = new ReaderWindow(book, _database, _nextKeys, _prevKeys)
         {
             Owner = this
+        };
+        reader.Closed += (_, _) =>
+        {
+            book.NotifyAll();
+            ApplyBookSort(refresh: false);
+            RefreshBookFilter();
+            RefreshHomeShelves();
         };
         reader.Show();
     }
@@ -2057,7 +2087,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        ShelfEmptyHintText.Text = $"已识别 {Books.Count} 本漫画，但视图没有显示。请重新同步书架；如果仍为空，这是列表视图刷新问题。";
+        ShelfEmptyHintText.Text = $"已识别 {Books.Count} 本漫画，但视图没有显示。请重新扫描书库；如果仍为空，这是列表视图刷新问题。";
     }
 
     private void SetAuthorFilter(string authorName)
@@ -2430,7 +2460,8 @@ public partial class MainWindow : Window
     private void RefreshTagManagementItems()
     {
         var query = TagManagerSearchBox?.Text.Trim() ?? "";
-        var chips = EnumerateKnownTags()
+        var knownTags = EnumerateKnownTags().ToList();
+        var chips = knownTags
             .Select(tag => CreateTagChip(tag))
             .Where(tag => string.IsNullOrWhiteSpace(query)
                 || tag.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
@@ -2448,15 +2479,15 @@ public partial class MainWindow : Window
 
         if (TagManagerTotalCountText is not null)
         {
-            TagManagerTotalCountText.Text = $"{EnumerateKnownTags().Count()} 个";
+            TagManagerTotalCountText.Text = $"{knownTags.Count} 个";
         }
         if (TagManagerUsedCountText is not null)
         {
-            TagManagerUsedCountText.Text = $"{EnumerateKnownTags().Count(tag => GetTagUsageCount(tag) > 0)} 个";
+            TagManagerUsedCountText.Text = $"{knownTags.Count(tag => GetTagUsageCount(tag) > 0)} 个";
         }
         if (TagManagerStandaloneCountText is not null)
         {
-            TagManagerStandaloneCountText.Text = $"{EnumerateKnownTags().Count(tag => GetTagUsageCount(tag) == 0)} 个";
+            TagManagerStandaloneCountText.Text = $"{knownTags.Count(tag => GetTagUsageCount(tag) == 0)} 个";
         }
         if (TagManagerEmptyState is not null)
         {
