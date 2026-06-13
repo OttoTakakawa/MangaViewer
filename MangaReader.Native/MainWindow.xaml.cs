@@ -807,7 +807,7 @@ public partial class MainWindow : Window
             }
 
             var result = System.Windows.MessageBox.Show(
-                $"{update.Message}\n\n当前版本：{UpdateService.CurrentVersionText}\n更新包：{update.AssetName}\n\n是否现在下载并安装？安装时软件会关闭，更新完成后自动重启。",
+                $"{update.Message}\n\n当前版本：{UpdateService.CurrentVersionText}\n来源：{update.Source}\n更新包：{update.AssetName}\n\n是否现在准备并安装？安装时软件会关闭，更新完成后自动重启。",
                 "检查更新",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question,
@@ -819,14 +819,14 @@ public partial class MainWindow : Window
                 return;
             }
 
-            StatusText.Text = $"{update.Message} 正在下载更新包...";
+            StatusText.Text = $"{update.Message} 正在准备更新包...";
             var progress = new Progress<double>(value =>
             {
-                StatusText.Text = $"{update.Message} 下载中 {value:P0}...";
+                StatusText.Text = $"{update.Message} 准备中 {value:P0}...";
             });
 
             var packagePath = await _updateService.DownloadPackageAsync(update, progress);
-            StatusText.Text = "更新包下载完成，软件即将关闭并自动替换文件。";
+            StatusText.Text = "更新包已准备完成，软件即将关闭并自动替换文件。";
             AppLogger.Info("update", $"Launching updater for {update.LatestVersion}: {packagePath}");
             _updateService.LaunchUpdater(packagePath);
             Close();

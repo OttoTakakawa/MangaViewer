@@ -802,7 +802,7 @@
                         <Button Content="打开备份" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}"/>
                         <Button Content="打开数据" Click="OpenDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
                         <Button Content="指定数据" Click="ChooseDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}" ToolTip="从 GitHub Release 下载最新 Windows x64 发布包。"/>
+                        <Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}" ToolTip="优先检查本机 _release/更新包或 git pull 后的本地源码；没有本地更新时才访问 GitHub。"/>
                     </StackPanel>
                 </ScrollViewer>
 

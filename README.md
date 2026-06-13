@@ -51,7 +51,16 @@ dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 dotnet publish .\MangaReader.Native\MangaReader.Native.csproj -c Release -r win-x64 --self-contained true -o .\_release\0.3.xx
 ```
 
-发布目录会自动包含 `Updater\MangaReader.Updater.exe`。主程序侧边栏的 `检查更新` 会读取 GitHub 最新 Release，并下载其中的 `MangaReader-win-x64-v*.zip` 资产进行自动更新。
+发布目录会自动包含 `Updater\MangaReader.Updater.exe`。
+
+主程序侧边栏的 `检查更新` 采用本地优先策略：
+
+- 如果本机存在 `_release/更高版本/MangaReader.Native.exe`，直接使用该发布目录更新当前运行目录。
+- 如果本机存在 `_release/` 或 `updates/` 下的更高版本 zip，直接使用该 zip 更新。
+- 如果你已经手动 `git pull`，并且源码里的 `MangaReader.Native.csproj` 版本号高于当前运行版本，软件会先本地执行 `dotnet publish` 生成更新目录，再用 `MangaReader.Updater.exe` 替换当前运行目录。
+- 只有本地没有可用更新时，才会读取 GitHub 最新 Release，并下载其中的 `MangaReader-win-x64-v*.zip` 资产。
+
+因此开发机上的推荐流程是：先 `git pull`，再打开旧版 exe 点 `检查更新`。这条路径不依赖 GitHub Release 下载，但需要本机安装 .NET 8 SDK。
 
 正式发布建议推送版本 Tag：
 

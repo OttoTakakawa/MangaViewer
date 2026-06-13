@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 
 namespace MangaReader.Native.Services;
@@ -21,10 +22,16 @@ public sealed class UpdateService
 
     public async Task<UpdateCheckResult> CheckLatestAsync(CancellationToken cancellationToken = default)
     {
+        var localUpdate = CheckLocalUpdate();
+        if (localUpdate is not null)
+        {
+            return localUpdate;
+        }
+
         using var response = await Client.GetAsync(LatestReleaseUrl, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            return UpdateCheckResult.Failed($"检查更新失败：GitHub 返回 {(int)response.StatusCode}。");
+            return UpdateCheckResult.Failed($"本地没有发现更新包，GitHub 检查失败：返回 {(int)response.StatusCode}。");
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -56,12 +63,28 @@ public sealed class UpdateService
             return UpdateCheckResult.Failed($"发现新版本 {release.TagName}，但 Release 没有可下载的 zip 更新包。");
         }
 
-        return UpdateCheckResult.UpdateAvailable(release.TagName, currentVersion, asset.DownloadUrl, asset.Name);
+        return UpdateCheckResult.GitHubUpdateAvailable(release.TagName, currentVersion, asset.DownloadUrl, asset.Name);
     }
 
     public async Task<string> DownloadPackageAsync(UpdateCheckResult update, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
     {
-        if (!update.HasUpdate || string.IsNullOrWhiteSpace(update.DownloadUrl))
+        if (!update.HasUpdate)
+        {
+            throw new InvalidOperationException("没有可用的更新包。");
+        }
+
+        if (!string.IsNullOrWhiteSpace(update.PackagePath))
+        {
+            progress?.Report(1);
+            return update.PackagePath;
+        }
+
+        if (!string.IsNullOrWhiteSpace(update.ProjectPath))
+        {
+            return await PublishLocalProjectAsync(update, progress, cancellationToken);
+        }
+
+        if (string.IsNullOrWhiteSpace(update.DownloadUrl))
         {
             throw new InvalidOperationException("没有可下载的更新包。");
         }
@@ -143,6 +166,177 @@ public sealed class UpdateService
         return developmentPath;
     }
 
+    private UpdateCheckResult? CheckLocalUpdate()
+    {
+        var currentVersion = GetCurrentVersion();
+        var bestPackage = FindBestLocalPackage(currentVersion);
+        if (bestPackage is not null)
+        {
+            return UpdateCheckResult.LocalPackageAvailable(
+                bestPackage.Version.ToString(3),
+                currentVersion,
+                bestPackage.Path,
+                bestPackage.DisplayName);
+        }
+
+        var projectPath = FindLocalProjectPath();
+        if (!string.IsNullOrWhiteSpace(projectPath))
+        {
+            var projectVersion = ReadProjectVersion(projectPath);
+            if (projectVersion is not null && projectVersion > currentVersion)
+            {
+                return UpdateCheckResult.LocalSourceAvailable(
+                    projectVersion.ToString(3),
+                    currentVersion,
+                    projectPath,
+                    $"本地源码 {projectVersion.ToString(3)}");
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<string> PublishLocalProjectAsync(UpdateCheckResult update, IProgress<double>? progress, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(update.ProjectPath))
+        {
+            throw new InvalidOperationException("没有可发布的本地项目。");
+        }
+
+        var updateDirectory = Path.Combine(_storage.Root, "updates");
+        Directory.CreateDirectory(updateDirectory);
+
+        var outputDirectory = Path.Combine(updateDirectory, $"local-build-{SanitizeFileName(update.LatestVersion)}");
+        if (Directory.Exists(outputDirectory))
+        {
+            Directory.Delete(outputDirectory, recursive: true);
+        }
+        Directory.CreateDirectory(outputDirectory);
+
+        progress?.Report(0.05);
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"publish \"{update.ProjectPath}\" -c Release -r win-x64 --self-contained true -o \"{outputDirectory}\"",
+            WorkingDirectory = Path.GetDirectoryName(update.ProjectPath),
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("无法启动 dotnet publish。本地源码更新需要安装 .NET 8 SDK。");
+
+        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+
+        if (process.ExitCode != 0)
+        {
+            var output = await outputTask;
+            var error = await errorTask;
+            throw new InvalidOperationException($"本地发布更新包失败，请确认已安装 .NET 8 SDK。\n{output}\n{error}".Trim());
+        }
+
+        var executablePath = Path.Combine(outputDirectory, "MangaReader.Native.exe");
+        if (!File.Exists(executablePath))
+        {
+            throw new FileNotFoundException("本地发布完成，但未找到 MangaReader.Native.exe。", executablePath);
+        }
+
+        progress?.Report(1);
+        return outputDirectory;
+    }
+
+    private static LocalUpdatePackage? FindBestLocalPackage(Version currentVersion)
+    {
+        return EnumerateLocalPackages()
+            .Where(package => package.Version > currentVersion)
+            .OrderByDescending(package => package.Version)
+            .FirstOrDefault();
+    }
+
+    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages()
+    {
+        foreach (var root in EnumerateSearchRoots())
+        {
+            var releaseDirectory = Path.Combine(root, "_release");
+            if (Directory.Exists(releaseDirectory))
+            {
+                foreach (var directory in Directory.EnumerateDirectories(releaseDirectory))
+                {
+                    var version = ParseVersion(Path.GetFileName(directory));
+                    if (version is not null && File.Exists(Path.Combine(directory, "MangaReader.Native.exe")))
+                    {
+                        yield return new LocalUpdatePackage(version, directory, $"本地发布目录 {Path.GetFileName(directory)}");
+                    }
+                }
+
+                foreach (var zip in Directory.EnumerateFiles(releaseDirectory, "*.zip"))
+                {
+                    var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
+                    if (version is not null)
+                    {
+                        yield return new LocalUpdatePackage(version, zip, Path.GetFileName(zip));
+                    }
+                }
+            }
+
+            var updatesDirectory = Path.Combine(root, "updates");
+            if (!Directory.Exists(updatesDirectory))
+            {
+                continue;
+            }
+
+            foreach (var zip in Directory.EnumerateFiles(updatesDirectory, "*.zip"))
+            {
+                var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
+                if (version is not null)
+                {
+                    yield return new LocalUpdatePackage(version, zip, Path.GetFileName(zip));
+                }
+            }
+        }
+    }
+
+    private static string? FindLocalProjectPath()
+    {
+        foreach (var root in EnumerateSearchRoots())
+        {
+            var projectPath = Path.Combine(root, "MangaReader.Native", "MangaReader.Native.csproj");
+            if (File.Exists(projectPath))
+            {
+                return projectPath;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> EnumerateSearchRoots()
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in EnumerateAncestors(AppContext.BaseDirectory).Append(Directory.GetCurrentDirectory()))
+        {
+            var normalized = Path.GetFullPath(root);
+            if (seen.Add(normalized))
+            {
+                yield return normalized;
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateAncestors(string path)
+    {
+        var directory = new DirectoryInfo(Path.GetFullPath(path));
+        while (directory is not null)
+        {
+            yield return directory.FullName;
+            directory = directory.Parent;
+        }
+    }
+
     private static HttpClient CreateClient()
     {
         var client = new HttpClient();
@@ -162,6 +356,19 @@ public sealed class UpdateService
         return Version.TryParse(normalized, out var version) ? version : null;
     }
 
+    private static Version? ParseVersionFromFileName(string fileName)
+    {
+        var match = Regex.Match(fileName, @"v?(\d+\.\d+\.\d+)", RegexOptions.IgnoreCase);
+        return match.Success ? ParseVersion(match.Groups[1].Value) : null;
+    }
+
+    private static Version? ReadProjectVersion(string projectPath)
+    {
+        var text = File.ReadAllText(projectPath);
+        var match = Regex.Match(text, @"<Version>\s*([^<]+)\s*</Version>", RegexOptions.IgnoreCase);
+        return match.Success ? ParseVersion(match.Groups[1].Value) : null;
+    }
+
     private static string SanitizeFileName(string fileName)
     {
         foreach (var invalid in Path.GetInvalidFileNameChars())
@@ -179,6 +386,8 @@ public sealed class UpdateService
     private sealed record GitHubAsset(
         [property: System.Text.Json.Serialization.JsonPropertyName("name")] string Name,
         [property: System.Text.Json.Serialization.JsonPropertyName("browser_download_url")] string DownloadUrl);
+
+    private sealed record LocalUpdatePackage(Version Version, string Path, string DisplayName);
 }
 
 public sealed record UpdateCheckResult(
@@ -187,21 +396,34 @@ public sealed record UpdateCheckResult(
     string LatestVersion,
     Version CurrentVersion,
     string? DownloadUrl,
+    string? PackagePath,
+    string? ProjectPath,
     string? AssetName,
+    string Source,
     string Message)
 {
-    public static UpdateCheckResult UpdateAvailable(string latestVersion, Version currentVersion, string downloadUrl, string assetName)
+    public static UpdateCheckResult GitHubUpdateAvailable(string latestVersion, Version currentVersion, string downloadUrl, string assetName)
     {
-        return new UpdateCheckResult(true, false, latestVersion, currentVersion, downloadUrl, assetName, $"发现新版本 {latestVersion}。");
+        return new UpdateCheckResult(true, false, latestVersion, currentVersion, downloadUrl, null, null, assetName, "GitHub", $"发现 GitHub 新版本 {latestVersion}。");
+    }
+
+    public static UpdateCheckResult LocalPackageAvailable(string latestVersion, Version currentVersion, string packagePath, string assetName)
+    {
+        return new UpdateCheckResult(true, false, latestVersion, currentVersion, null, packagePath, null, assetName, "本地更新包", $"发现本地更新 {latestVersion}。");
+    }
+
+    public static UpdateCheckResult LocalSourceAvailable(string latestVersion, Version currentVersion, string projectPath, string assetName)
+    {
+        return new UpdateCheckResult(true, false, latestVersion, currentVersion, null, null, projectPath, assetName, "本地源码", $"发现本地源码版本 {latestVersion}。");
     }
 
     public static UpdateCheckResult UpToDate(string latestVersion, Version currentVersion)
     {
-        return new UpdateCheckResult(false, true, latestVersion, currentVersion, null, null, $"当前已是最新版本：{currentVersion.ToString(3)}。");
+        return new UpdateCheckResult(false, true, latestVersion, currentVersion, null, null, null, null, "无更新", $"当前已是最新版本：{currentVersion.ToString(3)}。");
     }
 
     public static UpdateCheckResult Failed(string message)
     {
-        return new UpdateCheckResult(false, false, "", new Version(0, 0, 0), null, null, message);
+        return new UpdateCheckResult(false, false, "", new Version(0, 0, 0), null, null, null, null, "失败", message);
     }
 }

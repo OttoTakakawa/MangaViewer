@@ -23,14 +23,16 @@ internal static class Program
 
             try
             {
-                ZipFile.ExtractToDirectory(options.PackagePath, extractRoot, overwriteFiles: true);
-                var sourceRoot = ResolvePackageRoot(extractRoot);
+                var sourceRoot = ResolvePackageRoot(options.PackagePath, extractRoot);
                 CopyDirectory(sourceRoot, options.TargetDirectory);
             }
             finally
             {
                 TryDeleteDirectory(extractRoot);
-                TryDeleteFile(options.PackagePath);
+                if (File.Exists(options.PackagePath))
+                {
+                    TryDeleteFile(options.PackagePath);
+                }
             }
 
             Process.Start(new ProcessStartInfo
@@ -68,8 +70,20 @@ internal static class Program
         }
     }
 
-    private static string ResolvePackageRoot(string extractRoot)
+    private static string ResolvePackageRoot(string packagePath, string extractRoot)
     {
+        if (Directory.Exists(packagePath))
+        {
+            var directoryExe = Path.Combine(packagePath, "MangaReader.Native.exe");
+            if (File.Exists(directoryExe))
+            {
+                return packagePath;
+            }
+
+            throw new FileNotFoundException("本地更新目录内未找到 MangaReader.Native.exe。", directoryExe);
+        }
+
+        ZipFile.ExtractToDirectory(packagePath, extractRoot, overwriteFiles: true);
         var directExe = Path.Combine(extractRoot, "MangaReader.Native.exe");
         if (File.Exists(directExe))
         {
