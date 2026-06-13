@@ -39,6 +39,12 @@ dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 
 如果需要迁移自己的书库数据，请手动复制本机的 `MangaReader_Data`，不要提交到 Git。
 
+## 备份与恢复
+
+软件侧边栏的 `立即备份` 会把当前 `app.db` 复制到 `MangaReader_Data/backups/`，`打开备份` 只是打开这个目录，方便查看和复制备份文件。
+
+恢复备份时先关闭软件，再把目标备份文件复制到当前数据目录并重命名为 `app.db`。覆盖前建议把当前 `app.db` 另存一份，避免误恢复。
+
 ## 发布测试版
 
 ```powershell

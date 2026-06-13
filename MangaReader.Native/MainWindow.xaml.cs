@@ -540,6 +540,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        var title = TitleBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            StatusText.Text = "书名不能为空。";
+            return;
+        }
+
+        _currentBook.Title = title;
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
         _currentBook.ReadingStatus = GetSelectedReadingStatus();
         _currentBook.IsFavorite = FavoriteBox.IsChecked == true;
@@ -1161,6 +1169,7 @@ public partial class MainWindow : Window
 
     private void FillMetadataEditors(MangaBook book)
     {
+        TitleBox.Text = book.Title;
         AuthorBox.Text = book.Author;
         ForeignNameBox.Text = book.ForeignName;
         ProducedAtBox.Text = book.ProducedAt;
@@ -1250,7 +1259,7 @@ public partial class MainWindow : Window
         SetCoverButton.IsEnabled = enabled;
         ImportedTodayButton.IsEnabled = enabled;
 
-        foreach (var box in new[] { ForeignNameBox, ProducedAtBox, ImportedAtBox, TagsBox, CoverPageBox, ReadCountBox, SummaryBox })
+        foreach (var box in new[] { TitleBox, ForeignNameBox, ProducedAtBox, ImportedAtBox, TagsBox, CoverPageBox, ReadCountBox, SummaryBox })
         {
             box.IsReadOnly = !enabled;
             box.Opacity = enabled ? 1.0 : 0.78;
@@ -1439,7 +1448,7 @@ public partial class MainWindow : Window
             LibraryChromeToggleButton.Content = collapsed ? "展开筛选" : "专注浏览";
         }
         StatusText.Text = collapsed
-            ? "已进入专注浏览：筛选控件、Tag 池和统计卡片已收起，点击“展开筛选”可恢复。"
+            ? "已进入专注浏览：筛选控件、Tag 池和统计摘要已收起，点击“展开筛选”可恢复。"
             : "已展开筛选区。";
     }
 
@@ -1760,8 +1769,8 @@ public partial class MainWindow : Window
 
         VisibleBookCountText.Text = $"{visibleCount} 本";
         TotalBookCountText.Text = includeHidden
-            ? $"当前库共 {Books.Count} 本，含隐藏作品"
-            : $"当前库共 {libraryBooks.Count} 本可见漫画";
+            ? $"/ 共 {Books.Count} 本"
+            : $"/ 共 {libraryBooks.Count} 本";
         FavoriteCountText.Text = $"{favoriteCount} 本";
         ReadingNowCountText.Text = $"{readingNowCount} 本";
         FinishedCountText.Text = $"{finishedCount} 本";
