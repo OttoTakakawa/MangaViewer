@@ -82,7 +82,7 @@ public sealed class MangaBook : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
-    public ObservableCollection<string> Pages { get; } = [];
+    public List<string> Pages { get; } = [];
     public ObservableCollection<TagChip> TagItems { get; } = [];
 
     public int LastReadPageIndex
