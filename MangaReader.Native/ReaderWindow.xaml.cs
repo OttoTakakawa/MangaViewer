@@ -82,8 +82,13 @@ public partial class ReaderWindow : Window
     {
         _controlsRevealTimer.Stop();
         _doublePageGapSaveTimer.Stop();
-        _database.SaveProgress(_book);
-        _database.SaveShortcut("reader.wheelmode", WheelModeBox.SelectedIndex.ToString());
+        var book = _book;
+        var wheelMode = WheelModeBox.SelectedIndex.ToString();
+        _ = Task.Run(() =>
+        {
+            _database.SaveProgress(book);
+            _database.SaveShortcut("reader.wheelmode", wheelMode);
+        });
         SaveDoublePageGapPreference();
     }
 
@@ -277,7 +282,8 @@ public partial class ReaderWindow : Window
     {
         if (IsLoaded)
         {
-            _database.SaveShortcut("reader.wheelmode", WheelModeBox.SelectedIndex.ToString());
+            var value = WheelModeBox.SelectedIndex.ToString();
+            _ = Task.Run(() => _database.SaveShortcut("reader.wheelmode", value));
         }
     }
 
@@ -432,7 +438,8 @@ public partial class ReaderWindow : Window
             NormalizeDisplayedImageSizing();
             ApplyDoublePageGap();
             _book.LastReadPageIndex = safeIndex;
-            _database.SaveProgress(_book);
+            var progressBook = _book;
+            await Task.Run(() => _database.SaveProgress(progressBook));
             UpdateNavigationState();
             _ = Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
             HideReaderMessage();
@@ -800,7 +807,8 @@ public partial class ReaderWindow : Window
         }
 
         var gap = Math.Clamp(DoublePageGapSlider.Value, DoublePageGapSlider.Minimum, DoublePageGapSlider.Maximum);
-        _database.SaveShortcut(DoublePageGapPreferenceKey, gap.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
+        var value = gap.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        _ = Task.Run(() => _database.SaveShortcut(DoublePageGapPreferenceKey, value));
     }
 
     private void RestartControlsRevealTimer()

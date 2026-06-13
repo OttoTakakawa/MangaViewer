@@ -104,11 +104,8 @@ public partial class MainWindow : Window
         _storage.EnsureCreated();
         _database = new LibraryDatabase(_storage);
         _updateService = new UpdateService(_storage);
-        _database.Initialize();
-        LoadManagedTags();
         _coverCache = new CoverCache(_storage);
         _coverPipeline = new CoverThumbnailPipeline(_coverCache);
-        LoadShortcuts();
         SetDetailVisible(false);
         ShowHomeView();
         UpdateStoragePathText();
@@ -128,6 +125,10 @@ public partial class MainWindow : Window
     {
         try
         {
+            await Task.Run(() => _database.Initialize());
+            LoadManagedTags();
+            LoadShortcuts();
+
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
             {
@@ -557,7 +558,7 @@ public partial class MainWindow : Window
         SetDetailVisible(false);
     }
 
-    private void SaveMetadata_Click(object sender, RoutedEventArgs e)
+    private async void SaveMetadata_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
         if (!_isEditMode)
@@ -604,7 +605,8 @@ public partial class MainWindow : Window
         }
         _currentBook.ReadCount = readCount;
 
-        _database.SaveMetadata(_currentBook);
+        var book = _currentBook;
+        await Task.Run(() => _database.SaveMetadata(book));
         _currentBook.NotifyAll();
         RefreshLibraryViews(tagManager: false, sort: true);
         RefreshHomeShelves();
@@ -618,7 +620,7 @@ public partial class MainWindow : Window
         ImportedAtBox.Text = DateTime.Today.ToString("yyyy-MM-dd");
     }
 
-    private void SetCover_Click(object sender, RoutedEventArgs e)
+    private async void SetCover_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
         if (!_isEditMode)
@@ -633,34 +635,36 @@ public partial class MainWindow : Window
         }
 
         _currentBook.CoverPageIndex = Math.Clamp(coverPage - 1, 0, Math.Max(_currentBook.PageCount - 1, 0));
-        _database.SaveMetadata(_currentBook);
-        _currentBook.CoverImage = _coverCache.LoadOrCreate(_currentBook);
+        var book = _currentBook;
+        await Task.Run(() => _database.SaveMetadata(book));
+        _currentBook.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
         _currentBook.NotifyAll();
         StatusText.Text = $"封面已设置为第 {_currentBook.CoverPageIndex + 1} 页。";
     }
 
-    private void CycleBookStyle_Click(object sender, RoutedEventArgs e)
+    private async void CycleBookStyle_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
 
         _currentBook.CycleBookStyle();
-        _database.SaveMetadata(_currentBook);
+        var book = _currentBook;
+        await Task.Run(() => _database.SaveMetadata(book));
         _currentBook.NotifyAll();
         _booksView?.Refresh();
         StatusText.Text = $"已切换《{_currentBook.Title}》的卡片样式：样式 {_currentBook.BookStyleIndex + 1}。";
     }
 
-    private void IncreaseReadCount_Click(object sender, RoutedEventArgs e)
+    private async void IncreaseReadCount_Click(object sender, RoutedEventArgs e)
     {
-        ChangeReadCount(1);
+        await ChangeReadCount(1);
     }
 
-    private void DecreaseReadCount_Click(object sender, RoutedEventArgs e)
+    private async void DecreaseReadCount_Click(object sender, RoutedEventArgs e)
     {
-        ChangeReadCount(-1);
+        await ChangeReadCount(-1);
     }
 
-    private void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+    private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null)
         {
@@ -668,7 +672,8 @@ public partial class MainWindow : Window
         }
 
         _currentBook.IsFavorite = !_currentBook.IsFavorite;
-        _database.SaveMetadata(_currentBook);
+        var book = _currentBook;
+        await Task.Run(() => _database.SaveMetadata(book));
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
         RefreshBookFilter();
@@ -678,7 +683,7 @@ public partial class MainWindow : Window
             : $"已取消收藏《{_currentBook.Title}》。";
     }
 
-    private void ChangeReadCount(int delta)
+    private async Task ChangeReadCount(int delta)
     {
         if (_currentBook is null)
         {
@@ -686,7 +691,8 @@ public partial class MainWindow : Window
         }
 
         _currentBook.ReadCount = Math.Max(0, _currentBook.ReadCount + delta);
-        _database.SaveReadCount(_currentBook);
+        var book = _currentBook;
+        await Task.Run(() => _database.SaveReadCount(book));
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
         ApplyBookSort(refresh: false);
@@ -695,13 +701,13 @@ public partial class MainWindow : Window
         StatusText.Text = $"《{_currentBook.Title}》已标记为读过 {_currentBook.ReadCount} 次。";
     }
 
-    private void HideBook_Click(object sender, RoutedEventArgs e)
+    private async void HideBook_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
 
         var book = _currentBook;
         book.IsHidden = !book.IsHidden;
-        _database.SetHidden(book, book.IsHidden);
+        await Task.Run(() => _database.SetHidden(book, book.IsHidden));
         book.NotifyAll();
         RefreshLibraryViews(tagManager: false, sort: false);
         RefreshHomeShelves();
@@ -719,7 +725,7 @@ public partial class MainWindow : Window
         StatusText.Text = book.IsHidden ? $"《{book.Title}》已隐藏。" : $"《{book.Title}》已恢复显示。";
     }
 
-    private void DeleteBook_Click(object sender, RoutedEventArgs e)
+    private async void DeleteBook_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
 
@@ -735,7 +741,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _database.DeleteBook(book);
+        await Task.Run(() => _database.DeleteBook(book));
         Books.Remove(book);
         _currentBook = null;
         BooksList.SelectedItem = null;
@@ -783,9 +789,9 @@ public partial class MainWindow : Window
         OpenBook(_currentBook);
     }
 
-    private void ManualBackup_Click(object sender, RoutedEventArgs e)
+    private async void ManualBackup_Click(object sender, RoutedEventArgs e)
     {
-        var backupPath = _database.CreateManualBackup();
+        var backupPath = await Task.Run(() => _database.CreateManualBackup());
         if (string.IsNullOrWhiteSpace(backupPath))
         {
             StatusText.Text = "当前还没有可备份的数据库。";
@@ -938,7 +944,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Relocate_Click(object sender, RoutedEventArgs e)
+    private async void Relocate_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
 
@@ -953,10 +959,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        var pages = Directory.EnumerateFiles(dialog.SelectedPath)
-            .Where(ImageLoader.IsSupportedImage)
-            .OrderBy(path => path, new NaturalPathComparer())
-            .ToList();
+        var selectedPath = dialog.SelectedPath;
+        var pages = await Task.Run(() =>
+            Directory.EnumerateFiles(selectedPath)
+                .Where(ImageLoader.IsSupportedImage)
+                .OrderBy(path => path, new NaturalPathComparer())
+                .ToList());
 
         if (pages.Count == 0)
         {
@@ -964,9 +972,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        _currentBook.FolderPath = dialog.SelectedPath;
+        var totalBytes = await Task.Run(() => SumFileBytes(pages));
+
+        _currentBook.FolderPath = selectedPath;
         _currentBook.PageCount = pages.Count;
-        _currentBook.TotalBytes = SumFileBytes(pages);
+        _currentBook.TotalBytes = totalBytes;
         _currentBook.IsMissing = false;
         _currentBook.CoverPageIndex = Math.Clamp(_currentBook.CoverPageIndex, 0, pages.Count - 1);
         _currentBook.LastReadPageIndex = Math.Clamp(_currentBook.LastReadPageIndex, 0, pages.Count - 1);
@@ -976,15 +986,19 @@ public partial class MainWindow : Window
             _currentBook.Pages.Add(page);
         }
 
-        _database.UpdateFolderPath(_currentBook);
-        _database.SaveMetadata(_currentBook);
-        _currentBook.CoverImage = _coverCache.LoadOrCreate(_currentBook);
+        var book = _currentBook;
+        await Task.Run(() =>
+        {
+            _database.UpdateFolderPath(book);
+            _database.SaveMetadata(book);
+        });
+        _currentBook.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
         StatusText.Text = "重定位完成。";
     }
 
-    private void SaveShortcuts_Click(object sender, RoutedEventArgs e)
+    private async void SaveShortcuts_Click(object sender, RoutedEventArgs e)
     {
         var next = ParseKeys(NextShortcutBox.Text);
         var prev = ParseKeys(PrevShortcutBox.Text);
@@ -1002,12 +1016,17 @@ public partial class MainWindow : Window
 
         _nextKeys = next;
         _prevKeys = prev;
-        _database.SaveShortcut("reader.next", NextShortcutBox.Text.Trim());
-        _database.SaveShortcut("reader.previous", PrevShortcutBox.Text.Trim());
+        var nextText = NextShortcutBox.Text.Trim();
+        var prevText = PrevShortcutBox.Text.Trim();
+        await Task.Run(() =>
+        {
+            _database.SaveShortcut("reader.next", nextText);
+            _database.SaveShortcut("reader.previous", prevText);
+        });
         StatusText.Text = "快捷键已保存。";
     }
 
-    private void AddTag_Click(object sender, RoutedEventArgs e)
+    private async void AddTag_Click(object sender, RoutedEventArgs e)
     {
         if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive, out var color))
         {
@@ -1019,7 +1038,8 @@ public partial class MainWindow : Window
         {
             AddTagToBookRespectingRules(_currentBook, tag);
             TagsBox.Text = _currentBook.Tags;
-            _database.SaveMetadata(_currentBook);
+            var book = _currentBook;
+            await Task.Run(() => _database.SaveMetadata(book));
             _currentBook.NotifyAll();
         }
 
@@ -1068,7 +1088,7 @@ public partial class MainWindow : Window
         ClearBatchSelection();
     }
 
-    private void BatchRemoveTitlePrefix_Click(object sender, RoutedEventArgs e)
+    private async void BatchRemoveTitlePrefix_Click(object sender, RoutedEventArgs e)
     {
         var selectedBooks = GetSelectedBatchBooks();
         if (selectedBooks.Count == 0)
@@ -1107,7 +1127,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        _database.SaveBookTitlesBatch(updates.Select(item => (item.Book.Id, item.Title)).ToList(), "before-batch-title-prefix");
+        var batchData = updates.Select(item => (item.Book.Id, item.Title)).ToList();
+        await Task.Run(() => _database.SaveBookTitlesBatch(batchData, "before-batch-title-prefix"));
         foreach (var (book, title) in updates)
         {
             book.Title = title;
@@ -1120,7 +1141,7 @@ public partial class MainWindow : Window
         StatusText.Text = $"已批量移除前缀：{updates.Count} 本。";
     }
 
-    private void BatchApplyStyle_Click(object sender, RoutedEventArgs e)
+    private async void BatchApplyStyle_Click(object sender, RoutedEventArgs e)
     {
         var selectedBooks = GetSelectedBatchBooks();
         if (selectedBooks.Count == 0)
@@ -1135,7 +1156,8 @@ public partial class MainWindow : Window
             book.BookStyle = targetStyle;
         }
 
-        _database.SaveBookStylesBatch(selectedBooks.Select(book => (book.Id, book.BookStyle)).ToList(), "before-batch-style");
+        var batchData = selectedBooks.Select(book => (book.Id, book.BookStyle)).ToList();
+        await Task.Run(() => _database.SaveBookStylesBatch(batchData, "before-batch-style"));
         foreach (var book in selectedBooks)
         {
             book.NotifyAll();
@@ -1146,7 +1168,7 @@ public partial class MainWindow : Window
         StatusText.Text = $"已批量应用卡片样式 {targetStyle + 1}：{selectedBooks.Count} 本。";
     }
 
-    private void BatchAddTag_Click(object sender, RoutedEventArgs e)
+    private async void BatchAddTag_Click(object sender, RoutedEventArgs e)
     {
         var selectedBooks = GetSelectedBatchBooks();
         if (selectedBooks.Count == 0)
@@ -1178,7 +1200,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _database.SaveBookTagsBatch(updates, "before-batch-add-tag");
+        await Task.Run(() => _database.SaveBookTagsBatch(updates, "before-batch-add-tag"));
         foreach (var book in selectedBooks)
         {
             book.NotifyAll();
@@ -1189,7 +1211,7 @@ public partial class MainWindow : Window
         StatusText.Text = $"已批量添加 Tag：{tag}，影响 {updates.Count} 本。";
     }
 
-    private void BatchRemoveTag_Click(object sender, RoutedEventArgs e)
+    private async void BatchRemoveTag_Click(object sender, RoutedEventArgs e)
     {
         var selectedBooks = GetSelectedBatchBooks();
         if (selectedBooks.Count == 0)
@@ -1247,7 +1269,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _database.SaveBookTagsBatch(updates, "before-batch-remove-tag");
+        await Task.Run(() => _database.SaveBookTagsBatch(updates, "before-batch-remove-tag"));
         foreach (var book in selectedBooks)
         {
             book.NotifyAll();
@@ -1299,7 +1321,7 @@ public partial class MainWindow : Window
 
         UpsertManagedTag(tag);
         AddTagToBookRespectingRules(book, tag);
-        _database.SaveMetadata(book);
+        await Task.Run(() => _database.SaveMetadata(book));
         book.NotifyAll();
         if (ReferenceEquals(book, _currentBook))
         {
@@ -1767,7 +1789,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void TagChip_Click(object sender, MouseButtonEventArgs e)
+    private async void TagChip_Click(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TagChip chip })
         {
@@ -1784,7 +1806,8 @@ public partial class MainWindow : Window
             UpsertManagedTag(chip.Name, chip.Category, chip.IsExclusive);
             AddTagToBookRespectingRules(_currentBook, chip.Name);
             TagsBox.Text = _currentBook.Tags;
-            _database.SaveMetadata(_currentBook);
+            var book = _currentBook;
+            await Task.Run(() => _database.SaveMetadata(book));
             _currentBook.NotifyAll();
             RefreshLibraryViews(authors: false, sort: false);
             StatusText.Text = $"已给《{_currentBook.Title}》添加 Tag：{chip.Name}";
@@ -2564,7 +2587,8 @@ public partial class MainWindow : Window
     {
         if (_currentBook is not null)
         {
-            _database.SaveProgress(_currentBook);
+            var book = _currentBook;
+            _ = Task.Run(() => _database.SaveProgress(book));
         }
     }
 
@@ -2710,7 +2734,7 @@ public partial class MainWindow : Window
         {
             _managedTagColors[tag] = resolvedColor;
         }
-        _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive, resolvedColor);
+        _ = Task.Run(() => _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive, resolvedColor));
     }
 
     private bool TryResolveTagForCreate(string initialValue, out string tag, out string category, out bool isExclusive, out string color)
@@ -3013,7 +3037,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RenameAuthor_Click(object sender, RoutedEventArgs e)
+    private async void RenameAuthor_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: AuthorItem item })
         {
@@ -3031,7 +3055,7 @@ public partial class MainWindow : Window
             .ToList();
         var updates = booksToUpdate.Select(b => (b.Id, dialog.NewName)).ToList();
 
-        _database.SaveBookAuthorsBatch(updates, "rename-author");
+        await Task.Run(() => _database.SaveBookAuthorsBatch(updates, "rename-author"));
         foreach (var book in booksToUpdate)
         {
             book.Author = dialog.NewName;
@@ -3082,7 +3106,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void EditTagAcrossLibrary(TagChip chip)
+    private async void EditTagAcrossLibrary(TagChip chip)
     {
         var relatedBooks = Books
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
@@ -3161,26 +3185,38 @@ public partial class MainWindow : Window
             }
         }
 
-        _database.SaveBookTagsBatch(
-            affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList(),
-            renamedTag ? "before-tag-rename" : "before-tag-regroup");
+        var tagBatchData = affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList();
+        var tagBatchReason = renamedTag ? "before-tag-rename" : "before-tag-regroup";
+        var doRename = renamedTag && _managedTags.Remove(chip.Name);
+        var doSuppress = !doRename && renamedTag && chip.IsBuiltIn;
 
-        if (renamedTag && _managedTags.Remove(chip.Name))
+        await Task.Run(() =>
+        {
+            _database.SaveBookTagsBatch(tagBatchData, tagBatchReason);
+            if (doRename)
+            {
+                _database.RenameManagedTag(chip.Name, newName, newCategory, newIsExclusive, newColor);
+            }
+            else
+            {
+                if (doSuppress)
+                {
+                    _database.SuppressTag(chip.Name);
+                }
+                _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
+            }
+        });
+
+        if (doRename)
         {
             _managedTagCategories.Remove(chip.Name);
             _managedTagIsExclusive.Remove(chip.Name);
             _managedTagUpdatedAt.Remove(chip.Name);
             _managedTagColors.Remove(chip.Name);
-            _database.RenameManagedTag(chip.Name, newName, newCategory, newIsExclusive, newColor);
         }
-        else
+        else if (doSuppress)
         {
-            if (renamedTag && chip.IsBuiltIn)
-            {
-                _suppressedTags.Add(chip.Name);
-                _database.SuppressTag(chip.Name);
-            }
-            _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
+            _suppressedTags.Add(chip.Name);
         }
         _managedTags.Add(newName);
         _managedTagCategories[newName] = newCategory;
@@ -3219,7 +3255,7 @@ public partial class MainWindow : Window
             : $"已将标签“{chip.Name}”更新为“{newCategory} / {(newIsExclusive ? "互斥" : "不互斥")}”。";
     }
 
-    private void DeleteTagAcrossLibrary(TagChip chip)
+    private async void DeleteTagAcrossLibrary(TagChip chip)
     {
         var result = System.Windows.MessageBox.Show(
             $"确定删除标签“{chip.Name}”吗？\n\n这会把它从所有漫画记录中移除，并从独立标签库中删除。",
@@ -3244,18 +3280,27 @@ public partial class MainWindow : Window
             affectedBooks.Add((book, string.Join(", ", remaining)));
         }
 
-        _database.SaveBookTagsBatch(
-            affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList(),
-            "before-tag-delete");
+        var tagBatchData = affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList();
+        var isBuiltIn = chip.IsBuiltIn;
+        var chipName = chip.Name;
+
+        await Task.Run(() =>
+        {
+            _database.SaveBookTagsBatch(tagBatchData, "before-tag-delete");
+            _database.DeleteManagedTag(chipName);
+            if (isBuiltIn)
+            {
+                _database.SuppressTag(chipName);
+            }
+        });
+
         _managedTags.Remove(chip.Name);
         _managedTagCategories.Remove(chip.Name);
         _managedTagIsExclusive.Remove(chip.Name);
         _managedTagUpdatedAt.Remove(chip.Name);
-        _database.DeleteManagedTag(chip.Name);
-        if (chip.IsBuiltIn)
+        if (isBuiltIn)
         {
             _suppressedTags.Add(chip.Name);
-            _database.SuppressTag(chip.Name);
         }
 
         foreach (var (book, tags) in affectedBooks)
