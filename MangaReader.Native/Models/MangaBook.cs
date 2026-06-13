@@ -199,46 +199,11 @@ public sealed class MangaBook : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
+    private static readonly PropertyChangedEventArgs AllChangedArgs = new("");
+
     public void NotifyAll()
     {
-        OnPropertyChanged(nameof(Title));
-        OnPropertyChanged(nameof(Author));
-        OnPropertyChanged(nameof(CharacterName));
-        OnPropertyChanged(nameof(ForeignName));
-        OnPropertyChanged(nameof(ProducedAt));
-        OnPropertyChanged(nameof(ImportedAt));
-        OnPropertyChanged(nameof(Summary));
-        OnPropertyChanged(nameof(Tags));
-        OnPropertyChanged(nameof(FolderPath));
-        OnPropertyChanged(nameof(PageCount));
-        OnPropertyChanged(nameof(TotalBytes));
-        OnPropertyChanged(nameof(PageCountText));
-        OnPropertyChanged(nameof(SizeText));
-        OnPropertyChanged(nameof(CoverPageIndex));
-        OnPropertyChanged(nameof(BookStyle));
-        OnPropertyChanged(nameof(IsMissing));
-        OnPropertyChanged(nameof(IsHidden));
-        OnPropertyChanged(nameof(IsFavorite));
-        OnPropertyChanged(nameof(IsSelectedForBatch));
-        OnPropertyChanged(nameof(FavoriteStarText));
-        OnPropertyChanged(nameof(ReadingStatus));
-        OnPropertyChanged(nameof(ReadingStatusText));
-        OnPropertyChanged(nameof(StatusBadgeText));
-        OnPropertyChanged(nameof(MissingText));
-        OnPropertyChanged(nameof(HiddenText));
-        OnPropertyChanged(nameof(ProgressText));
-        OnPropertyChanged(nameof(ReadCount));
-        OnPropertyChanged(nameof(ReadCountText));
-        OnPropertyChanged(nameof(ReadCountBadgeText));
-        OnPropertyChanged(nameof(ReadStateText));
-        OnPropertyChanged(nameof(ReadingMetaText));
-        OnPropertyChanged(nameof(LibraryMetaText));
-        OnPropertyChanged(nameof(BookStyleIndex));
-        OnPropertyChanged(nameof(BookWidth));
-        OnPropertyChanged(nameof(BookHeight));
-        OnPropertyChanged(nameof(SpineWidth));
-        OnPropertyChanged(nameof(BookTilt));
-        OnPropertyChanged(nameof(BookAccentColor));
+        PropertyChanged?.Invoke(this, AllChangedArgs);
     }
 
     public void AddTag(string tag)
