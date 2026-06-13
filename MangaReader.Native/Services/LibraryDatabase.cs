@@ -122,6 +122,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
         EnsureColumn(connection, "managed_tags", "is_exclusive", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "managed_tags", "color", "TEXT NOT NULL DEFAULT ''");
     }
 
     public void SaveLibraryRoot(string path)
@@ -556,12 +557,13 @@ public sealed class LibraryDatabase
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT name, category, is_exclusive, updated_at FROM managed_tags ORDER BY updated_at DESC, name ASC;";
+        command.CommandText = "SELECT name, category, is_exclusive, updated_at, color FROM managed_tags ORDER BY updated_at DESC, name ASC;";
         using var reader = command.ExecuteReader();
         var result = new List<ManagedTagRecord>();
         while (reader.Read())
         {
-            result.Add(new ManagedTagRecord(reader.GetString(0), reader.GetString(1), reader.GetInt32(2) == 1, reader.GetString(3)));
+            var color = reader.IsDBNull(4) ? "" : reader.GetString(4);
+            result.Add(new ManagedTagRecord(reader.GetString(0), reader.GetString(1), reader.GetInt32(2) == 1, reader.GetString(3), color));
         }
         return result;
     }
@@ -580,7 +582,7 @@ public sealed class LibraryDatabase
         return result;
     }
 
-    public void SaveManagedTag(string tag, string category = "自定义", bool isExclusive = false)
+    public void SaveManagedTag(string tag, string category = "自定义", bool isExclusive = false, string color = "")
     {
         BackupDatabase("before-managed-tag-save", force: ShouldCreateMetadataBackup());
         using var connection = Open();
@@ -590,17 +592,19 @@ public sealed class LibraryDatabase
             command.Transaction = transaction;
             command.CommandText =
                 """
-                INSERT INTO managed_tags(name, category, is_exclusive, updated_at)
-                VALUES ($name, $category, $isExclusive, $updatedAt)
+                INSERT INTO managed_tags(name, category, is_exclusive, updated_at, color)
+                VALUES ($name, $category, $isExclusive, $updatedAt, $color)
                 ON CONFLICT(name) DO UPDATE SET
                     category = excluded.category,
                     is_exclusive = excluded.is_exclusive,
-                    updated_at = excluded.updated_at;
+                    updated_at = excluded.updated_at,
+                    color = excluded.color;
                 """;
             command.Parameters.AddWithValue("$name", tag);
             command.Parameters.AddWithValue("$category", category);
             command.Parameters.AddWithValue("$isExclusive", isExclusive ? 1 : 0);
             command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+            command.Parameters.AddWithValue("$color", color);
             command.ExecuteNonQuery();
         }
         using (var command = connection.CreateCommand())
@@ -614,7 +618,7 @@ public sealed class LibraryDatabase
         _lastMetadataBackupAt = DateTimeOffset.Now;
     }
 
-    public void RenameManagedTag(string oldName, string newName, string category = "自定义", bool isExclusive = false)
+    public void RenameManagedTag(string oldName, string newName, string category = "自定义", bool isExclusive = false, string color = "")
     {
         BackupDatabase("before-managed-tag-rename", force: true);
         using var connection = Open();
@@ -633,17 +637,19 @@ public sealed class LibraryDatabase
             upsertCommand.Transaction = transaction;
             upsertCommand.CommandText =
                 """
-                INSERT INTO managed_tags(name, category, is_exclusive, updated_at)
-                VALUES ($newName, $category, $isExclusive, $updatedAt)
+                INSERT INTO managed_tags(name, category, is_exclusive, updated_at, color)
+                VALUES ($newName, $category, $isExclusive, $updatedAt, $color)
                 ON CONFLICT(name) DO UPDATE SET
                     category = excluded.category,
                     is_exclusive = excluded.is_exclusive,
-                    updated_at = excluded.updated_at;
+                    updated_at = excluded.updated_at,
+                    color = excluded.color;
                 """;
             upsertCommand.Parameters.AddWithValue("$newName", newName);
             upsertCommand.Parameters.AddWithValue("$category", category);
             upsertCommand.Parameters.AddWithValue("$isExclusive", isExclusive ? 1 : 0);
             upsertCommand.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+            upsertCommand.Parameters.AddWithValue("$color", color);
             upsertCommand.ExecuteNonQuery();
         }
 
@@ -790,7 +796,7 @@ public sealed class LibraryDatabase
     }
 
 
-public sealed record ManagedTagRecord(string Name, string Category, bool IsExclusive, string UpdatedAt);
+public sealed record ManagedTagRecord(string Name, string Category, bool IsExclusive, string UpdatedAt, string Color = "");
 
     private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
     {

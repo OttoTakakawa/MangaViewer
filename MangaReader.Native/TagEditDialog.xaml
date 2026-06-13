@@ -175,6 +175,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <DockPanel>
@@ -198,8 +199,8 @@
                     <TextBox x:Name="TagNameBox" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="标签分组" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource DialogComboBox}">
+                    <TextBlock Text="标签分组（可输入自定义）" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                    <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True" Style="{StaticResource DialogComboBox}">
                         <ComboBoxItem Content="内容形态"/>
                         <ComboBoxItem Content="色彩规格"/>
                         <ComboBoxItem Content="画质规格"/>
@@ -215,7 +216,39 @@
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="2" Margin="0,22,0,0" Padding="18" CornerRadius="24" Background="#FFF9F0" BorderBrush="#E6D9CA" BorderThickness="1">
+            <StackPanel Grid.Row="2" Margin="0,22,0,0">
+                <TextBlock Text="标签颜色" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                <ItemsControl x:Name="ColorPicker" Margin="0,10,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,8"
+                                    Background="{Binding}" Cursor="Hand"
+                                    MouseLeftButtonDown="ColorSwatch_Click"
+                                    BorderBrush="#3A332D" BorderThickness="1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.8"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="16" HorizontalAlignment="Left">
+                    <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="#25211E"/>
+                </Border>
+            </StackPanel>
+
+            <Border Grid.Row="3" Margin="0,18,0,0" Padding="18" CornerRadius="24" Background="#FFF9F0" BorderBrush="#E6D9CA" BorderThickness="1">
                 <DockPanel LastChildFill="True">
                     <Button x:Name="MoreButton" DockPanel.Dock="Right" Content="更多" Width="88" Click="More_Click" Style="{StaticResource DialogPillButton}"/>
                     <StackPanel>
@@ -228,7 +261,7 @@
                 </DockPanel>
             </Border>
 
-            <Border Grid.Row="3" Margin="0,18,0,0" Padding="16" CornerRadius="24" Background="#E9DFD2" BorderBrush="#DED0C0" BorderThickness="1">
+            <Border Grid.Row="4" Margin="0,18,0,0" Padding="16" CornerRadius="24" Background="#E9DFD2" BorderBrush="#DED0C0" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Text="关联漫画预览" FontSize="13" FontWeight="Bold" Foreground="#5E5249"/>
                     <TextBlock x:Name="EmptyPreviewText" Text="当前没有漫画使用这个标签。" Margin="0,14,0,0" Foreground="#7C6F64" Visibility="Collapsed"/>
@@ -252,7 +285,7 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
                 <Button Content="取消" Width="96" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
                 <Button Content="保存" Width="96" Click="Confirm_Click" Style="{StaticResource DialogPillButton}"/>
             </StackPanel>

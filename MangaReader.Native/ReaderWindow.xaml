@@ -317,30 +317,23 @@
                 BorderThickness="1"
                 CornerRadius="25"
                 Effect="{StaticResource ToolbarShadow}">
-            <Grid Width="1120">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="80"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
-                    <Button x:Name="PreviousPageButton" Content="上一页" Click="PreviousPage_Click"/>
-                    <Button x:Name="NextPageButton" Content="下一页" Click="NextPage_Click"/>
                     <Button x:Name="FitWidthButton" Content="适宽" Click="FitWidth_Click"/>
                     <Button x:Name="FitHeightButton" Content="适高" Click="FitHeight_Click"/>
                     <Button x:Name="BackgroundButton" Content="背景" Click="CycleBackgroundButton_Click"/>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                    <TextBlock x:Name="BottomPageText" Text="1 / 1" Foreground="#F9FAFB" VerticalAlignment="Center" FontSize="12" FontWeight="Black" Margin="0,0,10,0"/>
-                    <TextBlock x:Name="ZoomText" Text="100%" Foreground="#CBD5E1" VerticalAlignment="Center" MinWidth="78"/>
-                </StackPanel>
-                <Slider Grid.Column="2" x:Name="ZoomSlider" Minimum="0.05" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="ZoomSlider_ValueChanged" Margin="0,0,14,0"/>
-                <TextBlock Grid.Column="3" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
-                <Slider Grid.Column="4" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" TickFrequency="2" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
-                <StackPanel Grid.Column="5" Orientation="Horizontal">
+                <Slider Grid.Column="1" x:Name="ZoomSlider" Minimum="0.05" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="ZoomSlider_ValueChanged" Margin="0,0,14,0"/>
+                <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
+                <Slider Grid.Column="3" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" TickFrequency="2" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
+                <StackPanel Grid.Column="4" Orientation="Horizontal">
                     <ComboBox x:Name="WheelModeBox" Width="112" SelectionChanged="WheelModeBox_SelectionChanged">
                         <ComboBoxItem Content="滚轮翻页" IsSelected="True"/>
                         <ComboBoxItem Content="滚轮缩放"/>

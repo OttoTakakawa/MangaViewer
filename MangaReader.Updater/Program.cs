@@ -61,8 +61,36 @@ internal static class Program
 
         try
         {
-            using var process = Process.GetProcessById(processId);
-            process.WaitForExit(30000);
+            var process = Process.GetProcessById(processId);
+
+            // Try graceful shutdown signal first
+            try
+            {
+                process.CloseMainWindow();
+            }
+            catch
+            {
+                // May not have a message loop (self-contained host), ignore
+            }
+
+            // Wait for graceful exit (short grace period)
+            process.WaitForExit(5000);
+
+            // If still running, terminate forcefully
+            if (!process.HasExited)
+            {
+                try
+                {
+                    process.Kill(true);
+                }
+                catch
+                {
+                    // Process may have already exited between Kill call and exception
+                }
+            }
+
+            // Final wait for full teardown
+            process.WaitForExit(60000);
         }
         catch
         {
@@ -102,6 +130,8 @@ internal static class Program
         return Path.GetDirectoryName(nestedExe) ?? extractRoot;
     }
 
+    private static readonly object CopyLock = new();
+
     private static void CopyDirectory(string sourceDirectory, string targetDirectory)
     {
         Directory.CreateDirectory(targetDirectory);
@@ -127,8 +157,46 @@ internal static class Program
 
             var destination = Path.Combine(targetDirectory, relativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Copy(file, destination, overwrite: true);
+            CopyFileWithRetry(file, destination);
         }
+    }
+
+    private static void CopyFileWithRetry(string sourceFile, string destinationFile)
+    {
+        const int maxRetries = 5;
+        var delayMs = 2000;
+
+        for (var attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                lock (CopyLock)
+                {
+                    File.Copy(sourceFile, destinationFile, overwrite: true);
+                }
+                return;
+            }
+            catch (IOException ex) when (attempt < maxRetries)
+            {
+                // File is likely still locked by .NET Native JIT image or lingering handle
+                var fileName = Path.GetFileName(sourceFile);
+                Console.Error.WriteLine(
+                    $"[Retry-{attempt + 1}] Locked file '{fileName}', retrying in {delayMs}ms...");
+                Thread.Sleep(delayMs);
+                delayMs = Math.Min(delayMs * 2, 16000);
+            }
+            catch (UnauthorizedAccessException ex) when (attempt < maxRetries)
+            {
+                var fileName = Path.GetFileName(sourceFile);
+                Console.Error.WriteLine(
+                    $"[RetryAuth-{attempt + 1}] Access denied for '{fileName}', retrying in {delayMs}ms...");
+                Thread.Sleep(delayMs);
+                delayMs = Math.Min(delayMs * 2, 16000);
+            }
+        }
+
+        // Final attempt without retry — let it bubble up as an unhandled error
+        File.Copy(sourceFile, destinationFile, overwrite: true);
     }
 
     private static bool IsProtectedPath(string relativePath)

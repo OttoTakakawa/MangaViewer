@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, string> _managedTagCategories = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _managedTagIsExclusive = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagUpdatedAt = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _managedTagColors = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<MangaBook>> _tagBooksByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _suppressedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _visibleCoverReferences = new(StringComparer.OrdinalIgnoreCase);
@@ -114,6 +115,7 @@ public partial class MainWindow : Window
         UpdateLogPanelVisibility();
 
         ConfigureSearchDebounceTimers();
+        VersionText.Text = $"v{UpdateService.CurrentVersionText}";
         Loaded += MainWindow_Loaded;
         Closing += (_, _) =>
         {
@@ -1007,12 +1009,12 @@ public partial class MainWindow : Window
 
     private void AddTag_Click(object sender, RoutedEventArgs e)
     {
-        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
+        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive, out var color))
         {
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive);
+        UpsertManagedTag(tag, category, isExclusive, color);
         if (_currentBook is not null)
         {
             AddTagToBookRespectingRules(_currentBook, tag);
@@ -1153,12 +1155,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
+        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive, out var color))
         {
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive);
+        UpsertManagedTag(tag, category, isExclusive, color);
         var updates = new List<(string BookId, string Tags)>();
         foreach (var book in selectedBooks)
         {
@@ -1406,21 +1408,21 @@ public partial class MainWindow : Window
 
     private void CreateManagedTag_Click(object sender, RoutedEventArgs e)
     {
-        if (!TryResolveTagForCreate(TagManagerSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
+        if (!TryResolveTagForCreate(TagManagerSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive, out var color))
         {
             return;
         }
 
         if (EnumerateKnownTags().Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
         {
-            UpsertManagedTag(tag, category, isExclusive);
+            UpsertManagedTag(tag, category, isExclusive, color);
             TagManagerSearchBox.Clear();
             RefreshLibraryViews(authors: false, sort: false, filter: false);
             StatusText.Text = $"标签已存在：{tag}";
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive);
+        UpsertManagedTag(tag, category, isExclusive, color);
         TagManagerSearchBox.Clear();
         RefreshLibraryViews(authors: false, sort: false, filter: false);
         StatusText.Text = $"已创建候选标签：{tag}。它会出现在书库 Tag 池，可拖拽到漫画或添加到当前漫画。";
@@ -2674,12 +2676,17 @@ public partial class MainWindow : Window
         _managedTagCategories.Clear();
         _managedTagIsExclusive.Clear();
         _managedTagUpdatedAt.Clear();
+        _managedTagColors.Clear();
         foreach (var tag in _database.LoadManagedTags().Where(tag => !string.IsNullOrWhiteSpace(tag.Name)))
         {
             _managedTags.Add(tag.Name);
             _managedTagCategories[tag.Name] = tag.Category;
             _managedTagIsExclusive[tag.Name] = tag.IsExclusive;
             _managedTagUpdatedAt[tag.Name] = tag.UpdatedAt;
+            if (!string.IsNullOrWhiteSpace(tag.Color))
+            {
+                _managedTagColors[tag.Name] = tag.Color;
+            }
         }
 
         _suppressedTags.Clear();
@@ -2689,29 +2696,36 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null)
+    private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null, string? color = null)
     {
         var resolvedCategory = category ?? TagCategory(tag);
         var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
+        var resolvedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
         _suppressedTags.Remove(tag);
         _managedTags.Add(tag);
         _managedTagCategories[tag] = resolvedCategory;
         _managedTagIsExclusive[tag] = resolvedExclusive;
         _managedTagUpdatedAt[tag] = DateTimeOffset.Now.ToString("O");
-        _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive);
+        if (!string.IsNullOrWhiteSpace(resolvedColor))
+        {
+            _managedTagColors[tag] = resolvedColor;
+        }
+        _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive, resolvedColor);
     }
 
-    private bool TryResolveTagForCreate(string initialValue, out string tag, out string category, out bool isExclusive)
+    private bool TryResolveTagForCreate(string initialValue, out string tag, out string category, out bool isExclusive, out string color)
     {
         tag = "";
         category = "自定义";
         isExclusive = false;
+        color = "";
 
         if (EnumerateKnownTags().Any(name => string.Equals(name, initialValue, StringComparison.OrdinalIgnoreCase)))
         {
             tag = initialValue.Trim();
             category = TagCategory(tag);
             isExclusive = IsExclusiveTag(tag);
+            color = TagColor(tag);
             return true;
         }
 
@@ -2725,6 +2739,7 @@ public partial class MainWindow : Window
         tag = dialog.TagName;
         category = dialog.TagCategory;
         isExclusive = dialog.IsExclusive;
+        color = dialog.SelectedColor;
         return true;
     }
 
@@ -2767,8 +2782,12 @@ public partial class MainWindow : Window
         return TagService.FormatTags(normalized);
     }
 
-    private static string TagColor(string tag)
+    private string TagColor(string tag)
     {
+        if (_managedTagColors.TryGetValue(tag, out var managedColor) && !string.IsNullOrWhiteSpace(managedColor))
+        {
+            return managedColor;
+        }
         return TagService.GetColor(tag);
     }
 
@@ -3084,6 +3103,7 @@ public partial class MainWindow : Window
         var newName = dialog.TagName;
         var newCategory = dialog.TagCategory;
         var newIsExclusive = dialog.IsExclusive;
+        var newColor = dialog.SelectedColor;
         if (string.IsNullOrWhiteSpace(newName))
         {
             StatusText.Text = "标签名不能为空。";
@@ -3092,7 +3112,8 @@ public partial class MainWindow : Window
 
         if (string.Equals(chip.Name, newName, StringComparison.OrdinalIgnoreCase)
             && string.Equals(chip.Category, newCategory, StringComparison.OrdinalIgnoreCase)
-            && chip.IsExclusive == newIsExclusive)
+            && chip.IsExclusive == newIsExclusive
+            && string.Equals(chip.Color, newColor, StringComparison.OrdinalIgnoreCase))
         {
             StatusText.Text = "标签没有变化。";
             return;
@@ -3149,7 +3170,8 @@ public partial class MainWindow : Window
             _managedTagCategories.Remove(chip.Name);
             _managedTagIsExclusive.Remove(chip.Name);
             _managedTagUpdatedAt.Remove(chip.Name);
-            _database.RenameManagedTag(chip.Name, newName, newCategory, newIsExclusive);
+            _managedTagColors.Remove(chip.Name);
+            _database.RenameManagedTag(chip.Name, newName, newCategory, newIsExclusive, newColor);
         }
         else
         {
@@ -3158,12 +3180,16 @@ public partial class MainWindow : Window
                 _suppressedTags.Add(chip.Name);
                 _database.SuppressTag(chip.Name);
             }
-            _database.SaveManagedTag(newName, newCategory, newIsExclusive);
+            _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
         }
         _managedTags.Add(newName);
         _managedTagCategories[newName] = newCategory;
         _managedTagIsExclusive[newName] = newIsExclusive;
         _managedTagUpdatedAt[newName] = DateTimeOffset.Now.ToString("O");
+        if (!string.IsNullOrWhiteSpace(newColor))
+        {
+            _managedTagColors[newName] = newColor;
+        }
 
         foreach (var (book, tags) in affectedBooks)
         {

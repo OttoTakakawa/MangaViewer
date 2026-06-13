@@ -765,7 +765,7 @@
                             <TextBlock Grid.Row="1" Text="{Binding Title}" Margin="0,10,0,0" Foreground="#FAF5EF" FontSize="22" FontWeight="Black" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Row="2" Text="{Binding Author}" Margin="0,7,0,0" Foreground="#D6C7BA" FontSize="13" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Row="3" Text="{Binding ReadingMetaText}" Margin="0,12,0,0" Foreground="#F0E5DA" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                            <Border Grid.Row="4" Margin="0,10,0,0" Padding="12,6" CornerRadius="999" Background="#F6E7D6" HorizontalAlignment="Left">
+                            <Border Grid.Row="4" Margin="0,10,0,0" Padding="12,6" CornerRadius="12" Background="#F6E7D6" HorizontalAlignment="Left">
                                 <TextBlock Text="继续阅读" Foreground="#1D1714" FontSize="12" FontWeight="Bold"/>
                             </Border>
                         </Grid>
@@ -866,6 +866,7 @@
                             </Border>
                             <StackPanel Margin="12,2,0,0">
                                 <TextBlock Text="漫画库" FontSize="21" FontWeight="Black" Foreground="#25211E"/>
+                                <TextBlock x:Name="VersionText" FontSize="11" Foreground="#9CA3AF" Margin="0,2,0,0"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -881,10 +882,12 @@
 
                         <TextBlock Text="工具" Foreground="#81756B" FontSize="12" FontWeight="SemiBold" Margin="4,0,0,8"/>
                         <Button Content="导入书库" Click="ChooseLibrary_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button Content="立即备份" Click="ManualBackup_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button Content="打开备份" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button Content="打开数据" Click="OpenDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
-                        <Button Content="指定数据" Click="ChooseDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,8">
+                            <Button Content="立即备份" Click="ManualBackup_Click" Style="{StaticResource SidebarActionButton}" Margin="0,0,2,4"/>
+                            <Button Content="备份路径" Click="OpenBackupFolder_Click" Style="{StaticResource SidebarActionButton}" Margin="2,0,0,4"/>
+                            <Button Content="指定数据" Click="ChooseDataFolder_Click" Style="{StaticResource SidebarActionButton}" Margin="0,0,2,0"/>
+                            <Button Content="数据路径" Click="OpenDataFolder_Click" Style="{StaticResource SidebarActionButton}" Margin="2,0,0,0"/>
+                        </UniformGrid>
                         <Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}" ToolTip="优先检查本机 _release/更新包或 git pull 后的本地源码；没有本地更新时才访问 GitHub。"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -947,7 +950,6 @@
                         </Border>
 
                         <StackPanel x:Name="HomeSectionsPanel">
-                        <TextBlock Text="继续阅读" Margin="4,6,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding ContinueReadingBooks}" ItemTemplate="{StaticResource HomeWideBookTemplate}">
                                 <ItemsControl.ItemsPanel>
@@ -1055,8 +1057,7 @@
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
-                                <Button x:Name="LibraryChromeToggleButton" Content="专注浏览" Click="ToggleLibraryChrome_Click" Style="{StaticResource GhostButton}" Margin="0,0,10,0"/>
-                                <Button Content="导入" Click="ChooseLibrary_Click" Style="{StaticResource GhostButton}"/>
+                                <Button x:Name="LibraryChromeToggleButton" Content="专注浏览" Click="ToggleLibraryChrome_Click" Style="{StaticResource GhostButton}"/>
                             </StackPanel>
                         </Grid>
                         <WrapPanel x:Name="LibraryFilterControlsPanel" Grid.Row="1" VerticalAlignment="Center" ItemHeight="44">

@@ -21,3 +21,7 @@ vite.config.ts
 *.db
 *.db-shm
 *.db-wal
+.claude/
+Data/
+_tmp_icons/
+_release_tmp_icons/

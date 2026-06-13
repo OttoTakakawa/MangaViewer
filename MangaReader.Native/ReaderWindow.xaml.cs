@@ -76,7 +76,6 @@ public partial class ReaderWindow : Window
     {
         AppLogger.Info("reader-open", $"Reader loaded: {_book.Title}, pages={_book.Pages.Count}, start={_book.LastReadPageIndex + 1}");
         Dispatcher.InvokeAsync(() => LoadPage(_book.LastReadPageIndex), DispatcherPriority.ApplicationIdle);
-        UpdateZoomText();
     }
 
     private void ReaderWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -197,7 +196,6 @@ public partial class ReaderWindow : Window
         _fitMode = mode;
         ApplyFitMode();
         UpdateFitButtons();
-        UpdateZoomText();
     }
 
     private void ApplyFitMode()
@@ -249,7 +247,6 @@ public partial class ReaderWindow : Window
         if (ImageScale is null) return;
         ImageScale.ScaleX = e.NewValue;
         ImageScale.ScaleY = e.NewValue;
-        UpdateZoomText();
     }
 
     private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -278,7 +275,6 @@ public partial class ReaderWindow : Window
 
     private void WheelModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        UpdateZoomText();
         if (IsLoaded)
         {
             _database.SaveShortcut("reader.wheelmode", WheelModeBox.SelectedIndex.ToString());
@@ -567,10 +563,6 @@ public partial class ReaderWindow : Window
             ? $"{_book.LastReadPageIndex + 1}-{endPage} / {_book.PageCount}"
             : $"{_book.LastReadPageIndex + 1} / {_book.PageCount}";
         PageText.Text = pageText;
-        if (BottomPageText is not null)
-        {
-            BottomPageText.Text = pageText;
-        }
         if (HiddenPageText is not null)
         {
             HiddenPageText.Text = pageText;
@@ -580,28 +572,6 @@ public partial class ReaderWindow : Window
             PageText.Text += $"  ·  {_boundaryHint}";
         }
 
-        var isFirst = _book.LastReadPageIndex <= 0;
-        var isLast = _book.LastReadPageIndex + _displayedPageCount >= _book.PageCount;
-        PreviousPageButton.IsEnabled = !isFirst;
-        NextPageButton.IsEnabled = !isLast;
-    }
-
-    private void UpdateZoomText()
-    {
-        if (ZoomText is null || WheelModeBox is null)
-        {
-            return;
-        }
-
-        var wheelMode = WheelModeBox.SelectedIndex switch
-        {
-            1 => "缩放",
-            2 => "滚动",
-            _ => "翻页"
-        };
-
-        var fitMode = _fitMode == FitMode.Width ? "适宽" : "适高";
-        ZoomText.Text = $"{fitMode} · {(int)Math.Round(ZoomSlider.Value * 100)}% · {wheelMode}";
     }
 
     private void ToggleControlsButton_Click(object sender, RoutedEventArgs e)
