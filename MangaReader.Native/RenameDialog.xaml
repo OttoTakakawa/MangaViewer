@@ -103,8 +103,8 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Text="重命名作者" FontSize="30" FontWeight="Black" Foreground="#111827"/>
-                    <TextBlock Text="输入新的作者名称。" Margin="0,6,0,0" Foreground="#6B7280"/>
+                    <TextBlock x:Name="DialogTitleText" Text="重命名作者" FontSize="30" FontWeight="Black" Foreground="#111827"/>
+                    <TextBlock x:Name="DialogDescriptionText" Text="输入新的作者名称。" Margin="0,6,0,0" Foreground="#6B7280"/>
                 </StackPanel>
 
                 <Grid Grid.Row="1" Margin="0,24,0,0">
@@ -116,12 +116,12 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Text="旧名称" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="OldNameLabelText" Text="旧名称" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                         <TextBlock x:Name="OldNameText" Margin="0,8,0,0" Style="{StaticResource DialogReadOnlyText}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Margin="0,16,0,0">
-                        <TextBlock Text="新名称" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="NewNameLabelText" Text="新名称" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                         <TextBox x:Name="NewNameBox" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
                     </StackPanel>
                 </Grid>

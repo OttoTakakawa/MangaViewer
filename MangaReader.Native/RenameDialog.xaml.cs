@@ -9,11 +9,21 @@ public partial class RenameDialog : Window
     public string NewName { get; private set; } = "";
 
     public RenameDialog(string oldName)
+        : this("重命名作者", "输入新的作者名称。", "旧名称", oldName, "新名称", oldName)
+    {
+    }
+
+    public RenameDialog(string title, string description, string oldLabel, string oldValue, string newLabel, string initialValue)
     {
         InitializeComponent();
-        _oldName = oldName;
-        OldNameText.Text = oldName;
-        NewNameBox.Text = oldName;
+        _oldName = oldValue;
+        Title = title;
+        DialogTitleText.Text = title;
+        DialogDescriptionText.Text = description;
+        OldNameLabelText.Text = oldLabel;
+        OldNameText.Text = oldValue;
+        NewNameLabelText.Text = newLabel;
+        NewNameBox.Text = initialValue;
         NewNameBox.Focus();
         NewNameBox.SelectAll();
     }

@@ -18,6 +18,8 @@ public partial class ReaderWindow : Window
     private readonly LibraryDatabase _database;
     private readonly List<Key> _nextKeys;
     private readonly List<Key> _prevKeys;
+    private readonly Func<MangaBook, MangaBook?>? _nextBookResolver;
+    private readonly Action<MangaBook>? _openBookRequest;
     private int _displayedPageCount = 1;
     private FitMode _fitMode = FitMode.Height;
     private string _boundaryHint = "";
@@ -36,13 +38,21 @@ public partial class ReaderWindow : Window
         Height
     }
 
-    public ReaderWindow(MangaBook book, LibraryDatabase database, List<Key> nextKeys, List<Key> prevKeys)
+    public ReaderWindow(
+        MangaBook book,
+        LibraryDatabase database,
+        List<Key> nextKeys,
+        List<Key> prevKeys,
+        Func<MangaBook, MangaBook?>? nextBookResolver = null,
+        Action<MangaBook>? openBookRequest = null)
     {
         InitializeComponent();
         _book = book;
         _database = database;
         _nextKeys = nextKeys;
         _prevKeys = prevKeys;
+        _nextBookResolver = nextBookResolver;
+        _openBookRequest = openBookRequest;
         Title = book.Title;
         TitleText.Text = book.Title;
         _controlsRevealTimer.Tick += ControlsRevealTimer_Tick;
@@ -87,12 +97,39 @@ public partial class ReaderWindow : Window
         var targetIndex = _book.LastReadPageIndex + _displayedPageCount;
         if (targetIndex >= _book.Pages.Count)
         {
+            TryGoToNextBook();
+            return;
+        }
+
+        LoadPage(targetIndex);
+    }
+
+    private void TryGoToNextBook()
+    {
+        var nextBook = _nextBookResolver?.Invoke(_book);
+        if (nextBook is null)
+        {
             _boundaryHint = "已经是最后一页";
             UpdateNavigationState();
             return;
         }
 
-        LoadPage(targetIndex);
+        var result = System.Windows.MessageBox.Show(
+            $"已经读到最后一页。\n\n是否前往当前筛选顺序里的下一本漫画？\n\n下一本：{nextBook.Title}",
+            "前往下一本",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.Yes);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            _boundaryHint = "已经是最后一页";
+            UpdateNavigationState();
+            return;
+        }
+
+        _openBookRequest?.Invoke(nextBook);
+        Close();
     }
 
     private void FitWidth_Click(object sender, RoutedEventArgs e)

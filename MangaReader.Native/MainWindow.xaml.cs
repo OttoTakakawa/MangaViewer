@@ -999,6 +999,216 @@ public partial class MainWindow : Window
             : $"已添加 Tag：{tag}";
     }
 
+    private void BatchSelection_Changed(object sender, RoutedEventArgs e)
+    {
+        UpdateBatchSelectionState();
+    }
+
+    private void SelectVisibleBooks_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var book in GetVisibleBooks())
+        {
+            book.IsSelectedForBatch = true;
+        }
+
+        UpdateBatchSelectionState();
+    }
+
+    private void ClearBatchSelection_Click(object sender, RoutedEventArgs e)
+    {
+        ClearBatchSelection();
+    }
+
+    private void BatchRemoveTitlePrefix_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBooks = GetSelectedBatchBooks();
+        if (selectedBooks.Count == 0)
+        {
+            StatusText.Text = "请先勾选需要批量处理的漫画。";
+            return;
+        }
+
+        var commonPrefix = GuessCommonTitlePrefix(selectedBooks.Select(book => book.Title));
+        var dialog = new RenameDialog(
+            "批量去前缀",
+            "输入要从书名开头移除的前缀。只会修改确实以该前缀开头的作品。",
+            "处理范围",
+            $"已选 {selectedBooks.Count} 本",
+            "要移除的前缀",
+            commonPrefix)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var prefix = dialog.NewName.Trim();
+        var updates = selectedBooks
+            .Where(book => book.Title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Select(book => (Book: book, Title: book.Title[prefix.Length..].TrimStart(' ', '-', '_', '—', '－', '·')))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Title) && !string.Equals(item.Book.Title, item.Title, StringComparison.Ordinal))
+            .ToList();
+
+        if (updates.Count == 0)
+        {
+            StatusText.Text = "没有书名匹配这个前缀。";
+            return;
+        }
+
+        _database.SaveBookTitlesBatch(updates.Select(item => (item.Book.Id, item.Title)).ToList(), "before-batch-title-prefix");
+        foreach (var (book, title) in updates)
+        {
+            book.Title = title;
+            book.NotifyAll();
+        }
+
+        RefreshLibraryViews(tagManager: false, authors: false, sort: true);
+        RefreshHomeShelves();
+        FillCurrentBookIfAffected(selectedBooks);
+        StatusText.Text = $"已批量移除前缀：{updates.Count} 本。";
+    }
+
+    private void BatchApplyStyle_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBooks = GetSelectedBatchBooks();
+        if (selectedBooks.Count == 0)
+        {
+            StatusText.Text = "请先勾选需要批量处理的漫画。";
+            return;
+        }
+
+        var targetStyle = Math.Clamp(BatchStyleBox?.SelectedIndex ?? 0, 0, 3);
+        foreach (var book in selectedBooks)
+        {
+            book.BookStyle = targetStyle;
+        }
+
+        _database.SaveBookStylesBatch(selectedBooks.Select(book => (book.Id, book.BookStyle)).ToList(), "before-batch-style");
+        foreach (var book in selectedBooks)
+        {
+            book.NotifyAll();
+        }
+
+        _booksView?.Refresh();
+        FillCurrentBookIfAffected(selectedBooks);
+        StatusText.Text = $"已批量应用卡片样式 {targetStyle + 1}：{selectedBooks.Count} 本。";
+    }
+
+    private void BatchAddTag_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBooks = GetSelectedBatchBooks();
+        if (selectedBooks.Count == 0)
+        {
+            StatusText.Text = "请先勾选需要批量处理的漫画。";
+            return;
+        }
+
+        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive))
+        {
+            return;
+        }
+
+        UpsertManagedTag(tag, category, isExclusive);
+        var updates = new List<(string BookId, string Tags)>();
+        foreach (var book in selectedBooks)
+        {
+            var before = book.Tags;
+            AddTagToBookRespectingRules(book, tag);
+            if (!string.Equals(before, book.Tags, StringComparison.Ordinal))
+            {
+                updates.Add((book.Id, book.Tags));
+            }
+        }
+
+        if (updates.Count == 0)
+        {
+            StatusText.Text = $"选中漫画都已经拥有 Tag：{tag}。";
+            return;
+        }
+
+        _database.SaveBookTagsBatch(updates, "before-batch-add-tag");
+        foreach (var book in selectedBooks)
+        {
+            book.NotifyAll();
+        }
+
+        RefreshLibraryViews(authors: false, sort: false);
+        FillCurrentBookIfAffected(selectedBooks);
+        StatusText.Text = $"已批量添加 Tag：{tag}，影响 {updates.Count} 本。";
+    }
+
+    private void BatchRemoveTag_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBooks = GetSelectedBatchBooks();
+        if (selectedBooks.Count == 0)
+        {
+            StatusText.Text = "请先勾选需要批量处理的漫画。";
+            return;
+        }
+
+        var initialTag = TagSearchBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(initialTag))
+        {
+            initialTag = selectedBooks
+                .SelectMany(book => TagService.ParseTags(book.Tags))
+                .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .Select(group => group.Key)
+                .FirstOrDefault() ?? "";
+        }
+
+        var dialog = new RenameDialog(
+            "批量减 Tag",
+            "输入要从选中漫画中移除的 Tag 名称。",
+            "处理范围",
+            $"已选 {selectedBooks.Count} 本",
+            "要移除的 Tag",
+            initialTag)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var tag = dialog.NewName.Trim();
+        var updates = new List<(string BookId, string Tags)>();
+        foreach (var book in selectedBooks)
+        {
+            var tags = TagService.ParseTags(book.Tags)
+                .Where(name => !string.Equals(name, tag, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var formatted = TagService.FormatTags(tags);
+            if (!string.Equals(book.Tags, formatted, StringComparison.Ordinal))
+            {
+                book.Tags = formatted;
+                updates.Add((book.Id, book.Tags));
+            }
+        }
+
+        if (updates.Count == 0)
+        {
+            StatusText.Text = $"选中漫画都没有 Tag：{tag}。";
+            return;
+        }
+
+        _database.SaveBookTagsBatch(updates, "before-batch-remove-tag");
+        foreach (var book in selectedBooks)
+        {
+            book.NotifyAll();
+        }
+
+        RefreshLibraryViews(authors: false, sort: false);
+        FillCurrentBookIfAffected(selectedBooks);
+        StatusText.Text = $"已批量移除 Tag：{tag}，影响 {updates.Count} 本。";
+    }
+
     private void TagSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         RestartDebounceTimer(_tagSearchDebounceTimer);
@@ -1809,6 +2019,77 @@ public partial class MainWindow : Window
         var isEmpty = visibleCount == 0;
         ShelfEmptyState.Visibility = isEmpty ? Visibility.Visible : Visibility.Collapsed;
         ShelfEmptyHintText.Text = BuildEmptyHint();
+        UpdateBatchSelectionState();
+    }
+
+    private List<MangaBook> GetVisibleBooks()
+    {
+        return _booksView?.Cast<object>().OfType<MangaBook>().ToList()
+            ?? Books.ToList();
+    }
+
+    private List<MangaBook> GetSelectedBatchBooks()
+    {
+        return Books
+            .Where(book => book.IsSelectedForBatch)
+            .ToList();
+    }
+
+    private void UpdateBatchSelectionState()
+    {
+        if (BatchSelectionText is null)
+        {
+            return;
+        }
+
+        var selectedCount = Books.Count(book => book.IsSelectedForBatch);
+        BatchSelectionText.Text = selectedCount == 0 ? "已选 0 本" : $"已选 {selectedCount} 本";
+    }
+
+    private void ClearBatchSelection()
+    {
+        foreach (var book in Books.Where(book => book.IsSelectedForBatch))
+        {
+            book.IsSelectedForBatch = false;
+        }
+
+        UpdateBatchSelectionState();
+    }
+
+    private void FillCurrentBookIfAffected(IReadOnlyCollection<MangaBook> affectedBooks)
+    {
+        if (_currentBook is not null && affectedBooks.Contains(_currentBook))
+        {
+            FillMetadataEditors(_currentBook);
+        }
+    }
+
+    private static string GuessCommonTitlePrefix(IEnumerable<string> titles)
+    {
+        var prefix = titles
+            .Select(title => title.Trim())
+            .Where(title => title.Length > 0)
+            .Select(title =>
+            {
+                var separators = new[] { " - ", "-", "_", "＿", "—", "－", "·", "】", "]" };
+                foreach (var separator in separators)
+                {
+                    var index = title.IndexOf(separator, StringComparison.Ordinal);
+                    if (index > 0)
+                    {
+                        return title[..(index + separator.Length)];
+                    }
+                }
+
+                return "";
+            })
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .GroupBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(group => group.Count())
+            .ThenByDescending(group => group.Key.Length)
+            .FirstOrDefault();
+
+        return prefix?.Key ?? "";
     }
 
     private string BuildFilterSummary(int visibleCount, int libraryCount)
@@ -1962,7 +2243,13 @@ public partial class MainWindow : Window
         }
 
         AppLogger.Info("reader-open", $"Opening reader: {book.Title}, pages={book.Pages.Count}, folder={book.FolderPath}");
-        var reader = new ReaderWindow(book, _database, _nextKeys, _prevKeys)
+        var reader = new ReaderWindow(
+            book,
+            _database,
+            _nextKeys,
+            _prevKeys,
+            ResolveNextBookInCurrentView,
+            nextBook => Dispatcher.InvokeAsync(() => OpenBook(nextBook), DispatcherPriority.ApplicationIdle))
         {
             Owner = this
         };
@@ -1974,6 +2261,20 @@ public partial class MainWindow : Window
             RefreshHomeShelves();
         };
         reader.Show();
+    }
+
+    private MangaBook? ResolveNextBookInCurrentView(MangaBook currentBook)
+    {
+        var visibleBooks = GetVisibleBooks()
+            .Where(book => !book.IsMissing && book.Pages.Count > 0)
+            .ToList();
+        var currentIndex = visibleBooks.FindIndex(book => ReferenceEquals(book, currentBook) || book.Id == currentBook.Id);
+        if (currentIndex < 0 || currentIndex + 1 >= visibleBooks.Count)
+        {
+            return null;
+        }
+
+        return visibleBooks[currentIndex + 1];
     }
 
     private void HomeBook_Click(object sender, MouseButtonEventArgs e)

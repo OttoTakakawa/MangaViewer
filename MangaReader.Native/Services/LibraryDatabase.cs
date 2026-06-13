@@ -376,6 +376,88 @@ public sealed class LibraryDatabase
         }
     }
 
+    public void SaveBookTitlesBatch(IReadOnlyCollection<(string BookId, string Title)> updates, string reason)
+    {
+        if (updates.Count == 0)
+        {
+            return;
+        }
+
+        BackupDatabase(reason, force: true);
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            var updatedAt = DateTimeOffset.Now.ToString("O");
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                UPDATE books
+                SET title = $title,
+                    updated_at = $updatedAt
+                WHERE id = $id;
+                """;
+            foreach (var (bookId, title) in updates)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$id", bookId);
+                command.Parameters.AddWithValue("$title", title);
+                command.Parameters.AddWithValue("$updatedAt", updatedAt);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            _lastMetadataBackupAt = DateTimeOffset.Now;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public void SaveBookStylesBatch(IReadOnlyCollection<(string BookId, int BookStyle)> updates, string reason)
+    {
+        if (updates.Count == 0)
+        {
+            return;
+        }
+
+        BackupDatabase(reason, force: true);
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            var updatedAt = DateTimeOffset.Now.ToString("O");
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                UPDATE books
+                SET book_style = $bookStyle,
+                    updated_at = $updatedAt
+                WHERE id = $id;
+                """;
+            foreach (var (bookId, bookStyle) in updates)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$id", bookId);
+                command.Parameters.AddWithValue("$bookStyle", bookStyle);
+                command.Parameters.AddWithValue("$updatedAt", updatedAt);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            _lastMetadataBackupAt = DateTimeOffset.Now;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
     public void SaveReadCount(MangaBook book)
     {
         BackupDatabase("before-read-count-save", force: ShouldCreateMetadataBackup());

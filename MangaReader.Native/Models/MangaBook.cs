@@ -14,6 +14,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     private string _tags = "";
     private string _readingStatus = "unread";
     private bool _isFavorite;
+    private bool _isSelectedForBatch;
 
     public string Id { get; set; } = "";
     public string Title { get; set; } = "";
@@ -53,6 +54,20 @@ public sealed class MangaBook : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(FavoriteStarText));
             OnPropertyChanged(nameof(StatusBadgeText));
+        }
+    }
+    public bool IsSelectedForBatch
+    {
+        get => _isSelectedForBatch;
+        set
+        {
+            if (_isSelectedForBatch == value)
+            {
+                return;
+            }
+
+            _isSelectedForBatch = value;
+            OnPropertyChanged();
         }
     }
     public ObservableCollection<string> Pages { get; } = [];
@@ -186,6 +201,7 @@ public sealed class MangaBook : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsMissing));
         OnPropertyChanged(nameof(IsHidden));
         OnPropertyChanged(nameof(IsFavorite));
+        OnPropertyChanged(nameof(IsSelectedForBatch));
         OnPropertyChanged(nameof(FavoriteStarText));
         OnPropertyChanged(nameof(ReadingStatus));
         OnPropertyChanged(nameof(ReadingStatusText));
