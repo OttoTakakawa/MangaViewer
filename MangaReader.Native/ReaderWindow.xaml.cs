@@ -2,6 +2,7 @@ using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Controls;
@@ -18,15 +19,22 @@ public partial class ReaderWindow : Window
     private readonly List<Key> _nextKeys;
     private readonly List<Key> _prevKeys;
     private int _displayedPageCount = 1;
+    private FitMode _fitMode = FitMode.Height;
     private string _boundaryHint = "";
     private bool _controlsHidden;
     private bool _isHoldZoomActive;
     private bool _isFullscreen;
     private WindowStyle _previousWindowStyle;
     private WindowState _previousWindowState;
-    private bool _fitPendingInitialLoad = true;
     private double _holdZoomBaseValue = 1;
     private int _pageLoadRequestId;
+    private int _backgroundMode;
+
+    private enum FitMode
+    {
+        Width,
+        Height
+    }
 
     public ReaderWindow(MangaBook book, LibraryDatabase database, List<Key> nextKeys, List<Key> prevKeys)
     {
@@ -39,9 +47,12 @@ public partial class ReaderWindow : Window
         TitleText.Text = book.Title;
         _controlsRevealTimer.Tick += ControlsRevealTimer_Tick;
         KeyDown += ReaderWindow_KeyDown;
+        SizeChanged += ReaderWindow_SizeChanged;
         Closing += ReaderWindow_Closing;
         Loaded += ReaderWindow_Loaded;
         LoadViewerPreferences();
+        ApplyReaderBackground();
+        UpdateFitButtons();
     }
 
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
@@ -49,7 +60,6 @@ public partial class ReaderWindow : Window
         AppLogger.Info("reader-open", $"Reader loaded: {_book.Title}, pages={_book.Pages.Count}, start={_book.LastReadPageIndex + 1}");
         Dispatcher.InvokeAsync(() => LoadPage(_book.LastReadPageIndex), DispatcherPriority.ApplicationIdle);
         UpdateZoomText();
-        RestartControlsRevealTimer();
     }
 
     private void ReaderWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -87,6 +97,35 @@ public partial class ReaderWindow : Window
 
     private void FitWidth_Click(object sender, RoutedEventArgs e)
     {
+        SetFitMode(FitMode.Width);
+    }
+
+    private void FitHeight_Click(object sender, RoutedEventArgs e)
+    {
+        SetFitMode(FitMode.Height);
+    }
+
+    private void SetFitMode(FitMode mode)
+    {
+        _fitMode = mode;
+        ApplyFitMode();
+        UpdateFitButtons();
+        UpdateZoomText();
+    }
+
+    private void ApplyFitMode()
+    {
+        if (_fitMode == FitMode.Width)
+        {
+            ApplyFitWidth();
+            return;
+        }
+
+        ApplyFitHeight();
+    }
+
+    private void ApplyFitWidth()
+    {
         var width = GetDisplayedPixelWidth();
         var availableWidth = GetAvailableContentWidth();
         if (width > 0 && availableWidth > 0)
@@ -95,7 +134,7 @@ public partial class ReaderWindow : Window
         }
     }
 
-    private void FitHeight_Click(object sender, RoutedEventArgs e)
+    private void ApplyFitHeight()
     {
         var height = GetDisplayedPixelHeight();
         var availableHeight = GetAvailableContentHeight();
@@ -103,6 +142,19 @@ public partial class ReaderWindow : Window
         {
             ZoomSlider.Value = Math.Clamp(availableHeight / height, ZoomSlider.Minimum, ZoomSlider.Maximum);
         }
+    }
+
+    private void UpdateFitButtons()
+    {
+        SetFitButtonState(FitWidthButton, _fitMode == FitMode.Width);
+        SetFitButtonState(FitHeightButton, _fitMode == FitMode.Height);
+    }
+
+    private static void SetFitButtonState(System.Windows.Controls.Button button, bool active)
+    {
+        button.Background = active ? BrushFrom("#E8F8FAFC") : BrushFrom("#1A0F172A");
+        button.BorderBrush = active ? BrushFrom("#F0FFFFFF") : BrushFrom("#22FFFFFF");
+        button.Foreground = active ? BrushFrom("#0F172A") : BrushFrom("#F9FAFB");
     }
 
     private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -129,6 +181,12 @@ public partial class ReaderWindow : Window
 
     private void ReaderWindow_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        if (HandleFixedShortcut(e.Key))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (_nextKeys.Contains(e.Key))
         {
             NextPage_Click(sender, new RoutedEventArgs());
@@ -171,6 +229,42 @@ public partial class ReaderWindow : Window
                 SetControlsHidden(false);
                 e.Handled = true;
             }
+        }
+    }
+
+    private bool HandleFixedShortcut(Key key)
+    {
+        switch (key)
+        {
+            case Key.W:
+                ToggleFullscreen();
+                return true;
+            case Key.E:
+                SetFitMode(FitMode.Height);
+                return true;
+            case Key.Q:
+                SetFitMode(FitMode.Width);
+                return true;
+            case Key.D:
+                SetControlsHidden(!_controlsHidden);
+                return true;
+            case Key.S:
+                ToggleReadingMode();
+                return true;
+            case Key.Z:
+                CycleWheelMode();
+                return true;
+            case Key.X:
+                Close();
+                return true;
+            case Key.C:
+                ToggleReadingDirection();
+                return true;
+            case Key.A:
+                CycleBackground();
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -230,11 +324,7 @@ public partial class ReaderWindow : Window
             _book.LastReadPageIndex = safeIndex;
             _database.SaveProgress(_book);
             UpdateNavigationState();
-            if (_fitPendingInitialLoad)
-            {
-                _fitPendingInitialLoad = false;
-                FitHeight_Click(this, new RoutedEventArgs());
-            }
+            _ = Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
             HideReaderMessage();
             PageText.Text = "";
             PlayPageFade();
@@ -327,7 +417,8 @@ public partial class ReaderWindow : Window
             _ => "翻页"
         };
 
-        ZoomText.Text = $"{(int)Math.Round(ZoomSlider.Value * 100)}% · {wheelMode}";
+        var fitMode = _fitMode == FitMode.Width ? "适宽" : "适高";
+        ZoomText.Text = $"{fitMode} · {(int)Math.Round(ZoomSlider.Value * 100)}% · {wheelMode}";
     }
 
     private void ToggleControlsButton_Click(object sender, RoutedEventArgs e)
@@ -338,7 +429,6 @@ public partial class ReaderWindow : Window
     private void HiddenControlsBadge_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         SetControlsHidden(false);
-        RestartControlsRevealTimer();
     }
 
     private void SetControlsHidden(bool hidden)
@@ -377,19 +467,9 @@ public partial class ReaderWindow : Window
                     ZoomSlider.Value + (e.Delta > 0 ? WheelZoomStep : -WheelZoomStep),
                     ZoomSlider.Minimum,
                     ZoomSlider.Maximum);
-                if (!_controlsHidden)
-                {
-                    RestartControlsRevealTimer();
-                }
-
                 e.Handled = true;
                 break;
             case 2:
-                if (!_controlsHidden)
-                {
-                    RestartControlsRevealTimer();
-                }
-
                 break;
             default:
                 if (e.Delta > 0)
@@ -399,11 +479,6 @@ public partial class ReaderWindow : Window
                 else
                 {
                     NextPage_Click(sender, new RoutedEventArgs());
-                }
-
-                if (!_controlsHidden)
-                {
-                    RestartControlsRevealTimer();
                 }
 
                 e.Handled = true;
@@ -423,7 +498,6 @@ public partial class ReaderWindow : Window
         if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
         {
             NavigateByClickPosition(e.GetPosition(ReaderScrollViewer));
-            RestartControlsRevealTimer();
             e.Handled = true;
             return;
         }
@@ -477,12 +551,6 @@ public partial class ReaderWindow : Window
 
     private void ReaderRoot_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (_controlsHidden)
-        {
-            return;
-        }
-
-        RestartControlsRevealTimer();
     }
 
     private void UpdateHoldZoom(System.Windows.Point imageHostPosition, System.Windows.Point pointerInViewport)
@@ -544,30 +612,12 @@ public partial class ReaderWindow : Window
 
     private void RestartControlsRevealTimer()
     {
-        if (_controlsHidden || !IsLoaded)
-        {
-            return;
-        }
-
         _controlsRevealTimer.Stop();
-        _controlsRevealTimer.Start();
     }
 
     private void ControlsRevealTimer_Tick(object? sender, EventArgs e)
     {
         _controlsRevealTimer.Stop();
-        if (_isHoldZoomActive)
-        {
-            return;
-        }
-
-        if (IsAnyReaderDropdownOpen())
-        {
-            RestartControlsRevealTimer();
-            return;
-        }
-
-        SetControlsHidden(true);
     }
 
     private bool IsAnyReaderDropdownOpen()
@@ -580,6 +630,60 @@ public partial class ReaderWindow : Window
     private void PlayPageFade()
     {
         MotionService.PlayPageSwapFeedback(ImageHost);
+    }
+
+    private void ReaderWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
+    }
+
+    private void CycleBackgroundButton_Click(object sender, RoutedEventArgs e)
+    {
+        CycleBackground();
+    }
+
+    private void CycleBackground()
+    {
+        _backgroundMode = (_backgroundMode + 1) % 3;
+        ApplyReaderBackground();
+    }
+
+    private void ApplyReaderBackground()
+    {
+        var (outer, page, label) = _backgroundMode switch
+        {
+            1 => ("#F8FAFC", "#FFFFFF", "白"),
+            2 => ("#EDE1CC", "#FDF6E7", "纸"),
+            _ => ("#050608", "#050608", "黑")
+        };
+
+        var outerBrush = BrushFrom(outer);
+        var pageBrush = BrushFrom(page);
+        ReaderRoot.Background = outerBrush;
+        ReaderBackdrop.Background = outerBrush;
+        ReaderScrollViewer.Background = outerBrush;
+        ImageHost.Background = pageBrush;
+        BackgroundButton.Content = $"背景:{label}";
+    }
+
+    private void ToggleReadingMode()
+    {
+        ReadingModeBox.SelectedIndex = ReadingModeBox.SelectedIndex == 0 ? 1 : 0;
+    }
+
+    private void ToggleReadingDirection()
+    {
+        DirectionBox.SelectedIndex = DirectionBox.SelectedIndex == 0 ? 1 : 0;
+    }
+
+    private void CycleWheelMode()
+    {
+        WheelModeBox.SelectedIndex = (WheelModeBox.SelectedIndex + 1) % WheelModeBox.Items.Count;
+    }
+
+    private static SolidColorBrush BrushFrom(string color)
+    {
+        return new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
     }
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
@@ -604,7 +708,6 @@ public partial class ReaderWindow : Window
             WindowStyle = WindowStyle.None;
             WindowState = WindowState.Maximized;
             FullscreenButton.Content = "退出";
-            SetControlsHidden(true);
         }
     }
 }

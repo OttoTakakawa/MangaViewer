@@ -1592,9 +1592,9 @@
                             <StackPanel>
                                 <TextBlock Text="阅读快捷键" FontWeight="Black" Foreground="#25211E"/>
                                 <TextBlock Text="下一页" Style="{StaticResource LabelText}" Margin="0,12,0,6"/>
-                                <TextBox x:Name="NextShortcutBox" Text="Right,D,Space"/>
+                                <TextBox x:Name="NextShortcutBox" Text="Right,Space"/>
                                 <TextBlock Text="上一页" Style="{StaticResource LabelText}" Margin="0,12,0,6"/>
-                                <TextBox x:Name="PrevShortcutBox" Text="Left,A"/>
+                                <TextBox x:Name="PrevShortcutBox" Text="Left"/>
                                 <Button Content="保存快捷键" Click="SaveShortcuts_Click" Style="{StaticResource TinyButton}" Margin="0,12,0,0"/>
                             </StackPanel>
                         </Border>

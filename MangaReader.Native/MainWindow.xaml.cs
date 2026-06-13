@@ -27,8 +27,8 @@ public partial class MainWindow : Window
     private MangaBook? _currentBook;
     private CancellationTokenSource? _scanCancellation;
     private CancellationTokenSource? _importCancellation;
-    private List<Key> _nextKeys = [Key.Right, Key.D, Key.Space];
-    private List<Key> _prevKeys = [Key.Left, Key.A];
+    private List<Key> _nextKeys = [Key.Right, Key.Space];
+    private List<Key> _prevKeys = [Key.Left];
     private bool _isEditMode;
     private ICollectionView? _booksView;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
@@ -960,7 +960,7 @@ public partial class MainWindow : Window
         var prev = ParseKeys(PrevShortcutBox.Text);
         if (next.Count == 0 || prev.Count == 0)
         {
-            StatusText.Text = "快捷键不能为空。示例：Right,D,Space";
+            StatusText.Text = "快捷键不能为空。示例：Right,Space";
             return;
         }
 
