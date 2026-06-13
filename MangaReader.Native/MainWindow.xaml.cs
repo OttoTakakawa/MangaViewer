@@ -30,6 +30,18 @@ public partial class MainWindow : Window
     private const double WheelScrollMultiplier = 1.45;
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
+
+    private static SolidColorBrush FrozenBrush(string hex)
+    {
+        var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+        brush.Freeze();
+        return brush;
+    }
+    private static readonly SolidColorBrush DarkBrush = FrozenBrush("#111827");
+    private static readonly SolidColorBrush GrayForegroundBrush = FrozenBrush("#374151");
+    private static readonly SolidColorBrush LightBackgroundBrush = FrozenBrush("#F8FAFC");
+    private static readonly SolidColorBrush LightBorderBrush = FrozenBrush("#E5E7EB");
+
     private readonly AppStorage _storage = new();
     private readonly LibraryScanner _scanner = new();
     private readonly BatchImportAnalyzer _batchImportAnalyzer = new();
@@ -2122,15 +2134,10 @@ public partial class MainWindow : Window
         if (BatchModeToggleButton is not null)
         {
             BatchModeToggleButton.Content = IsBatchSelectionMode ? "退出多选" : "多选管理";
-            BatchModeToggleButton.Background = CreateBrush(IsBatchSelectionMode ? "#111827" : "#F8FAFC");
-            BatchModeToggleButton.BorderBrush = CreateBrush(IsBatchSelectionMode ? "#111827" : "#E5E7EB");
-            BatchModeToggleButton.Foreground = CreateBrush(IsBatchSelectionMode ? "#FFFFFF" : "#111827");
+            BatchModeToggleButton.Background = IsBatchSelectionMode ? DarkBrush : LightBackgroundBrush;
+            BatchModeToggleButton.BorderBrush = IsBatchSelectionMode ? DarkBrush : LightBorderBrush;
+            BatchModeToggleButton.Foreground = IsBatchSelectionMode ? System.Windows.Media.Brushes.White : DarkBrush;
         }
-    }
-
-    private static SolidColorBrush CreateBrush(string color)
-    {
-        return new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
     }
 
     private void ClearBatchSelection()
@@ -2531,12 +2538,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        button.Background = active
-            ? new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#111827"))
-            : System.Windows.Media.Brushes.Transparent;
-        button.Foreground = active
-            ? System.Windows.Media.Brushes.White
-            : new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#374151"));
+        button.Background = active ? DarkBrush : System.Windows.Media.Brushes.Transparent;
+        button.Foreground = active ? System.Windows.Media.Brushes.White : GrayForegroundBrush;
     }
 
     private void FastVerticalScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)

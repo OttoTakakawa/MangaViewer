@@ -13,6 +13,26 @@ public partial class ReaderWindow : Window
 {
     private const double WheelZoomStep = 0.08;
     private const double HoldZoomFactor = 2.6;
+
+    private static SolidColorBrush FrozenBrush(string hex)
+    {
+        var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+        brush.Freeze();
+        return brush;
+    }
+    // SetFitButtonState brushes
+    private static readonly SolidColorBrush FitActiveBg = FrozenBrush("#E8F8FAFC");
+    private static readonly SolidColorBrush FitInactiveBg = FrozenBrush("#1A0F172A");
+    private static readonly SolidColorBrush FitActiveBorder = FrozenBrush("#F0FFFFFF");
+    private static readonly SolidColorBrush FitInactiveBorder = FrozenBrush("#22FFFFFF");
+    private static readonly SolidColorBrush FitActiveFg = FrozenBrush("#0F172A");
+    private static readonly SolidColorBrush FitInactiveFg = FrozenBrush("#F9FAFB");
+    // ApplyReaderBackground brushes
+    private static readonly SolidColorBrush BgWhiteOuter = FrozenBrush("#F8FAFC");
+    private static readonly SolidColorBrush BgWhitePage = FrozenBrush("#FFFFFF");
+    private static readonly SolidColorBrush BgPaperOuter = FrozenBrush("#EDE1CC");
+    private static readonly SolidColorBrush BgPaperPage = FrozenBrush("#FDF6E7");
+    private static readonly SolidColorBrush BgDark = FrozenBrush("#050608");
     private const double DefaultDoublePageGap = 8;
     private const string DoublePageGapPreferenceKey = "reader.doublepage.gap";
     private readonly DispatcherTimer _controlsRevealTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
@@ -242,9 +262,9 @@ public partial class ReaderWindow : Window
 
     private static void SetFitButtonState(System.Windows.Controls.Button button, bool active)
     {
-        button.Background = active ? BrushFrom("#E8F8FAFC") : BrushFrom("#1A0F172A");
-        button.BorderBrush = active ? BrushFrom("#F0FFFFFF") : BrushFrom("#22FFFFFF");
-        button.Foreground = active ? BrushFrom("#0F172A") : BrushFrom("#F9FAFB");
+        button.Background = active ? FitActiveBg : FitInactiveBg;
+        button.BorderBrush = active ? FitActiveBorder : FitInactiveBorder;
+        button.Foreground = active ? FitActiveFg : FitInactiveFg;
     }
 
     private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -846,15 +866,13 @@ public partial class ReaderWindow : Window
 
     private void ApplyReaderBackground()
     {
-        var (outer, page, label) = _backgroundMode switch
+        var (outerBrush, pageBrush, label) = _backgroundMode switch
         {
-            1 => ("#F8FAFC", "#FFFFFF", "白"),
-            2 => ("#EDE1CC", "#FDF6E7", "纸"),
-            _ => ("#050608", "#050608", "黑")
+            1 => (BgWhiteOuter, BgWhitePage, "白"),
+            2 => (BgPaperOuter, BgPaperPage, "纸"),
+            _ => (BgDark, BgDark, "黑")
         };
 
-        var outerBrush = BrushFrom(outer);
-        var pageBrush = BrushFrom(page);
         ReaderRoot.Background = outerBrush;
         ReaderBackdrop.Background = outerBrush;
         ReaderScrollViewer.Background = outerBrush;
@@ -875,11 +893,6 @@ public partial class ReaderWindow : Window
     private void CycleWheelMode()
     {
         WheelModeBox.SelectedIndex = (WheelModeBox.SelectedIndex + 1) % WheelModeBox.Items.Count;
-    }
-
-    private static SolidColorBrush BrushFrom(string color)
-    {
-        return new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
     }
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
