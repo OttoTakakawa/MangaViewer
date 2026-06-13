@@ -1,7 +1,6 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using System.ComponentModel;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Data;
@@ -14,6 +13,20 @@ namespace MangaReader.Native;
 
 public partial class MainWindow : Window
 {
+    public static readonly DependencyProperty IsBatchSelectionModeProperty =
+        DependencyProperty.Register(
+            nameof(IsBatchSelectionMode),
+            typeof(bool),
+            typeof(MainWindow),
+            new PropertyMetadata(false, OnBatchSelectionModeChanged));
+
+    public static readonly DependencyProperty IsBatchSelectionUiVisibleProperty =
+        DependencyProperty.Register(
+            nameof(IsBatchSelectionUiVisible),
+            typeof(bool),
+            typeof(MainWindow),
+            new PropertyMetadata(false));
+
     private const double WheelScrollMultiplier = 1.45;
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
@@ -57,11 +70,24 @@ public partial class MainWindow : Window
     private string[] _cachedActiveTagFilters = [];
 
     public RangeObservableCollection<MangaBook> Books { get; } = [];
-    public ObservableCollection<TagChip> VisibleTags { get; } = [];
-    public ObservableCollection<TagChip> ActiveTagFilters { get; } = [];
-    public ObservableCollection<TagChip> TagManagerItems { get; } = [];
-    public ObservableCollection<AuthorItem> AuthorManagerItems { get; } = [];
-    public ObservableCollection<string> AuthorFilters { get; } = [];
+    public RangeObservableCollection<TagChip> VisibleTags { get; } = [];
+    public RangeObservableCollection<TagChip> ActiveTagFilters { get; } = [];
+    public RangeObservableCollection<TagChip> TagManagerItems { get; } = [];
+    public RangeObservableCollection<AuthorItem> AuthorManagerItems { get; } = [];
+    public RangeObservableCollection<string> AuthorFilters { get; } = [];
+
+    public bool IsBatchSelectionMode
+    {
+        get => (bool)GetValue(IsBatchSelectionModeProperty);
+        set => SetValue(IsBatchSelectionModeProperty, value);
+    }
+
+    public bool IsBatchSelectionUiVisible
+    {
+        get => (bool)GetValue(IsBatchSelectionUiVisibleProperty);
+        set => SetValue(IsBatchSelectionUiVisibleProperty, value);
+    }
+
     public RangeObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> FavoriteShowcaseBooks { get; } = [];
@@ -1004,8 +1030,27 @@ public partial class MainWindow : Window
         UpdateBatchSelectionState();
     }
 
+    private static void OnBatchSelectionModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is MainWindow window)
+        {
+            window.UpdateBatchSelectionModeVisuals(clearSelection: !(bool)e.NewValue);
+        }
+    }
+
+    private void ToggleBatchSelectionMode_Click(object sender, RoutedEventArgs e)
+    {
+        IsBatchSelectionMode = !IsBatchSelectionMode;
+    }
+
+    private void ExitBatchSelectionMode_Click(object sender, RoutedEventArgs e)
+    {
+        IsBatchSelectionMode = false;
+    }
+
     private void SelectVisibleBooks_Click(object sender, RoutedEventArgs e)
     {
+        IsBatchSelectionMode = true;
         foreach (var book in GetVisibleBooks())
         {
             book.IsSelectedForBatch = true;
@@ -1518,11 +1563,7 @@ public partial class MainWindow : Window
             .ThenBy(tag => tag.Name)
             .ToList();
 
-        VisibleTags.Clear();
-        foreach (var tag in tags)
-        {
-            VisibleTags.Add(tag);
-        }
+        VisibleTags.ReplaceRange(tags);
     }
 
     private void RefreshAuthorFilters()
@@ -1543,12 +1584,8 @@ public partial class MainWindow : Window
                 .OrderBy(author => author)
                 .ToList();
 
-            AuthorFilters.Clear();
-            AuthorFilters.Add("全部作者");
-            foreach (var author in authors)
-            {
-                AuthorFilters.Add(author);
-            }
+            var filterItems = authors.Prepend("全部作者").ToList();
+            AuthorFilters.ReplaceRange(filterItems);
 
             if (AuthorFilterBox is not null)
             {
@@ -1647,6 +1684,7 @@ public partial class MainWindow : Window
         {
             LibraryFilterControlsPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         }
+        UpdateBatchSelectionModeVisuals(clearSelection: false);
         if (LibraryTagPanel is not null)
         {
             LibraryTagPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
@@ -2043,7 +2081,36 @@ public partial class MainWindow : Window
         }
 
         var selectedCount = Books.Count(book => book.IsSelectedForBatch);
-        BatchSelectionText.Text = selectedCount == 0 ? "已选 0 本" : $"已选 {selectedCount} 本";
+        BatchSelectionText.Text = selectedCount == 0 ? "0 本" : $"{selectedCount} 本";
+        UpdateBatchSelectionModeVisuals(clearSelection: false);
+    }
+
+    private void UpdateBatchSelectionModeVisuals(bool clearSelection)
+    {
+        if (clearSelection)
+        {
+            ClearBatchSelection();
+        }
+
+        var showBatchTools = IsBatchSelectionMode && !_libraryChromeCollapsed;
+        IsBatchSelectionUiVisible = showBatchTools;
+        if (BatchManageShell is not null)
+        {
+            BatchManageShell.Visibility = showBatchTools ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (BatchModeToggleButton is not null)
+        {
+            BatchModeToggleButton.Content = IsBatchSelectionMode ? "退出多选" : "多选管理";
+            BatchModeToggleButton.Background = CreateBrush(IsBatchSelectionMode ? "#111827" : "#F8FAFC");
+            BatchModeToggleButton.BorderBrush = CreateBrush(IsBatchSelectionMode ? "#111827" : "#E5E7EB");
+            BatchModeToggleButton.Foreground = CreateBrush(IsBatchSelectionMode ? "#FFFFFF" : "#111827");
+        }
+    }
+
+    private static SolidColorBrush CreateBrush(string color)
+    {
+        return new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
     }
 
     private void ClearBatchSelection()
@@ -2746,11 +2813,7 @@ public partial class MainWindow : Window
             .Select(tag => CreateTagChip(tag))
             .ToList();
 
-        ActiveTagFilters.Clear();
-        foreach (var chip in chips)
-        {
-            ActiveTagFilters.Add(chip);
-        }
+        ActiveTagFilters.ReplaceRange(chips);
 
         ActiveTagSummaryText.Text = chips.Count == 0
             ? "已选 0 个 Tag"
@@ -2772,11 +2835,7 @@ public partial class MainWindow : Window
             .ThenBy(tag => tag.Name)
             .ToList();
 
-        TagManagerItems.Clear();
-        foreach (var chip in chips)
-        {
-            TagManagerItems.Add(chip);
-        }
+        TagManagerItems.ReplaceRange(chips);
 
         if (TagManagerTotalCountText is not null)
         {
@@ -2809,11 +2868,7 @@ public partial class MainWindow : Window
         }
 
         var sorted = query.OrderBy(a => a.Name).ToList();
-        AuthorManagerItems.Clear();
-        foreach (var item in sorted)
-        {
-            AuthorManagerItems.Add(item);
-        }
+        AuthorManagerItems.ReplaceRange(sorted);
 
         if (AuthorTotalText is not null)
         {

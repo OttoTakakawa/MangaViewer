@@ -9,6 +9,15 @@
         Title="漫画库" Height="900" Width="1500" MinHeight="760" MinWidth="1180"
         Background="#F6F7F9" WindowStartupLocation="CenterScreen">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <CornerRadius x:Key="RadiusClip">4</CornerRadius>
+        <CornerRadius x:Key="RadiusProgress">5</CornerRadius>
+        <CornerRadius x:Key="RadiusControl">9</CornerRadius>
+        <CornerRadius x:Key="RadiusPanel">10</CornerRadius>
+        <CornerRadius x:Key="RadiusField">11</CornerRadius>
+        <CornerRadius x:Key="RadiusTag">16</CornerRadius>
+        <CornerRadius x:Key="RadiusDialog">32</CornerRadius>
+        <CornerRadius x:Key="RadiusPill">999</CornerRadius>
         <DropShadowEffect x:Key="BookShadow" Color="#111827" BlurRadius="18" ShadowDepth="6" Opacity="0.14"/>
         <DropShadowEffect x:Key="PanelShadow" Color="#111827" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
 
@@ -29,7 +38,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9"
+                                CornerRadius="{StaticResource RadiusControl}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -67,7 +76,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="#E5E7EB"
                                 BorderThickness="1"
-                                CornerRadius="11"
+                                CornerRadius="{StaticResource RadiusField}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -85,6 +94,15 @@
             <Setter Property="Padding" Value="11,6"/>
             <Setter Property="FontSize" Value="12"/>
         </Style>
+        <Style x:Key="BatchPillButton" TargetType="Button" BasedOn="{StaticResource TinyButton}">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="#111827"/>
+        </Style>
         <Style x:Key="PillProgressBar" TargetType="ProgressBar">
             <Setter Property="Height" Value="10"/>
             <Setter Property="Foreground" Value="#111827"/>
@@ -94,12 +112,12 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ProgressBar">
                         <Grid x:Name="TemplateRoot">
-                            <Border Background="{TemplateBinding Background}" CornerRadius="5"/>
-                            <Border x:Name="PART_Track" CornerRadius="5"/>
+                            <Border Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusProgress}"/>
+                            <Border x:Name="PART_Track" CornerRadius="{StaticResource RadiusProgress}"/>
                             <Border x:Name="PART_Indicator"
                                     HorizontalAlignment="Left"
                                     Background="{TemplateBinding Foreground}"
-                                    CornerRadius="5"/>
+                                    CornerRadius="{StaticResource RadiusProgress}"/>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
@@ -117,7 +135,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="11">
+                                CornerRadius="{StaticResource RadiusField}">
                             <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -144,7 +162,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="14">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource RadiusField}">
                             <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
                         </Border>
                     </ControlTemplate>
@@ -170,7 +188,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="14">
+                                    CornerRadius="{StaticResource RadiusField}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -208,7 +226,7 @@
                                         Background="#FFFFFF"
                                         BorderBrush="#D8DEE8"
                                         BorderThickness="1"
-                                        CornerRadius="14"
+                                        CornerRadius="{StaticResource RadiusField}"
                                         Effect="{StaticResource PanelShadow}">
                                     <ScrollViewer MaxHeight="280"
                                                   CanContentScroll="True">
@@ -243,7 +261,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="11">
+                                    CornerRadius="{StaticResource RadiusField}">
                                 <Grid Margin="0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -259,7 +277,7 @@
                                             Height="28"
                                             Margin="0,0,10,0"
                                             Background="#EEF2F7"
-                                            CornerRadius="14"
+                                            CornerRadius="{StaticResource RadiusPill}"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center">
                                         <Path Data="M 0 0 L 5 5 L 10 0"
@@ -293,7 +311,7 @@
                                         Background="#FFFFFF"
                                         BorderBrush="#E5E7EB"
                                         BorderThickness="1"
-                                        CornerRadius="9"
+                                        CornerRadius="{StaticResource RadiusControl}"
                                         Effect="{StaticResource PanelShadow}">
                                     <ScrollViewer MaxHeight="280" CanContentScroll="True">
                                         <ItemsPresenter Margin="6"/>
@@ -328,7 +346,7 @@
                                 Margin="2"
                                 Padding="{TemplateBinding Padding}"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="10">
+                                CornerRadius="{StaticResource RadiusPanel}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="Center"/>
                         </Border>
@@ -368,7 +386,7 @@
                                 Background="#F8FAFC"
                                 BorderBrush="#E5E7EB"
                                 BorderThickness="1"
-                                CornerRadius="9">
+                                CornerRadius="{StaticResource RadiusControl}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Border x:Name="CheckMark"
                                         Width="18"
@@ -377,7 +395,7 @@
                                         Background="#FFFFFF"
                                         BorderBrush="#CBD5E1"
                                         BorderThickness="1"
-                                        CornerRadius="9">
+                                        CornerRadius="{StaticResource RadiusPill}">
                                     <Path x:Name="CheckGlyph"
                                           Data="M 4 9 L 7 12 L 14 5"
                                           Stroke="#FFFFFF"
@@ -402,6 +420,56 @@
                                 <Setter TargetName="CheckMark" Property="BorderBrush" Value="#111827"/>
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible"/>
                                 <Setter Property="Foreground" Value="#111827"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BatchSelectCheckBox" TargetType="CheckBox">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="SelectRoot"
+                                Width="30"
+                                Height="30"
+                                Background="#DDF8FAFC"
+                                BorderBrush="#94A3B8"
+                                BorderThickness="1.2"
+                                CornerRadius="15">
+                            <Grid>
+                                <Ellipse x:Name="SelectDot"
+                                         Width="16"
+                                         Height="16"
+                                         Fill="Transparent"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"/>
+                                <Path x:Name="SelectGlyph"
+                                      Data="M 5 10 L 8 13 L 15 6"
+                                      Stroke="#FFFFFF"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Visibility="Collapsed"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SelectRoot" Property="Background" Value="#EEF2F7"/>
+                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#64748B"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SelectRoot" Property="Background" Value="#111827"/>
+                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#111827"/>
+                                <Setter TargetName="SelectDot" Property="Fill" Value="#111827"/>
+                                <Setter TargetName="SelectGlyph" Property="Visibility" Value="Visible"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -599,12 +667,13 @@
                             <TextBlock Text="★" Foreground="#9A5A00" FontSize="13" FontWeight="Black"/>
                         </Border>
                         <CheckBox IsChecked="{Binding IsSelectedForBatch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  Content="选"
+                                  Style="{StaticResource BatchSelectCheckBox}"
+                                  Visibility="{Binding IsBatchSelectionUiVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
                                   Checked="BatchSelection_Changed"
                                   Unchecked="BatchSelection_Changed"
                                   HorizontalAlignment="Left"
                                   VerticalAlignment="Top"
-                                  Margin="0,4,0,0"/>
+                                  Margin="6,6,0,0"/>
                     </Grid>
 
                     <StackPanel Margin="0,10,0,0">
@@ -1002,23 +1071,27 @@
                                 <ComboBoxItem Content="排序：录入时间"/>
                                 <ComboBoxItem Content="排序：出品时间"/>
                             </ComboBox>
+                            <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterPillButton}" Height="44" Margin="0,0,10,0"/>
                             <Button Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterPillButton}" Height="44"/>
                         </WrapPanel>
-                        <Border Grid.Row="2" Margin="0,12,0,0" Padding="10" CornerRadius="22" Background="#F8FAFC" BorderBrush="#E5E7EB" BorderThickness="1">
-                            <WrapPanel x:Name="BatchManagePanel" VerticalAlignment="Center" ItemHeight="38">
-                                <TextBlock x:Name="BatchSelectionText" Text="已选 0 本" Foreground="#475569" FontSize="12" FontWeight="Black" VerticalAlignment="Center" Margin="4,0,12,0"/>
-                                <Button Content="全选当前" Click="SelectVisibleBooks_Click" Style="{StaticResource FilterPillButton}" Height="38" Margin="0,0,8,0"/>
-                                <Button Content="清空选择" Click="ClearBatchSelection_Click" Style="{StaticResource FilterPillButton}" Height="38" Margin="0,0,8,0"/>
-                                <Button Content="批量去前缀" Click="BatchRemoveTitlePrefix_Click" Style="{StaticResource FilterPillButton}" Height="38" Margin="0,0,8,0"/>
-                                <ComboBox x:Name="BatchStyleBox" Width="108" Height="38" SelectedIndex="0" Style="{StaticResource FilterPillComboBox}" Margin="0,0,8,0">
+                        <Border x:Name="BatchManageShell" Grid.Row="2" Margin="0,10,0,0" Padding="8" CornerRadius="12" Background="#EEF2F7" BorderBrush="#DDE4EE" BorderThickness="1" Visibility="Collapsed">
+                            <WrapPanel x:Name="BatchManagePanel" VerticalAlignment="Center" ItemHeight="32">
+                                <Border Padding="10,5" CornerRadius="999" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,0">
+                                    <TextBlock x:Name="BatchSelectionText" Text="0 本" Foreground="#111827" FontSize="12" FontWeight="Black" VerticalAlignment="Center"/>
+                                </Border>
+                                <Button Content="全选" Click="SelectVisibleBooks_Click" Style="{StaticResource BatchPillButton}" Margin="0,0,6,0"/>
+                                <Button Content="清空" Click="ClearBatchSelection_Click" Style="{StaticResource BatchPillButton}" Margin="0,0,6,0"/>
+                                <Button Content="去前缀" Click="BatchRemoveTitlePrefix_Click" Style="{StaticResource BatchPillButton}" Margin="0,0,6,0"/>
+                                <ComboBox x:Name="BatchStyleBox" Width="96" Height="32" MinHeight="32" Padding="10,4" SelectedIndex="0" Style="{StaticResource FilterPillComboBox}" Margin="0,0,6,0">
                                     <ComboBoxItem Content="样式 1"/>
                                     <ComboBoxItem Content="样式 2"/>
                                     <ComboBoxItem Content="样式 3"/>
                                     <ComboBoxItem Content="样式 4"/>
                                 </ComboBox>
-                                <Button Content="应用样式" Click="BatchApplyStyle_Click" Style="{StaticResource FilterPillButton}" Height="38" Margin="0,0,8,0"/>
-                                <Button Content="批量加 Tag" Click="BatchAddTag_Click" Style="{StaticResource FilterPillButton}" Height="38" Margin="0,0,8,0"/>
-                                <Button Content="批量减 Tag" Click="BatchRemoveTag_Click" Style="{StaticResource FilterPillButton}" Height="38"/>
+                                <Button Content="应用" Click="BatchApplyStyle_Click" Style="{StaticResource BatchPillButton}" Margin="0,0,6,0"/>
+                                <Button Content="+ Tag" Click="BatchAddTag_Click" Style="{StaticResource BatchPillButton}" Margin="0,0,6,0"/>
+                                <Button Content="- Tag" Click="BatchRemoveTag_Click" Style="{StaticResource BatchPillButton}" Margin="0,0,6,0"/>
+                                <Button Content="退出" Click="ExitBatchSelectionMode_Click" Style="{StaticResource BatchPillButton}"/>
                             </WrapPanel>
                         </Border>
                     </Grid>

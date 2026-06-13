@@ -13,7 +13,10 @@ public partial class ReaderWindow : Window
 {
     private const double WheelZoomStep = 0.08;
     private const double HoldZoomFactor = 2.6;
+    private const double DefaultDoublePageGap = 8;
+    private const string DoublePageGapPreferenceKey = "reader.doublepage.gap";
     private readonly DispatcherTimer _controlsRevealTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
+    private readonly DispatcherTimer _doublePageGapSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private readonly MangaBook _book;
     private readonly LibraryDatabase _database;
     private readonly List<Key> _nextKeys;
@@ -31,6 +34,7 @@ public partial class ReaderWindow : Window
     private double _holdZoomBaseValue = 1;
     private int _pageLoadRequestId;
     private int _backgroundMode;
+    private bool _isLoadingViewerPreferences;
 
     private enum FitMode
     {
@@ -56,6 +60,7 @@ public partial class ReaderWindow : Window
         Title = book.Title;
         TitleText.Text = book.Title;
         _controlsRevealTimer.Tick += ControlsRevealTimer_Tick;
+        _doublePageGapSaveTimer.Tick += DoublePageGapSaveTimer_Tick;
         KeyDown += ReaderWindow_KeyDown;
         SizeChanged += ReaderWindow_SizeChanged;
         Closing += ReaderWindow_Closing;
@@ -75,8 +80,10 @@ public partial class ReaderWindow : Window
     private void ReaderWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _controlsRevealTimer.Stop();
+        _doublePageGapSaveTimer.Stop();
         _database.SaveProgress(_book);
         _database.SaveShortcut("reader.wheelmode", WheelModeBox.SelectedIndex.ToString());
+        SaveDoublePageGapPreference();
     }
 
     private void PreviousPage_Click(object sender, RoutedEventArgs e)
@@ -200,6 +207,25 @@ public partial class ReaderWindow : Window
         ImageScale.ScaleX = e.NewValue;
         ImageScale.ScaleY = e.NewValue;
         UpdateZoomText();
+    }
+
+    private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        ApplyDoublePageGap();
+        if (_fitMode == FitMode.Width && IsLoaded)
+        {
+            ApplyFitWidth();
+        }
+
+        if (DoublePageGapText is not null)
+        {
+            DoublePageGapText.Text = $"间距 {(int)Math.Round(e.NewValue)}";
+        }
+
+        if (IsLoaded && !_isLoadingViewerPreferences)
+        {
+            RestartDoublePageGapSaveTimer();
+        }
     }
 
     private void ReadingModeBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -358,6 +384,8 @@ public partial class ReaderWindow : Window
                 }
             }
 
+            NormalizeDisplayedImageSizing();
+            ApplyDoublePageGap();
             _book.LastReadPageIndex = safeIndex;
             _database.SaveProgress(_book);
             UpdateNavigationState();
@@ -394,10 +422,54 @@ public partial class ReaderWindow : Window
     private static bool IsLandscape(BitmapSource image) => image.PixelWidth > image.PixelHeight * 1.15;
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
 
+    private void NormalizeDisplayedImageSizing()
+    {
+        if (ReaderImageRight.Visibility == Visibility.Visible
+            && ReaderImage.Source is BitmapSource left
+            && ReaderImageRight.Source is BitmapSource right)
+        {
+            var normalizedHeight = Math.Max(left.Height, right.Height);
+            ReaderImage.Height = normalizedHeight;
+            ReaderImageRight.Height = normalizedHeight;
+            ReaderImage.Width = double.NaN;
+            ReaderImageRight.Width = double.NaN;
+            ReaderImage.Stretch = Stretch.Uniform;
+            ReaderImageRight.Stretch = Stretch.Uniform;
+            return;
+        }
+
+        ReaderImage.Height = double.NaN;
+        ReaderImageRight.Height = double.NaN;
+        ReaderImage.Width = double.NaN;
+        ReaderImageRight.Width = double.NaN;
+        ReaderImage.Stretch = Stretch.None;
+        ReaderImageRight.Stretch = Stretch.None;
+    }
+
+    private void ApplyDoublePageGap()
+    {
+        if (ReaderImage is null || ReaderImageRight is null || DoublePageGapSlider is null)
+        {
+            return;
+        }
+
+        var gap = Math.Clamp(DoublePageGapSlider.Value, DoublePageGapSlider.Minimum, DoublePageGapSlider.Maximum);
+        if (ReaderImageRight.Visibility == Visibility.Visible)
+        {
+            var halfGap = gap / 2;
+            ReaderImage.Margin = new Thickness(4, 4, halfGap, 4);
+            ReaderImageRight.Margin = new Thickness(halfGap, 4, 4, 4);
+            return;
+        }
+
+        ReaderImage.Margin = new Thickness(4);
+        ReaderImageRight.Margin = new Thickness(4);
+    }
+
     private double GetDisplayedPixelWidth()
     {
-        var left = ReaderImage.Source is BitmapSource l ? l.Width : 0;
-        var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? r.Width : 0;
+        var left = ReaderImage.Source is BitmapSource l ? GetNormalizedPageWidth(l) : 0;
+        var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? GetNormalizedPageWidth(r) : 0;
         return left + right;
     }
 
@@ -408,12 +480,28 @@ public partial class ReaderWindow : Window
         return Math.Max(left, right);
     }
 
+    private double GetNormalizedPageWidth(BitmapSource image)
+    {
+        if (ReaderImageRight.Visibility != Visibility.Visible
+            || ReaderImage.Source is not BitmapSource left
+            || ReaderImageRight.Source is not BitmapSource right)
+        {
+            return image.Width;
+        }
+
+        var normalizedHeight = Math.Max(left.Height, right.Height);
+        return image.Height > 0 ? image.Width * normalizedHeight / image.Height : image.Width;
+    }
+
     private double GetAvailableContentWidth()
     {
         var viewportWidth = ReaderScrollViewer.ViewportWidth > 0 ? ReaderScrollViewer.ViewportWidth : ReaderScrollViewer.ActualWidth;
         var hostMargin = ImageHost.Margin.Left + ImageHost.Margin.Right;
-        var imageMargin = ReaderImage.Margin.Left + ReaderImage.Margin.Right;
-        var totalImageMargins = ReaderImageRight.Visibility == Visibility.Visible ? imageMargin * 2 : imageMargin;
+        var leftImageMargin = ReaderImage.Margin.Left + ReaderImage.Margin.Right;
+        var rightImageMargin = ReaderImageRight.Visibility == Visibility.Visible
+            ? ReaderImageRight.Margin.Left + ReaderImageRight.Margin.Right
+            : 0;
+        var totalImageMargins = leftImageMargin + rightImageMargin;
         return Math.Max(0, viewportWidth - hostMargin - totalImageMargins);
     }
 
@@ -637,14 +725,57 @@ public partial class ReaderWindow : Window
 
     private void LoadViewerPreferences()
     {
+        _isLoadingViewerPreferences = true;
         var shortcuts = _database.LoadShortcuts();
-        if (shortcuts.TryGetValue("reader.wheelmode", out var wheelMode)
-            && int.TryParse(wheelMode, out var wheelModeIndex)
-            && wheelModeIndex >= 0
-            && wheelModeIndex < WheelModeBox.Items.Count)
+        try
         {
-            WheelModeBox.SelectedIndex = wheelModeIndex;
+            if (shortcuts.TryGetValue("reader.wheelmode", out var wheelMode)
+                && int.TryParse(wheelMode, out var wheelModeIndex)
+                && wheelModeIndex >= 0
+                && wheelModeIndex < WheelModeBox.Items.Count)
+            {
+                WheelModeBox.SelectedIndex = wheelModeIndex;
+            }
+
+            if (shortcuts.TryGetValue(DoublePageGapPreferenceKey, out var gapText)
+                && double.TryParse(gapText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gap))
+            {
+                DoublePageGapSlider.Value = Math.Clamp(gap, DoublePageGapSlider.Minimum, DoublePageGapSlider.Maximum);
+            }
+            else
+            {
+                DoublePageGapSlider.Value = DefaultDoublePageGap;
+            }
         }
+        finally
+        {
+            _isLoadingViewerPreferences = false;
+        }
+
+        ApplyDoublePageGap();
+    }
+
+    private void RestartDoublePageGapSaveTimer()
+    {
+        _doublePageGapSaveTimer.Stop();
+        _doublePageGapSaveTimer.Start();
+    }
+
+    private void DoublePageGapSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _doublePageGapSaveTimer.Stop();
+        SaveDoublePageGapPreference();
+    }
+
+    private void SaveDoublePageGapPreference()
+    {
+        if (DoublePageGapSlider is null)
+        {
+            return;
+        }
+
+        var gap = Math.Clamp(DoublePageGapSlider.Value, DoublePageGapSlider.Minimum, DoublePageGapSlider.Maximum);
+        _database.SaveShortcut(DoublePageGapPreferenceKey, gap.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
     }
 
     private void RestartControlsRevealTimer()

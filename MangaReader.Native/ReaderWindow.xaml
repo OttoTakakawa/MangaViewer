@@ -265,11 +265,13 @@
                 BorderThickness="1"
                 CornerRadius="25"
                 Effect="{StaticResource ToolbarShadow}">
-            <Grid Width="960">
+            <Grid Width="1120">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="150"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -281,7 +283,9 @@
                 </StackPanel>
                 <TextBlock Grid.Column="1" x:Name="ZoomText" Text="100%" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="78"/>
                 <Slider Grid.Column="2" x:Name="ZoomSlider" Minimum="0.05" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="ZoomSlider_ValueChanged" Margin="0,0,14,0"/>
-                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <TextBlock Grid.Column="3" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
+                <Slider Grid.Column="4" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" TickFrequency="2" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
+                <StackPanel Grid.Column="5" Orientation="Horizontal">
                     <ComboBox x:Name="WheelModeBox" Width="112" SelectionChanged="WheelModeBox_SelectionChanged">
                         <ComboBoxItem Content="滚轮翻页" IsSelected="True"/>
                         <ComboBoxItem Content="滚轮缩放"/>
