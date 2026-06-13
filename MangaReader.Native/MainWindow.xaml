@@ -1337,7 +1337,7 @@
                 </Border>
             </Grid>
 
-            <Grid x:Name="TagsPagePanel" Visibility="Collapsed">
+            <Grid x:Name="TagsPagePanel" Visibility="Collapsed" HorizontalAlignment="Stretch">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -1390,8 +1390,8 @@
                 </Grid>
 
                 <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                    <DockPanel>
-                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <DockPanel LastChildFill="True">
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12" LastChildFill="True">
                             <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
                             <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
                         </DockPanel>
@@ -1401,6 +1401,8 @@
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
                                  ScrollViewer.CanContentScroll="True"
+                                 HorizontalAlignment="Stretch"
+                                 HorizontalContentAlignment="Stretch"
                                  Focusable="False">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
@@ -1468,7 +1470,7 @@
                 </Border>
             </Grid>
 
-            <Grid x:Name="AuthorsPagePanel" Visibility="Collapsed">
+            <Grid x:Name="AuthorsPagePanel" Visibility="Collapsed" HorizontalAlignment="Stretch">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -1513,8 +1515,8 @@
                 </Grid>
 
                 <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                    <DockPanel>
-                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <DockPanel LastChildFill="True">
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12" LastChildFill="True">
                             <TextBox x:Name="AuthorSearchBox" Height="44" TextChanged="AuthorSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索作者名"/>
                         </DockPanel>
                         <ListBox x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}"
@@ -1523,6 +1525,8 @@
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
                                  ScrollViewer.CanContentScroll="True"
+                                 HorizontalAlignment="Stretch"
+                                 HorizontalContentAlignment="Stretch"
                                  Focusable="False">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">

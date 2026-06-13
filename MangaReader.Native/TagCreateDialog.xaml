@@ -308,7 +308,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="16" HorizontalAlignment="Left">
+                <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="16" HorizontalAlignment="Left" SnapsToDevicePixels="True">
                     <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="#25211E"/>
                 </Border>
             </StackPanel>
