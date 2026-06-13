@@ -440,7 +440,6 @@ public partial class ReaderWindow : Window
             UpdateNavigationState();
             _ = Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
             HideReaderMessage();
-            PageText.Text = "";
             AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
         }
         catch (Exception ex)
@@ -564,7 +563,18 @@ public partial class ReaderWindow : Window
     private void UpdateNavigationState()
     {
         var endPage = Math.Min(_book.LastReadPageIndex + _displayedPageCount, _book.PageCount);
-        PageText.Text = $"{_book.LastReadPageIndex + 1}-{endPage} / {_book.PageCount}";
+        var pageText = _displayedPageCount > 1 && endPage > _book.LastReadPageIndex + 1
+            ? $"{_book.LastReadPageIndex + 1}-{endPage} / {_book.PageCount}"
+            : $"{_book.LastReadPageIndex + 1} / {_book.PageCount}";
+        PageText.Text = pageText;
+        if (BottomPageText is not null)
+        {
+            BottomPageText.Text = pageText;
+        }
+        if (HiddenPageText is not null)
+        {
+            HiddenPageText.Text = pageText;
+        }
         if (!string.IsNullOrWhiteSpace(_boundaryHint))
         {
             PageText.Text += $"  ·  {_boundaryHint}";
