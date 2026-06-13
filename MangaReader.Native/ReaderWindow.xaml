@@ -11,7 +11,9 @@
             <Setter Property="Margin" Value="3"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Background" Value="#1A0F172A"/>
             <Setter Property="BorderBrush" Value="#22FFFFFF"/>
             <Setter Property="Foreground" Value="#F9FAFB"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -29,11 +31,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#30FFFFFF"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#44FFFFFF"/>
+                                <Setter TargetName="Root" Property="Background" Value="#33475569"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#6694A3B8"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#42FFFFFF"/>
+                                <Setter TargetName="Root" Property="Background" Value="#4F1E293B"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#88CBD5E1"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Root" Property="Opacity" Value="0.42"/>
