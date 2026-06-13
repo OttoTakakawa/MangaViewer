@@ -21,11 +21,11 @@ public partial class TagCreateDialog : Window
     public bool IsExclusive => ((TagTypeBox.SelectedItem as ComboBoxItem)?.Content as string) == "互斥";
     public string SelectedColor => _selectedColor;
 
-    public TagCreateDialog(string initialValue)
+    public TagCreateDialog(string initialValue, IEnumerable<string>? existingCategories = null)
     {
         InitializeComponent();
         TagNameBox.Text = initialValue;
-        TagCategoryBox.SelectedIndex = 3;
+        PopulateCategories(existingCategories);
         TagTypeBox.SelectedIndex = 1;
         ColorPicker.ItemsSource = AvailableColors;
         SelectColor(_selectedColor);
@@ -34,6 +34,29 @@ public partial class TagCreateDialog : Window
             TagNameBox.Focus();
             TagNameBox.SelectAll();
         };
+    }
+
+    private void PopulateCategories(IEnumerable<string>? existingCategories)
+    {
+        var builtIn = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "内容形态", "色彩规格", "画质规格", "自定义"
+        };
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "内容形态" });
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "色彩规格" });
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "画质规格" });
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "自定义" });
+        if (existingCategories is not null)
+        {
+            foreach (var cat in existingCategories.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c))
+            {
+                if (!builtIn.Contains(cat))
+                {
+                    TagCategoryBox.Items.Add(new ComboBoxItem { Content = cat });
+                }
+            }
+        }
+        TagCategoryBox.SelectedIndex = 3;
     }
 
     private string GetSelectedCategory()

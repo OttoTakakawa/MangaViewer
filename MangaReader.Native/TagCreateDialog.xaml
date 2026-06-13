@@ -161,10 +161,69 @@
             </Setter>
         </Style>
 
-        <Style x:Key="DialogEditableComboBox" TargetType="ComboBox" BasedOn="{StaticResource DialogComboBox}">
+        <Style x:Key="DialogEditableComboBox" TargetType="ComboBox">
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="#211D19"/>
+            <Setter Property="Foreground" Value="#F8F3EA"/>
+            <Setter Property="BorderBrush" Value="#3A332D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="IsEditable" Value="True"/>
             <Setter Property="IsTextSearchEnabled" Value="True"/>
             <Setter Property="StaysOpenOnEdit" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border CornerRadius="23"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="#3A332D"
+                                    BorderThickness="1">
+                                <Grid>
+                                    <TextBox x:Name="PART_EditableTextBox"
+                                             Margin="16,0,42,0"
+                                             VerticalAlignment="Center"
+                                             Background="Transparent"
+                                             Foreground="#F8F3EA"
+                                             CaretBrush="#F8F3EA"
+                                             BorderThickness="0"
+                                             FontSize="14"
+                                             Focusable="True"
+                                             IsReadOnly="{Binding IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}"
+                                             Padding="0"/>
+                                    <TextBlock Text="⌄" Foreground="#C8B9AA" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2" IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"
+                                          IsHitTestVisible="False"
+                                          HorizontalAlignment="Right"
+                                          Width="42"
+                                          Opacity="0"/>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Fade">
+                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Margin="0,8,0,0"
+                                        CornerRadius="18"
+                                        Background="#211D19"
+                                        BorderBrush="#3A332D"
+                                        BorderThickness="1"
+                                        Padding="6">
+                                    <ScrollViewer MaxHeight="200">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -210,12 +269,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Text="标签分组（可输入自定义）" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource DialogEditableComboBox}">
-                            <ComboBoxItem Content="内容形态"/>
-                            <ComboBoxItem Content="色彩规格"/>
-                            <ComboBoxItem Content="画质规格"/>
-                            <ComboBoxItem Content="自定义"/>
-                        </ComboBox>
+                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource DialogEditableComboBox}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="规则" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>

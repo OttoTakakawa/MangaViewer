@@ -1338,10 +1338,12 @@
             </Grid>
 
             <Grid x:Name="TagsPagePanel" Visibility="Collapsed">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
-                    <StackPanel Margin="8,0,22,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="8,0,22,0">
                         <Border Padding="20" CornerRadius="11" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -1356,13 +1358,14 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+                </StackPanel>
 
-                        <Grid Margin="0,16,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
+                <Grid Grid.Row="1" Margin="8,16,22,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource MetricCard}">
                                 <StackPanel>
                                     <TextBlock Text="全部标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
@@ -1384,21 +1387,21 @@
                                     <TextBlock Text="未关联时只能作为待分配标签" Margin="0,6,0,0" Foreground="#6E645C"/>
                                 </StackPanel>
                             </Border>
-                        </Grid>
+                </Grid>
 
-                        <Border Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,12">
-                                    <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
-                                    <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
-                                </DockPanel>
-                                <ListBox x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}"
-                                         BorderThickness="0" Background="Transparent"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                         VirtualizingStackPanel.IsVirtualizing="True"
-                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                         ScrollViewer.CanContentScroll="True"
-                                         MaxHeight="600" Focusable="False">
+                <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                            <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
+                            <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
+                        </DockPanel>
+                        <ListBox x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}"
+                                 BorderThickness="0" Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.CanContentScroll="True"
+                                 Focusable="False">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
                                             <Setter Property="Padding" Value="0"/>
@@ -1455,23 +1458,23 @@
                                             </Border>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
-                                </ListBox>
-                                <Border x:Name="TagManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
-                                    <TextBlock Text="当前没有命中的标签，可以换个关键词，或者新建一个新的标签。"
-                                               Foreground="#6B7280"
-                                               TextWrapping="Wrap"/>
-                                </Border>
-                            </StackPanel>
+                        </ListBox>
+                        <Border x:Name="TagManagerEmptyState" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
+                            <TextBlock Text="当前没有命中的标签，可以换个关键词，或者新建一个新的标签。"
+                                       Foreground="#6B7280"
+                                       TextWrapping="Wrap"/>
                         </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                    </DockPanel>
+                </Border>
             </Grid>
 
             <Grid x:Name="AuthorsPagePanel" Visibility="Collapsed">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
-                    <StackPanel Margin="8,0,22,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="8,0,22,0">
                         <Border Padding="20" CornerRadius="11" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -1486,40 +1489,41 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+                </StackPanel>
 
-                        <Grid Margin="0,16,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Style="{StaticResource MetricCard}">
-                                <StackPanel>
-                                    <TextBlock Text="全部作者" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="AuthorTotalText" Text="0 位" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                                    <TextBlock Text="去重计数" Margin="0,6,0,0" Foreground="#6E645C"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Grid.Column="1" Style="{StaticResource MetricCard}" Margin="0">
-                                <StackPanel>
-                                    <TextBlock Text="关联书籍" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="AuthorBookTotalText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                                    <TextBlock Text="已指定作者的漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
+                <Grid Grid.Row="1" Margin="8,16,22,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource MetricCard}">
+                        <StackPanel>
+                            <TextBlock Text="全部作者" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="AuthorTotalText" Text="0 位" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock Text="去重计数" Margin="0,6,0,0" Foreground="#6E645C"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource MetricCard}" Margin="0">
+                        <StackPanel>
+                            <TextBlock Text="关联书籍" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="AuthorBookTotalText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                            <TextBlock Text="已指定作者的漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
-                        <Border Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,12">
-                                    <TextBox x:Name="AuthorSearchBox" Height="44" TextChanged="AuthorSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索作者名"/>
-                                </DockPanel>
-                                <ListBox x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}"
-                                         BorderThickness="0" Background="Transparent"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                         VirtualizingStackPanel.IsVirtualizing="True"
-                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                         ScrollViewer.CanContentScroll="True"
-                                         MaxHeight="600" Focusable="False">
+                <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                            <TextBox x:Name="AuthorSearchBox" Height="44" TextChanged="AuthorSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索作者名"/>
+                        </DockPanel>
+                        <ListBox x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}"
+                                 BorderThickness="0" Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.CanContentScroll="True"
+                                 Focusable="False">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
                                             <Setter Property="Padding" Value="0"/>
@@ -1553,16 +1557,14 @@
                                             </Border>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
-                                </ListBox>
-                                <Border x:Name="AuthorManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
-                                    <TextBlock Text="没有匹配的作者。"
-                                               Foreground="#6B7280"
-                                               TextWrapping="Wrap"/>
-                                </Border>
-                            </StackPanel>
+                        </ListBox>
+                        <Border x:Name="AuthorManagerEmptyState" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
+                            <TextBlock Text="没有匹配的作者。"
+                                       Foreground="#6B7280"
+                                       TextWrapping="Wrap"/>
                         </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                    </DockPanel>
+                </Border>
             </Grid>
         </Grid>
 

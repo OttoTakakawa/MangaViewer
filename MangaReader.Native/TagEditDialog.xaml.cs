@@ -23,7 +23,7 @@ public partial class TagEditDialog : Window
     public string SelectedColor => _selectedColor;
     public bool OpenMoreRequested { get; private set; }
 
-    public TagEditDialog(TagChip tag, IReadOnlyList<MangaBook> relatedBooks)
+    public TagEditDialog(TagChip tag, IReadOnlyList<MangaBook> relatedBooks, IEnumerable<string>? existingCategories = null)
     {
         InitializeComponent();
         TagNameBox.Text = tag.Name;
@@ -32,6 +32,7 @@ public partial class TagEditDialog : Window
         var previews = relatedBooks.Take(3).ToList();
         PreviewBooksList.ItemsSource = previews;
         EmptyPreviewText.Visibility = previews.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PopulateCategories(existingCategories);
         SelectCategory(tag.Category);
         TagTypeBox.SelectedIndex = tag.IsExclusive ? 0 : 1;
         ColorPicker.ItemsSource = AvailableColors;
@@ -43,6 +44,28 @@ public partial class TagEditDialog : Window
             TagNameBox.Focus();
             TagNameBox.SelectAll();
         };
+    }
+
+    private void PopulateCategories(IEnumerable<string>? existingCategories)
+    {
+        var builtIn = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "内容形态", "色彩规格", "画质规格", "自定义"
+        };
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "内容形态" });
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "色彩规格" });
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "画质规格" });
+        TagCategoryBox.Items.Add(new ComboBoxItem { Content = "自定义" });
+        if (existingCategories is not null)
+        {
+            foreach (var cat in existingCategories.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(c => c))
+            {
+                if (!builtIn.Contains(cat))
+                {
+                    TagCategoryBox.Items.Add(new ComboBoxItem { Content = cat });
+                }
+            }
+        }
     }
 
     private string GetSelectedCategory()

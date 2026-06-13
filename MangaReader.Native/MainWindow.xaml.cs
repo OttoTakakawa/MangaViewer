@@ -2738,7 +2738,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var dialog = new TagCreateDialog(initialValue) { Owner = this };
+        var dialog = new TagCreateDialog(initialValue, _managedTagCategories.Keys) { Owner = this };
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
         {
             StatusText.Text = "没有创建标签。";
@@ -3097,7 +3097,7 @@ public partial class MainWindow : Window
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
-        var dialog = new TagEditDialog(chip, relatedBooks) { Owner = this };
+        var dialog = new TagEditDialog(chip, relatedBooks, _managedTagCategories.Keys) { Owner = this };
         var result = dialog.ShowDialog();
         if (dialog.OpenMoreRequested)
         {
