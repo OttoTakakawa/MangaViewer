@@ -414,14 +414,16 @@ public partial class ReaderWindow : Window
 
         try
         {
+            var singleDecodeWidth = GetDecodePixelWidth(false);
+            var doubleDecodeWidth = GetDecodePixelWidth(true);
             var page = await Task.Run(() =>
             {
-                var first = ImageLoader.LoadBitmap(firstPath, 2600);
+                var first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
                 var useDouble = doublePageMode && safeIndex + 1 < _book.Pages.Count && !IsLandscape(first);
                 BitmapSource? second = null;
                 if (useDouble)
                 {
-                    second = ImageLoader.LoadBitmap(_book.Pages[safeIndex + 1], 2600);
+                    second = ImageLoader.LoadBitmap(_book.Pages[safeIndex + 1], doubleDecodeWidth);
                 }
 
                 return new LoadedPage(first, second, useDouble);
@@ -561,6 +563,16 @@ public partial class ReaderWindow : Window
 
         var normalizedHeight = Math.Max(left.Height, right.Height);
         return image.Height > 0 ? image.Width * normalizedHeight / image.Height : image.Width;
+    }
+
+    private int GetDecodePixelWidth(bool isDoublePage)
+    {
+        var viewport = ReaderScrollViewer.ViewportWidth > 0 ? ReaderScrollViewer.ViewportWidth : ReaderScrollViewer.ActualWidth;
+        if (viewport <= 0) viewport = 960;
+        var zoom = ZoomSlider?.Value ?? 1.0;
+        var perPage = isDoublePage ? viewport / 2.0 : viewport;
+        var decoded = perPage * zoom * 1.2;
+        return (int)Math.Clamp(decoded, 800, 2600);
     }
 
     private double GetAvailableContentWidth()

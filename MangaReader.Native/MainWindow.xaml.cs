@@ -275,7 +275,7 @@ public partial class MainWindow : Window
                 book.Author = authorName.Trim();
                 book.FolderPath = candidate.FolderPath;
                 book.PageCount = pages.Count;
-                book.TotalBytes = SumFileBytes(pages);
+                book.TotalBytes = ImageLoader.SumFileBytes(pages);
                 book.CoverPageIndex = Math.Clamp(book.CoverPageIndex, 0, pages.Count - 1);
                 book.LastReadPageIndex = Math.Clamp(book.LastReadPageIndex, 0, pages.Count - 1);
                 book.IsMissing = false;
@@ -984,7 +984,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var totalBytes = await Task.Run(() => SumFileBytes(pages));
+        var totalBytes = await Task.Run(() => ImageLoader.SumFileBytes(pages));
 
         _currentBook.FolderPath = selectedPath;
         _currentBook.PageCount = pages.Count;
@@ -2075,7 +2075,7 @@ public partial class MainWindow : Window
             }
         }
 
-        var visibleCount = _booksView?.Cast<object>().Count() ?? libraryCount;
+        var visibleCount = Books.Count(FilterBook);
 
         VisibleBookCountText.Text = $"{visibleCount} 本";
         TotalBookCountText.Text = _cachedShowHidden
@@ -2094,8 +2094,7 @@ public partial class MainWindow : Window
 
     private List<MangaBook> GetVisibleBooks()
     {
-        return _booksView?.Cast<object>().OfType<MangaBook>().ToList()
-            ?? Books.ToList();
+        return Books.Where(FilterBook).ToList();
     }
 
     private List<MangaBook> GetSelectedBatchBooks()
@@ -2186,22 +2185,6 @@ public partial class MainWindow : Window
         return prefix?.Key ?? "";
     }
 
-    private static long SumFileBytes(IEnumerable<string> paths)
-    {
-        long total = 0;
-        foreach (var path in paths)
-        {
-            try
-            {
-                total += new FileInfo(path).Length;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
-            {
-            }
-        }
-
-        return total;
-    }
 
     private string BuildFilterSummary(int visibleCount, int libraryCount)
     {
@@ -2486,8 +2469,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var visibleCount = _booksView.Cast<object>().Count();
-        if (visibleCount > 0)
+        if (Books.Any(FilterBook))
         {
             return;
         }

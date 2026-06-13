@@ -44,7 +44,7 @@ public sealed class LibraryScanner
             book.Id = id;
             book.FolderPath = folder;
             book.PageCount = pages.Count;
-            book.TotalBytes = SumFileBytes(pages);
+            book.TotalBytes = ImageLoader.SumFileBytes(pages);
             book.CoverPageIndex = Math.Clamp(book.CoverPageIndex, 0, pages.Count - 1);
             book.LastReadPageIndex = Math.Clamp(book.LastReadPageIndex, 0, pages.Count - 1);
             book.IsMissing = false;
@@ -58,23 +58,6 @@ public sealed class LibraryScanner
         }
 
         return books.OrderBy(book => book.Author).ThenBy(book => book.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
-    }
-
-    private static long SumFileBytes(IEnumerable<string> paths)
-    {
-        long total = 0;
-        foreach (var path in paths)
-        {
-            try
-            {
-                total += new FileInfo(path).Length;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
-            {
-            }
-        }
-
-        return total;
     }
 
     private static string TryGetAuthorName(string rootPath, string folder)

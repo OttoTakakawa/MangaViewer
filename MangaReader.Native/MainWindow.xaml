@@ -1392,8 +1392,32 @@
                                     <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
                                     <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
                                 </DockPanel>
-                                <ItemsControl x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}">
-                                    <ItemsControl.ItemTemplate>
+                                <ListBox x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}"
+                                         BorderThickness="0" Background="Transparent"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         VirtualizingStackPanel.IsVirtualizing="True"
+                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                         ScrollViewer.CanContentScroll="True"
+                                         MaxHeight="600" Focusable="False">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Focusable" Value="False"/>
+                                            <Setter Property="IsHitTestVisible" Value="True"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <ContentPresenter/>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type models:TagChip}">
                                             <Border Margin="0,0,0,10" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                                                 <Border.ContextMenu>
@@ -1430,8 +1454,8 @@
                                                 </DockPanel>
                                             </Border>
                                         </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                                 <Border x:Name="TagManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
                                     <TextBlock Text="当前没有命中的标签，可以换个关键词，或者新建一个新的标签。"
                                                Foreground="#6B7280"
@@ -1489,8 +1513,31 @@
                                 <DockPanel Margin="0,0,0,12">
                                     <TextBox x:Name="AuthorSearchBox" Height="44" TextChanged="AuthorSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索作者名"/>
                                 </DockPanel>
-                                <ItemsControl x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}">
-                                    <ItemsControl.ItemTemplate>
+                                <ListBox x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}"
+                                         BorderThickness="0" Background="Transparent"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         VirtualizingStackPanel.IsVirtualizing="True"
+                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                         ScrollViewer.CanContentScroll="True"
+                                         MaxHeight="600" Focusable="False">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Focusable" Value="False"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <ContentPresenter/>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type models:AuthorItem}">
                                             <Border Margin="0,0,0,6" Padding="14,10" CornerRadius="9" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                                                 <DockPanel>
@@ -1505,8 +1552,8 @@
                                                 </DockPanel>
                                             </Border>
                                         </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                                 <Border x:Name="AuthorManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
                                     <TextBlock Text="没有匹配的作者。"
                                                Foreground="#6B7280"

@@ -5,8 +5,10 @@ namespace MangaReader.Native.Services;
 public static class AppLogger
 {
     private const int MaxLogFiles = 20;
-    private static readonly object SyncRoot = new();
+    private static readonly object syncRoot = new();
     private static string _logsPath = "";
+    private static string _currentLogPath = "";
+    private static StreamWriter? _writer;
 
     public static void Initialize(AppStorage storage)
     {
@@ -45,12 +47,14 @@ public static class AppLogger
             return;
         }
 
-        var line = $"{DateTimeOffset.Now:O} [{level}] [{scope}] {message}{Environment.NewLine}";
+        var line = $"{DateTimeOffset.Now:O} [{level}] [{scope}] {message}";
         try
         {
-            lock (SyncRoot)
+            lock (syncRoot)
             {
-                File.AppendAllText(GetDailyLogPath(), line, Encoding.UTF8);
+                EnsureWriter();
+                _writer?.WriteLine(line);
+                _writer?.Flush();
             }
         }
         catch (IOException)
@@ -59,6 +63,19 @@ public static class AppLogger
         catch (UnauthorizedAccessException)
         {
         }
+    }
+
+    private static void EnsureWriter()
+    {
+        var path = GetDailyLogPath();
+        if (path == _currentLogPath && _writer is not null)
+        {
+            return;
+        }
+
+        _writer?.Dispose();
+        _currentLogPath = path;
+        _writer = new StreamWriter(path, append: true, Encoding.UTF8) { AutoFlush = false };
     }
 
     private static void WriteCrashSnapshot(string scope, Exception exception, string message)
@@ -82,7 +99,7 @@ public static class AppLogger
 
         try
         {
-            lock (SyncRoot)
+            lock (syncRoot)
             {
                 File.WriteAllText(Path.Combine(_logsPath, fileName), content, Encoding.UTF8);
                 PruneOldLogs();
