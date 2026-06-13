@@ -15,6 +15,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     private string _readingStatus = "unread";
     private bool _isFavorite;
     private bool _isSelectedForBatch;
+    private long _totalBytes;
 
     public string Id { get; set; } = "";
     public string Title { get; set; } = "";
@@ -36,6 +37,17 @@ public sealed class MangaBook : INotifyPropertyChanged
     }
     public string FolderPath { get; set; } = "";
     public int PageCount { get; set; }
+    public long TotalBytes
+    {
+        get => _totalBytes;
+        set
+        {
+            _totalBytes = Math.Max(0, value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SizeText));
+            OnPropertyChanged(nameof(LibraryMetaText));
+        }
+    }
     public int CoverPageIndex { get; set; }
     public int BookStyle { get; set; } = -1;
     public bool IsMissing { get; set; }
@@ -124,10 +136,13 @@ public sealed class MangaBook : INotifyPropertyChanged
     }
 
     public string ProgressText => PageCount <= 0 ? "0 / 0" : $"{LastReadPageIndex + 1} / {PageCount}";
+    public string PageCountText => $"{PageCount}页";
+    public string SizeText => FormatSize(TotalBytes);
     public string ReadCountText => ReadCount <= 0 ? "未标记读过" : $"读过 {ReadCount} 次";
     public string ReadCountBadgeText => ReadCount <= 0 ? "" : ReadCountText;
     public string ReadStateText => ReadCount > 0 ? $"读过 {ReadCount} 次" : ReadingStatusText;
     public string ReadingMetaText => $"{ReadStateText} · {ProgressText}";
+    public string LibraryMetaText => $"{ReadingStatusText} · {PageCountText} · {SizeText}";
     public string ReadingStatusText => ReadingStatus switch
     {
         "reading" => "在读",
@@ -196,6 +211,9 @@ public sealed class MangaBook : INotifyPropertyChanged
         OnPropertyChanged(nameof(Tags));
         OnPropertyChanged(nameof(FolderPath));
         OnPropertyChanged(nameof(PageCount));
+        OnPropertyChanged(nameof(TotalBytes));
+        OnPropertyChanged(nameof(PageCountText));
+        OnPropertyChanged(nameof(SizeText));
         OnPropertyChanged(nameof(CoverPageIndex));
         OnPropertyChanged(nameof(BookStyle));
         OnPropertyChanged(nameof(IsMissing));
@@ -214,6 +232,7 @@ public sealed class MangaBook : INotifyPropertyChanged
         OnPropertyChanged(nameof(ReadCountBadgeText));
         OnPropertyChanged(nameof(ReadStateText));
         OnPropertyChanged(nameof(ReadingMetaText));
+        OnPropertyChanged(nameof(LibraryMetaText));
         OnPropertyChanged(nameof(BookStyleIndex));
         OnPropertyChanged(nameof(BookWidth));
         OnPropertyChanged(nameof(BookHeight));
@@ -270,5 +289,19 @@ public sealed class MangaBook : INotifyPropertyChanged
             "reading" or "finished" or "paused" => status,
             _ => "unread"
         };
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes <= 0)
+        {
+            return "0MB";
+        }
+
+        const double mb = 1024d * 1024d;
+        const double gb = 1024d * 1024d * 1024d;
+        return bytes >= gb
+            ? $"{bytes / gb:0.##}G"
+            : $"{Math.Max(1, bytes / mb):0.#}MB";
     }
 }

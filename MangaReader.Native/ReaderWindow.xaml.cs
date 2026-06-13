@@ -35,6 +35,8 @@ public partial class ReaderWindow : Window
     private int _pageLoadRequestId;
     private int _backgroundMode;
     private bool _isLoadingViewerPreferences;
+    private bool _isNextBookPromptOpen;
+    private MangaBook? _pendingNextBook;
 
     private enum FitMode
     {
@@ -113,6 +115,11 @@ public partial class ReaderWindow : Window
 
     private void TryGoToNextBook()
     {
+        if (_isNextBookPromptOpen)
+        {
+            return;
+        }
+
         var nextBook = _nextBookResolver?.Invoke(_book);
         if (nextBook is null)
         {
@@ -121,22 +128,58 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        var result = System.Windows.MessageBox.Show(
-            $"已经读到最后一页。\n\n是否前往当前筛选顺序里的下一本漫画？\n\n下一本：{nextBook.Title}",
-            "前往下一本",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.Yes);
+        ShowNextBookPrompt(nextBook);
+    }
 
-        if (result != MessageBoxResult.Yes)
+    private void ShowNextBookPrompt(MangaBook nextBook)
+    {
+        _isNextBookPromptOpen = true;
+        _pendingNextBook = nextBook;
+        ReleaseHoldZoom();
+        CloseReaderDropdowns();
+        if (NextBookConfirmText is not null)
         {
-            _boundaryHint = "已经是最后一页";
-            UpdateNavigationState();
+            NextBookConfirmText.Text = $"是否前往当前筛选顺序里的下一本漫画？\n\n下一本：{nextBook.Title}";
+        }
+        if (NextBookConfirmOverlay is not null)
+        {
+            NextBookConfirmOverlay.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void HideNextBookPrompt()
+    {
+        _isNextBookPromptOpen = false;
+        _pendingNextBook = null;
+        if (NextBookConfirmOverlay is not null)
+        {
+            NextBookConfirmOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void NextBookConfirm_Click(object sender, RoutedEventArgs e)
+    {
+        var nextBook = _pendingNextBook;
+        HideNextBookPrompt();
+        if (nextBook is null)
+        {
             return;
         }
 
         _openBookRequest?.Invoke(nextBook);
         Close();
+    }
+
+    private void NextBookCancel_Click(object sender, RoutedEventArgs e)
+    {
+        HideNextBookPrompt();
+        _boundaryHint = "已经是最后一页";
+        UpdateNavigationState();
+    }
+
+    private void NextBookConfirmOverlay_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = true;
     }
 
     private void FitWidth_Click(object sender, RoutedEventArgs e)
@@ -282,7 +325,12 @@ public partial class ReaderWindow : Window
         }
         else if (e.Key == Key.Escape)
         {
-            if (_isFullscreen)
+            if (_isNextBookPromptOpen)
+            {
+                NextBookCancel_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (_isFullscreen)
             {
                 ToggleFullscreen();
                 e.Handled = true;
@@ -334,6 +382,7 @@ public partial class ReaderWindow : Window
     private async void LoadPage(int pageIndex)
     {
         if (_book.Pages.Count == 0) return;
+        HideNextBookPrompt();
         var requestId = ++_pageLoadRequestId;
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _boundaryHint = "";
@@ -392,7 +441,6 @@ public partial class ReaderWindow : Window
             _ = Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
             HideReaderMessage();
             PageText.Text = "";
-            PlayPageFade();
             AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
         }
         catch (Exception ex)
@@ -613,20 +661,12 @@ public partial class ReaderWindow : Window
 
     private void ReaderScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount > 1)
-        {
-            SetControlsHidden(!_controlsHidden);
-            e.Handled = true;
-            return;
-        }
+        NavigateByClickPosition(e.GetPosition(ReaderScrollViewer));
+        e.Handled = true;
+    }
 
-        if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
-        {
-            NavigateByClickPosition(e.GetPosition(ReaderScrollViewer));
-            e.Handled = true;
-            return;
-        }
-
+    private void ReaderScrollViewer_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
         _isHoldZoomActive = true;
         _holdZoomBaseValue = ZoomSlider.Value;
         try
@@ -669,6 +709,11 @@ public partial class ReaderWindow : Window
     }
 
     private void ReaderScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = false;
+    }
+
+    private void ReaderScrollViewer_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         ReleaseHoldZoom();
         e.Handled = true;
@@ -793,11 +838,6 @@ public partial class ReaderWindow : Window
         return WheelModeBox?.IsDropDownOpen == true
             || ReadingModeBox?.IsDropDownOpen == true
             || DirectionBox?.IsDropDownOpen == true;
-    }
-
-    private void PlayPageFade()
-    {
-        MotionService.PlayPageSwapFeedback(ImageHost);
     }
 
     private void ReaderWindow_SizeChanged(object sender, SizeChangedEventArgs e)

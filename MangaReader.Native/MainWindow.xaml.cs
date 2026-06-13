@@ -260,6 +260,7 @@ public partial class MainWindow : Window
                 book.Author = authorName.Trim();
                 book.FolderPath = candidate.FolderPath;
                 book.PageCount = pages.Count;
+                book.TotalBytes = SumFileBytes(pages);
                 book.CoverPageIndex = Math.Clamp(book.CoverPageIndex, 0, pages.Count - 1);
                 book.LastReadPageIndex = Math.Clamp(book.LastReadPageIndex, 0, pages.Count - 1);
                 book.IsMissing = false;
@@ -963,6 +964,7 @@ public partial class MainWindow : Window
 
         _currentBook.FolderPath = dialog.SelectedPath;
         _currentBook.PageCount = pages.Count;
+        _currentBook.TotalBytes = SumFileBytes(pages);
         _currentBook.IsMissing = false;
         _currentBook.CoverPageIndex = Math.Clamp(_currentBook.CoverPageIndex, 0, pages.Count - 1);
         _currentBook.LastReadPageIndex = Math.Clamp(_currentBook.LastReadPageIndex, 0, pages.Count - 1);
@@ -1664,19 +1666,6 @@ public partial class MainWindow : Window
         UpdateLogPanelVisibility();
     }
 
-    private void BooksList_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
-    {
-        if (Books.Count < 80)
-        {
-            return;
-        }
-
-        if (e.VerticalOffset > 2 && !_libraryChromeCollapsed)
-        {
-            SetLibraryChromeCollapsed(true);
-        }
-    }
-
     private void SetLibraryChromeCollapsed(bool collapsed)
     {
         _libraryChromeCollapsed = collapsed;
@@ -1875,22 +1864,26 @@ public partial class MainWindow : Window
         switch (SortBox.SelectedIndex)
         {
             case 1:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Author), ListSortDirection.Ascending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            case 2:
                 _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.LastReadPageIndex), ListSortDirection.Descending));
                 _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
                 break;
+            case 2:
+                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.PageCount), ListSortDirection.Descending));
+                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
+                break;
             case 3:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ReadCount), ListSortDirection.Descending));
+                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.TotalBytes), ListSortDirection.Descending));
                 _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
                 break;
             case 4:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ImportedAt), ListSortDirection.Descending));
+                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ReadCount), ListSortDirection.Descending));
                 _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
                 break;
             case 5:
+                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ImportedAt), ListSortDirection.Descending));
+                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
+                break;
+            case 6:
                 _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ProducedAt), ListSortDirection.Descending));
                 _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
                 break;
@@ -1956,6 +1949,8 @@ public partial class MainWindow : Window
             || Contains(book.ProducedAt, _cachedSearchQuery)
             || Contains(book.ImportedAt, _cachedSearchQuery)
             || Contains(book.ReadingStatusText, _cachedSearchQuery)
+            || Contains(book.PageCountText, _cachedSearchQuery)
+            || Contains(book.SizeText, _cachedSearchQuery)
             || Contains(book.IsFavorite ? "收藏" : "", _cachedSearchQuery)
             || Contains(book.ReadCountText, _cachedSearchQuery);
     }
@@ -2157,6 +2152,23 @@ public partial class MainWindow : Window
             .FirstOrDefault();
 
         return prefix?.Key ?? "";
+    }
+
+    private static long SumFileBytes(IEnumerable<string> paths)
+    {
+        long total = 0;
+        foreach (var path in paths)
+        {
+            try
+            {
+                total += new FileInfo(path).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+            {
+            }
+        }
+
+        return total;
     }
 
     private string BuildFilterSummary(int visibleCount, int libraryCount)

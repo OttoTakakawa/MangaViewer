@@ -9,9 +9,9 @@ public sealed class LibraryDatabase
     private const string UpsertBookSql =
         """
         INSERT INTO books(id, title, author, character_name, foreign_name, tags, produced_at, imported_at, summary,
-                          folder_path, page_count, cover_page_index, last_read_page_index, is_missing, updated_at)
+                          folder_path, page_count, total_bytes, cover_page_index, last_read_page_index, is_missing, updated_at)
         VALUES ($id, $title, $author, $characterName, $foreignName, $tags, $producedAt, $importedAt, $summary,
-                $folderPath, $pageCount, $coverPageIndex, $lastReadPageIndex, $isMissing, $updatedAt)
+                $folderPath, $pageCount, $totalBytes, $coverPageIndex, $lastReadPageIndex, $isMissing, $updatedAt)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             author = excluded.author,
@@ -23,6 +23,7 @@ public sealed class LibraryDatabase
             summary = excluded.summary,
             folder_path = excluded.folder_path,
             page_count = excluded.page_count,
+            total_bytes = excluded.total_bytes,
             cover_page_index = excluded.cover_page_index,
             last_read_page_index = excluded.last_read_page_index,
             is_missing = excluded.is_missing,
@@ -66,6 +67,7 @@ public sealed class LibraryDatabase
                 summary TEXT NOT NULL DEFAULT '',
                 folder_path TEXT NOT NULL UNIQUE,
                 page_count INTEGER NOT NULL DEFAULT 0,
+                total_bytes INTEGER NOT NULL DEFAULT 0,
                 cover_page_index INTEGER NOT NULL DEFAULT 0,
                 book_style INTEGER NOT NULL DEFAULT -1,
                 last_read_page_index INTEGER NOT NULL DEFAULT 0,
@@ -112,6 +114,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "produced_at", "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(connection, "books", "imported_at", "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(connection, "books", "summary", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(connection, "books", "total_bytes", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "book_style", "INTEGER NOT NULL DEFAULT -1");
         EnsureColumn(connection, "books", "read_count", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "reading_status", "TEXT NOT NULL DEFAULT 'unread'");
@@ -158,7 +161,7 @@ public sealed class LibraryDatabase
             """
             SELECT id, title, author, tags, folder_path, page_count, cover_page_index,
                    last_read_page_index, is_missing
-                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name
+                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes
             FROM books;
             """;
         using var reader = command.ExecuteReader();
@@ -185,7 +188,8 @@ public sealed class LibraryDatabase
                 ReadCount = reader.GetInt32(15),
                 ReadingStatus = reader.GetString(16),
                 IsFavorite = reader.GetInt32(17) == 1,
-                ForeignName = reader.GetString(18)
+                ForeignName = reader.GetString(18),
+                TotalBytes = reader.GetInt64(19)
             };
             result[book.FolderPath] = book;
         }
@@ -516,6 +520,7 @@ public sealed class LibraryDatabase
             UPDATE books
             SET folder_path = $folderPath,
                 page_count = $pageCount,
+                total_bytes = $totalBytes,
                 cover_page_index = $coverPageIndex,
                 last_read_page_index = $lastReadPageIndex,
                 is_missing = $isMissing,
@@ -525,6 +530,7 @@ public sealed class LibraryDatabase
         command.Parameters.AddWithValue("$id", book.Id);
         command.Parameters.AddWithValue("$folderPath", book.FolderPath);
         command.Parameters.AddWithValue("$pageCount", book.PageCount);
+        command.Parameters.AddWithValue("$totalBytes", book.TotalBytes);
         command.Parameters.AddWithValue("$coverPageIndex", book.CoverPageIndex);
         command.Parameters.AddWithValue("$lastReadPageIndex", book.LastReadPageIndex);
         command.Parameters.AddWithValue("$isMissing", book.IsMissing ? 1 : 0);
@@ -812,6 +818,7 @@ public sealed record ManagedTagRecord(string Name, string Category, bool IsExclu
         command.Parameters.AddWithValue("$summary", book.Summary);
         command.Parameters.AddWithValue("$folderPath", book.FolderPath);
         command.Parameters.AddWithValue("$pageCount", book.PageCount);
+        command.Parameters.AddWithValue("$totalBytes", book.TotalBytes);
         command.Parameters.AddWithValue("$coverPageIndex", book.CoverPageIndex);
         command.Parameters.AddWithValue("$lastReadPageIndex", book.LastReadPageIndex);
         command.Parameters.AddWithValue("$isMissing", book.IsMissing ? 1 : 0);

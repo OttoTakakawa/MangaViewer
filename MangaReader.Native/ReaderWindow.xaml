@@ -191,6 +191,8 @@
                           PreviewMouseWheel="ReaderScrollViewer_PreviewMouseWheel"
                           PreviewMouseLeftButtonDown="ReaderScrollViewer_PreviewMouseLeftButtonDown"
                           PreviewMouseLeftButtonUp="ReaderScrollViewer_PreviewMouseLeftButtonUp"
+                          PreviewMouseRightButtonDown="ReaderScrollViewer_PreviewMouseRightButtonDown"
+                          PreviewMouseRightButtonUp="ReaderScrollViewer_PreviewMouseRightButtonUp"
                           PreviewMouseMove="ReaderScrollViewer_PreviewMouseMove">
                 <Grid x:Name="ImageScrollContent">
                     <StackPanel x:Name="ImageHost"
@@ -235,6 +237,56 @@
                            TextAlignment="Center"/>
             </StackPanel>
         </Border>
+
+        <Grid x:Name="NextBookConfirmOverlay"
+              Panel.ZIndex="18"
+              Background="#66000000"
+              Visibility="Collapsed"
+              PreviewMouseWheel="NextBookConfirmOverlay_PreviewMouseWheel">
+            <Border HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="520"
+                    Padding="22"
+                    CornerRadius="26"
+                    Background="#EA080A0E"
+                    BorderBrush="#22FFFFFF"
+                    BorderThickness="1"
+                    Effect="{StaticResource ToolbarShadow}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="已经读到最后一页"
+                               FontSize="20"
+                               FontWeight="Black"
+                               Foreground="#F9FAFB"/>
+                    <TextBlock x:Name="NextBookConfirmText"
+                               Grid.Row="1"
+                               Margin="0,12,0,0"
+                               FontSize="13"
+                               LineHeight="22"
+                               Foreground="#CBD5E1"
+                               TextWrapping="Wrap"/>
+                    <StackPanel Grid.Row="2"
+                                Margin="0,20,0,0"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <Button Content="留在当前页"
+                                Background="#1AFFFFFF"
+                                BorderBrush="#22FFFFFF"
+                                Click="NextBookCancel_Click"/>
+                        <Button Content="前往下一本"
+                                Margin="8,3,3,3"
+                                Background="#F8FAFC"
+                                BorderBrush="#F8FAFC"
+                                Foreground="#0F172A"
+                                Click="NextBookConfirm_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <Border x:Name="TopToolbar"
                 Panel.ZIndex="10"
