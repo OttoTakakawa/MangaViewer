@@ -1622,14 +1622,14 @@
         <Border x:Name="DetailShell"
                 Grid.Column="1"
                 Grid.ColumnSpan="2"
-                Width="860"
-                MaxHeight="780"
+                Width="1120"
+                MaxHeight="820"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Panel.ZIndex="10"
                 Visibility="Collapsed"
                 Margin="26"
-                Padding="24"
+                Padding="16"
                 CornerRadius="{StaticResource RadiusPanel}"
                 Background="#FFFFFF"
                 BorderBrush="#E5E7EB"
@@ -1645,16 +1645,16 @@
 
                     <DockPanel x:Name="DetailPanel" Visibility="Collapsed" LastChildFill="True">
                         <Border DockPanel.Dock="Left"
-                                Width="304"
-                                Margin="0,0,26,0"
-                                Padding="14"
+                                Width="386"
+                                Margin="0,0,22,0"
+                                Padding="12"
                                 CornerRadius="{StaticResource RadiusPanel}"
                                 Background="#F8F2EC"
                                 BorderBrush="#EFE3D7"
                                 BorderThickness="1">
                             <StackPanel>
-                                <Border Width="276"
-                                        Height="390"
+                                <Border Width="360"
+                                        Height="620"
                                         CornerRadius="{StaticResource RadiusPanel}"
                                         Background="#EEE5DC"
                                         ClipToBounds="True"
@@ -1662,7 +1662,7 @@
                                     <Image Source="{Binding CoverImage}" Stretch="Uniform"/>
                                 </Border>
                                 <TextBlock Text="封面预览"
-                                           Margin="0,12,0,4"
+                                           Margin="0,8,0,2"
                                            HorizontalAlignment="Center"
                                            Foreground="#81756B"
                                            FontSize="12"
@@ -1683,18 +1683,31 @@
                             <TextBlock Text="书籍详情" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
                             <Button Grid.Column="1" x:Name="EditModeButton" Content="编辑" Click="ToggleEditMode_Click" Style="{StaticResource TinyButton}" VerticalAlignment="Center"/>
                         </Grid>
-                        <TextBlock x:Name="EditModeHintText" Text="只读模式：点击“编辑”后修改信息" Margin="0,0,0,20" Foreground="#81756B"/>
+                        <TextBlock x:Name="EditModeHintText" Text="只读模式：点击“编辑”后修改信息" Margin="0,0,0,10" Foreground="#81756B"/>
                         <StackPanel x:Name="ReadOnlyInfoPanel">
-                            <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
-                            <TextBlock x:Name="ReadOnlyAuthorText" FontSize="18" FontWeight="Bold" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
-                            <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
-                            <TextBlock x:Name="ReadOnlyForeignNameText" FontSize="18" FontWeight="Bold" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
-                            <Grid Margin="0,0,0,18">
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.15*"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyAuthorText" FontSize="18" FontWeight="Bold" Foreground="#25211E" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyForeignNameText" FontSize="18" FontWeight="Bold" Foreground="#25211E" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="12"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
@@ -1714,28 +1727,34 @@
                                     <TextBlock Text="页数" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyPageCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
                                 </StackPanel>
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyCoverPageText" FontSize="16" Foreground="#25211E"/>
+                                </StackPanel>
                             </Grid>
-                            <Grid Margin="0,0,0,18">
+                            <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="14"/>
                                     <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="1.7*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="出品时间" Style="{StaticResource LabelText}"/>
-                                    <TextBlock x:Name="ReadOnlyProducedAtText" FontSize="16" Foreground="#25211E"/>
+                                    <TextBlock x:Name="ReadOnlyProducedAtText" FontSize="15" Foreground="#25211E"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="录入时间" Style="{StaticResource LabelText}"/>
-                                    <TextBlock x:Name="ReadOnlyImportedAtText" FontSize="16" Foreground="#25211E"/>
+                                    <TextBlock x:Name="ReadOnlyImportedAtText" FontSize="15" Foreground="#25211E"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Tag" Style="{StaticResource LabelText}"/>
+                                    <TextBlock x:Name="ReadOnlyTagsText" FontSize="15" Foreground="#25211E" TextWrapping="Wrap" MaxHeight="42"/>
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Text="Tag" Style="{StaticResource LabelText}"/>
-                            <TextBlock x:Name="ReadOnlyTagsText" FontSize="16" Foreground="#25211E" Margin="0,0,0,18" TextWrapping="Wrap"/>
-                            <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
-                            <TextBlock x:Name="ReadOnlyCoverPageText" FontSize="16" Foreground="#25211E" Margin="0,0,0,18"/>
                             <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
-                            <Border Padding="14" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,18">
+                            <Border Padding="12" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,10">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
                                         <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
@@ -1745,22 +1764,35 @@
                                 </DockPanel>
                             </Border>
                             <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
-                            <Border Padding="14" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,18">
-                                <TextBlock x:Name="ReadOnlySummaryText" TextWrapping="Wrap" Foreground="#25211E" LineHeight="22"/>
+                            <Border Padding="12" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,12" MaxHeight="72">
+                                <TextBlock x:Name="ReadOnlySummaryText" TextWrapping="Wrap" Foreground="#25211E" LineHeight="20"/>
                             </Border>
-                            <Button Content="开始阅读" Click="OpenCurrentBook_Click" Margin="0,0,0,10"/>
-                            <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                            <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                            <Button x:Name="HideBookButton" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                            <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
+                            <WrapPanel>
+                                <Button Content="开始阅读" Click="OpenCurrentBook_Click" Margin="0,0,8,8"/>
+                                <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                                <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                                <Button x:Name="HideBookButton" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                                <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            </WrapPanel>
                         </StackPanel>
                         <StackPanel x:Name="EditFormPanel" Visibility="Collapsed">
                         <TextBlock Text="书名" Style="{StaticResource LabelText}"/>
-                        <TextBox x:Name="TitleBox" Margin="0,0,0,12"/>
-                        <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
-                        <TextBlock x:Name="AuthorBox" Margin="0,0,0,12" Foreground="#666" MinHeight="36" VerticalAlignment="Center" Padding="8,8,0,0"/>
-                        <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
-                        <TextBox x:Name="ForeignNameBox" Margin="0,0,0,12"/>
+                        <TextBox x:Name="TitleBox" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
+                                <TextBlock x:Name="AuthorBox" Foreground="#666" MinHeight="36" VerticalAlignment="Center" Padding="8,8,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
+                                <TextBox x:Name="ForeignNameBox"/>
+                            </StackPanel>
+                        </Grid>
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -1804,28 +1836,45 @@
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="Tag（逗号分隔）" Style="{StaticResource LabelText}"/>
-                        <TextBox x:Name="TagsBox" Margin="0,0,0,12"/>
-                        <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
-                        <TextBox x:Name="CoverPageBox" Margin="0,0,0,12"/>
-                        <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
-                        <DockPanel Margin="0,0,0,12">
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
-                                <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
-                                <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.7*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Tag（逗号分隔）" Style="{StaticResource LabelText}"/>
+                                <TextBox x:Name="TagsBox"/>
                             </StackPanel>
-                            <TextBox x:Name="ReadCountBox"/>
-                        </DockPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
+                                <TextBox x:Name="CoverPageBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
+                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
+                                    </StackPanel>
+                                    <TextBox x:Name="ReadCountBox"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Grid>
                         <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
-                        <TextBox x:Name="SummaryBox" Height="128" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,0,18"/>
-                        <Button x:Name="SaveMetadataButton" Content="保存信息" Click="SaveMetadata_Click" Margin="0,0,0,10"/>
-                        <Button Content="开始阅读" Click="OpenCurrentBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                        <Button x:Name="SetCoverButton" Content="设置为封面页" Click="SetCover_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                        <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                        <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                        <Button x:Name="HideBookButtonEdit" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                        <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,0,10"/>
-                        <Button Content="删除库记录" Click="DeleteBook_Click" Style="{StaticResource DangerButton}"/>
+                        <TextBox x:Name="SummaryBox" Height="86" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12"/>
+                        <WrapPanel>
+                            <Button x:Name="SaveMetadataButton" Content="保存信息" Click="SaveMetadata_Click" Margin="0,0,8,8"/>
+                            <Button Content="开始阅读" Click="OpenCurrentBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            <Button x:Name="SetCoverButton" Content="设置为封面页" Click="SetCover_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            <Button Content="切换卡片样式" Click="CycleBookStyle_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            <Button Content="打开所在文件夹" Click="OpenFolder_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            <Button x:Name="HideBookButtonEdit" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
+                            <Button Content="删除库记录" Click="DeleteBook_Click" Style="{StaticResource DangerButton}" Margin="0,0,8,8"/>
+                        </WrapPanel>
                         </StackPanel>
 
                         <Border Visibility="Collapsed" Margin="0,22,0,0" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#F6EFE7">
