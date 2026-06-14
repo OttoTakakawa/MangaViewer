@@ -444,9 +444,17 @@ public partial class ReaderWindow : Window
             var page = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
+                // 双页模式下两页必须使用同一解码基准，否则适应高度会被不同解码尺寸污染。
+                var firstDecodeWidth = doublePageMode ? doubleDecodeWidth : singleDecodeWidth;
+                var first = ImageLoader.LoadBitmap(firstPath, firstDecodeWidth);
                 cancellationToken.ThrowIfCancellationRequested();
                 var useDouble = doublePageMode && safeIndex + 1 < _book.Pages.Count && !IsLandscape(first);
+                if (doublePageMode && !useDouble && firstDecodeWidth != singleDecodeWidth)
+                {
+                    first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 BitmapSource? second = null;
                 if (useDouble)
                 {
@@ -582,6 +590,11 @@ public partial class ReaderWindow : Window
 
     private double GetDisplayedPixelHeight()
     {
+        if (ReaderImageRight.Visibility == Visibility.Visible && ReaderImage.Height > 0)
+        {
+            return ReaderImage.Height;
+        }
+
         var left = ReaderImage.Source is BitmapSource l ? l.Height : 0;
         var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? r.Height : 0;
         return Math.Max(left, right);
@@ -741,27 +754,15 @@ public partial class ReaderWindow : Window
         e.Handled = true;
     }
 
-    private void ReaderScrollViewer_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void ReaderRoot_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (PageCatalogOverlay.Visibility == Visibility.Visible)
+        if (PageCatalogOverlay.Visibility == Visibility.Visible || IsPointerOverReaderChrome(e.OriginalSource))
         {
             return;
         }
 
-        _isHoldZoomActive = true;
-        _holdZoomBaseValue = ZoomSlider.Value;
-        _holdZoomLastPointerInViewport = null;
-        try
-        {
-            Mouse.Capture(ReaderScrollViewer);
-            UpdateHoldZoom(e.GetPosition(ImageHost), e.GetPosition(ReaderScrollViewer));
-            e.Handled = true;
-        }
-        catch
-        {
-            ReleaseHoldZoom();
-            throw;
-        }
+        BeginHoldZoom(e);
+        e.Handled = true;
     }
 
     private void NavigateByClickPosition(System.Windows.Point pointerInViewport)
@@ -795,7 +796,7 @@ public partial class ReaderWindow : Window
         e.Handled = false;
     }
 
-    private void ReaderScrollViewer_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    private void ReaderRoot_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         ReleaseHoldZoom();
         e.Handled = true;
@@ -803,6 +804,13 @@ public partial class ReaderWindow : Window
 
     private void ReaderRoot_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        if (!_isHoldZoomActive)
+        {
+            return;
+        }
+
+        UpdateHoldZoom(e.GetPosition(ImageHost), e.GetPosition(ReaderScrollViewer));
+        e.Handled = true;
     }
 
     private void UpdateHoldZoom(System.Windows.Point imageHostPosition, System.Windows.Point pointerInViewport)
@@ -821,6 +829,41 @@ public partial class ReaderWindow : Window
         Dispatcher.InvokeAsync(
             () => ScrollZoomPointUnderMouse(imageHostPosition, pointerInViewport),
             DispatcherPriority.Loaded);
+    }
+
+    private void BeginHoldZoom(MouseButtonEventArgs e)
+    {
+        _isHoldZoomActive = true;
+        _holdZoomBaseValue = ZoomSlider.Value;
+        _holdZoomLastPointerInViewport = null;
+        try
+        {
+            Mouse.Capture(ReaderRoot, CaptureMode.SubTree);
+            UpdateHoldZoom(e.GetPosition(ImageHost), e.GetPosition(ReaderScrollViewer));
+        }
+        catch
+        {
+            ReleaseHoldZoom();
+            throw;
+        }
+    }
+
+    private static bool IsPointerOverReaderChrome(object originalSource)
+    {
+        for (var current = originalSource as DependencyObject; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is System.Windows.Controls.Primitives.Popup)
+            {
+                return true;
+            }
+
+            if (current is FrameworkElement { Name: "TopToolbar" or "BottomToolbar" or "HiddenControlsBadge" or "NextBookConfirmOverlay" or "PageCatalogOverlay" })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ScrollZoomPointUnderMouse(System.Windows.Point imageHostPosition, System.Windows.Point pointerInViewport)
@@ -855,7 +898,7 @@ public partial class ReaderWindow : Window
         _isHoldZoomActive = false;
         _holdZoomLastPointerInViewport = null;
         ZoomSlider.Value = _holdZoomBaseValue;
-        if (Mouse.Captured == ReaderScrollViewer)
+        if (Mouse.Captured == ReaderRoot)
         {
             Mouse.Capture(null);
         }

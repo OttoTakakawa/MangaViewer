@@ -118,21 +118,33 @@
             </Setter>
         </Style>
         <Style TargetType="ComboBoxItem">
-            <Setter Property="Padding" Value="11,8"/>
-            <Setter Property="Foreground" Value="#F9FAFB"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="Foreground" Value="#D8E0EA"/>
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="ItemRoot" Margin="2" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusControl}">
+                        <Border x:Name="ItemRoot"
+                                Margin="2"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusControl}">
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#263244"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#16233444"/>
+                                <Setter TargetName="ItemRoot" Property="BorderBrush" Value="#24475569"/>
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#334155"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#1F0F172A"/>
+                                <Setter TargetName="ItemRoot" Property="BorderBrush" Value="#38CBD5E1"/>
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -181,7 +193,11 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Grid x:Name="ReaderRoot" Background="#050608" PreviewMouseMove="ReaderRoot_PreviewMouseMove">
+    <Grid x:Name="ReaderRoot"
+          Background="#050608"
+          PreviewMouseMove="ReaderRoot_PreviewMouseMove"
+          PreviewMouseRightButtonDown="ReaderRoot_PreviewMouseRightButtonDown"
+          PreviewMouseRightButtonUp="ReaderRoot_PreviewMouseRightButtonUp">
         <Border x:Name="ReaderBackdrop" Margin="0" Background="#050608">
             <ScrollViewer x:Name="ReaderScrollViewer"
                           HorizontalScrollBarVisibility="Hidden"
@@ -192,8 +208,6 @@
                           PreviewMouseWheel="ReaderScrollViewer_PreviewMouseWheel"
                           PreviewMouseLeftButtonDown="ReaderScrollViewer_PreviewMouseLeftButtonDown"
                           PreviewMouseLeftButtonUp="ReaderScrollViewer_PreviewMouseLeftButtonUp"
-                          PreviewMouseRightButtonDown="ReaderScrollViewer_PreviewMouseRightButtonDown"
-                          PreviewMouseRightButtonUp="ReaderScrollViewer_PreviewMouseRightButtonUp"
                           PreviewMouseMove="ReaderScrollViewer_PreviewMouseMove">
                 <Grid x:Name="ImageScrollContent">
                     <StackPanel x:Name="ImageHost"

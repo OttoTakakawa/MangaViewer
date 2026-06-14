@@ -238,4 +238,86 @@
         <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
     </Style>
+
+    <Style x:Key="AppDialogButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="MinWidth" Value="104"/>
+        <Setter Property="Padding" Value="18,0"/>
+    </Style>
+
+    <Style x:Key="AppDialogGhostButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="MinWidth" Value="104"/>
+        <Setter Property="Padding" Value="18,0"/>
+    </Style>
+
+    <Style x:Key="AppDialogCloseButton" TargetType="Button" BasedOn="{StaticResource AppDialogGhostButton}">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="MinWidth" Value="40"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="16"/>
+    </Style>
+
+    <Style x:Key="AppDialogTextBox" TargetType="TextBox">
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Root"
+                            CornerRadius="{StaticResource RadiusControl}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="AppDialogTitleText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="28"/>
+        <Setter Property="FontWeight" Value="Black"/>
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="LineHeight" Value="34"/>
+    </Style>
+
+    <Style x:Key="AppDialogSubtitleText" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,6,0,0"/>
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="AppDialogLabelText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="AppDialogPanelBorder" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
+        <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="AppDialogListItemBorder" TargetType="Border" BasedOn="{StaticResource AppDialogPanelBorder}">
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+        <Setter Property="Padding" Value="14"/>
+    </Style>
 </ResourceDictionary>

@@ -12,45 +12,6 @@
         Background="Transparent">
     <Window.Resources>
         <DropShadowEffect x:Key="DialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
-
-        <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="104"/>
-            <Setter Property="Padding" Value="18,0"/>
-        </Style>
-
-        <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="104"/>
-            <Setter Property="Padding" Value="18,0"/>
-        </Style>
-
-        <Style x:Key="DialogTextBox" TargetType="TextBox">
-            <Setter Property="Height" Value="44"/>
-            <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="Root" CornerRadius="{StaticResource RadiusControl}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
-                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Grid Margin="22">
@@ -72,13 +33,18 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="×" Width="42" MinWidth="42" Padding="0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock x:Name="TitleText" Text="是否作为作者批量导入？" FontSize="30" FontWeight="Black" Foreground="#111827"/>
-                        <TextBlock Text="确认作者名、逐本修正标题，然后一次性写入书库。" Margin="0,6,0,0" Foreground="#6B7280"/>
+                        <TextBlock x:Name="TitleText" Text="是否作为作者批量导入？" Style="{StaticResource AppDialogTitleText}" MaxHeight="72"/>
+                        <TextBlock Text="确认作者名、逐本修正标题，然后一次性写入书库。" Style="{StaticResource AppDialogSubtitleText}"/>
                     </StackPanel>
-                </DockPanel>
+                    <Button Grid.Column="2" Content="×" Click="Cancel_Click" Style="{StaticResource AppDialogCloseButton}" VerticalAlignment="Top"/>
+                </Grid>
 
                 <Grid Grid.Row="1" Margin="0,24,0,0">
                     <Grid.ColumnDefinitions>
@@ -89,19 +55,19 @@
                         <ColumnDefinition Width="160"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="作者名" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                        <TextBox x:Name="AuthorBox" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
+                        <TextBlock Text="作者名" Style="{StaticResource AppDialogLabelText}"/>
+                        <TextBox x:Name="AuthorBox" Margin="0,8,0,0" Style="{StaticResource AppDialogTextBox}"/>
                     </StackPanel>
-                    <Border Grid.Column="2" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="16">
+                    <Border Grid.Column="2" Style="{StaticResource AppDialogPanelBorder}" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="识别目录" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="FolderCountText" Margin="0,6,0,0" FontSize="24" FontWeight="Black" Foreground="#111827"/>
+                            <TextBlock Text="识别目录" Style="{StaticResource AppDialogLabelText}"/>
+                            <TextBlock x:Name="FolderCountText" Margin="0,6,0,0" FontSize="24" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="4" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="16">
+                    <Border Grid.Column="4" Style="{StaticResource AppDialogPanelBorder}" Padding="16">
                         <StackPanel>
-                            <TextBlock Text="将导入" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="BookCountText" Margin="0,6,0,0" FontSize="24" FontWeight="Black" Foreground="#111827"/>
+                            <TextBlock Text="将导入" Style="{StaticResource AppDialogLabelText}"/>
+                            <TextBlock x:Name="BookCountText" Margin="0,6,0,0" FontSize="24" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -109,27 +75,27 @@
                 <TextBlock Grid.Row="2"
                            Text="标题可在导入前逐本修改；Tag 来自脚本预判，导入后仍可继续编辑。"
                            Margin="0,18,0,10"
-                           Foreground="#6B7280"/>
+                           Foreground="{StaticResource Brush.TextMuted}"/>
 
-                <Border Grid.Row="3" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="12">
+                <Border Grid.Row="3" Style="{StaticResource AppDialogPanelBorder}" Padding="12">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ItemsControl x:Name="CandidateList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:BatchImportCandidate}">
-                                    <Border Margin="0,0,0,10" Padding="14" CornerRadius="{StaticResource RadiusPanel}" Background="#F8FAFC" BorderBrush="#EEF2F7" BorderThickness="1">
+                                    <Border Margin="0,0,0,10" Style="{StaticResource AppDialogListItemBorder}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="210"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
-                                                <TextBlock Text="{Binding FolderName}" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                                <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
+                                                <TextBlock Text="{Binding FolderName}" Style="{StaticResource AppDialogLabelText}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Margin="0,8,0,0" Style="{StaticResource AppDialogTextBox}"/>
                                             </StackPanel>
-                                            <Border Grid.Column="1" CornerRadius="{StaticResource RadiusControl}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="12" VerticalAlignment="Center">
+                                            <Border Grid.Column="1" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="12" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding SummaryText}"
                                                            TextAlignment="Right"
-                                                           Foreground="#374151"
+                                                           Foreground="{StaticResource Brush.TextPrimary}"
                                                            TextWrapping="Wrap"/>
                                             </Border>
                                         </Grid>
@@ -141,10 +107,10 @@
                 </Border>
 
                 <DockPanel Grid.Row="4" Margin="0,22,0,0">
-                    <TextBlock x:Name="HintText" Foreground="#6B7280" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="HintText" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
-                        <Button Content="确认导入" Width="124" Click="Confirm_Click" Style="{StaticResource DialogButton}"/>
+                        <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource AppDialogGhostButton}"/>
+                        <Button Content="确认导入" Width="124" Click="Confirm_Click" Style="{StaticResource AppDialogButton}"/>
                     </StackPanel>
                 </DockPanel>
             </Grid>
