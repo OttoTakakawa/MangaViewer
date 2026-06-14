@@ -176,7 +176,7 @@ internal static class Program
                 }
                 return;
             }
-            catch (IOException ex) when (attempt < maxRetries)
+            catch (IOException) when (attempt < maxRetries)
             {
                 // File is likely still locked by .NET Native JIT image or lingering handle
                 var fileName = Path.GetFileName(sourceFile);
@@ -185,7 +185,7 @@ internal static class Program
                 Thread.Sleep(delayMs);
                 delayMs = Math.Min(delayMs * 2, 16000);
             }
-            catch (UnauthorizedAccessException ex) when (attempt < maxRetries)
+            catch (UnauthorizedAccessException) when (attempt < maxRetries)
             {
                 var fileName = Path.GetFileName(sourceFile);
                 Console.Error.WriteLine(

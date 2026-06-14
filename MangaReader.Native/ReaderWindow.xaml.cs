@@ -249,6 +249,28 @@ public partial class ReaderWindow : Window
         ApplyFitHeight();
     }
 
+    private void ApplyFitModeForRequest(int requestId)
+    {
+        if (requestId != _pageLoadRequestId)
+        {
+            return;
+        }
+
+        ApplyFitMode();
+    }
+
+    private void SaveProgressSafely(MangaBook book)
+    {
+        try
+        {
+            _database.SaveProgress(book);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("reader-save-progress", ex, $"Failed to save progress for {book.Title}.");
+        }
+    }
+
     private void ApplyFitWidth()
     {
         var width = GetDisplayedPixelWidth();
@@ -501,10 +523,12 @@ public partial class ReaderWindow : Window
                 _book.ReadingStatus = "reading";
             }
             var progressBook = _book;
-            await Task.Run(() => _database.SaveProgress(progressBook));
             UpdateNavigationState();
-            _ = Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
             HideReaderMessage();
+            _ = Dispatcher.InvokeAsync(
+                () => ApplyFitModeForRequest(requestId),
+                DispatcherPriority.Render);
+            _ = Task.Run(() => SaveProgressSafely(progressBook));
             AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
         }
         catch (OperationCanceledException)

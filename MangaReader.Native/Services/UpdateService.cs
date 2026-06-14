@@ -18,7 +18,7 @@ public sealed class UpdateService
         _storage = storage;
     }
 
-    public static string CurrentVersionText => GetCurrentVersion().ToString(3);
+    public static string CurrentVersionText => FormatVersion(GetCurrentVersion());
 
     public async Task<UpdateCheckResult> CheckLatestAsync(CancellationToken cancellationToken = default)
     {
@@ -173,7 +173,7 @@ public sealed class UpdateService
         if (bestPackage is not null)
         {
             return UpdateCheckResult.LocalPackageAvailable(
-                bestPackage.Version.ToString(3),
+                FormatVersion(bestPackage.Version),
                 currentVersion,
                 bestPackage.Path,
                 bestPackage.DisplayName);
@@ -186,10 +186,10 @@ public sealed class UpdateService
             if (projectVersion is not null && projectVersion > currentVersion)
             {
                 return UpdateCheckResult.LocalSourceAvailable(
-                    projectVersion.ToString(3),
+                    FormatVersion(projectVersion),
                     currentVersion,
                     projectPath,
-                    $"本地源码 {projectVersion.ToString(3)}");
+                    $"本地源码 {FormatVersion(projectVersion)}");
             }
         }
 
@@ -358,8 +358,13 @@ public sealed class UpdateService
 
     private static Version? ParseVersionFromFileName(string fileName)
     {
-        var match = Regex.Match(fileName, @"v?(\d+\.\d+\.\d+)", RegexOptions.IgnoreCase);
+        var match = Regex.Match(fileName, @"v?(\d+\.\d+\.\d+(?:\.\d+)?)", RegexOptions.IgnoreCase);
         return match.Success ? ParseVersion(match.Groups[1].Value) : null;
+    }
+
+    public static string FormatVersion(Version version)
+    {
+        return version.Revision >= 0 ? version.ToString(4) : version.ToString(3);
     }
 
     private static Version? ReadProjectVersion(string projectPath)
@@ -419,7 +424,7 @@ public sealed record UpdateCheckResult(
 
     public static UpdateCheckResult UpToDate(string latestVersion, Version currentVersion)
     {
-        return new UpdateCheckResult(false, true, latestVersion, currentVersion, null, null, null, null, "无更新", $"当前已是最新版本：{currentVersion.ToString(3)}。");
+        return new UpdateCheckResult(false, true, latestVersion, currentVersion, null, null, null, null, "无更新", $"当前已是最新版本：{UpdateService.FormatVersion(currentVersion)}。");
     }
 
     public static UpdateCheckResult Failed(string message)
