@@ -19,6 +19,8 @@ public partial class ReaderWindow : Window
     private static readonly TimeSpan PageLoadCoalesceDelay = TimeSpan.FromMilliseconds(24);
     private static readonly TimeSpan ProgressSaveDelay = TimeSpan.FromMilliseconds(650);
     private static readonly TimeSpan FitModeApplyDelay = TimeSpan.FromMilliseconds(80);
+    private const double FixedPageSlotHeight = 1600;
+    private const double PortraitPageSlotAspect = 0.707;
 
     private static SolidColorBrush FrozenBrush(string hex)
     {
@@ -72,6 +74,8 @@ public partial class ReaderWindow : Window
     private bool _isPageDecodeActive;
     private bool _isClosing;
     private bool _hasPendingProgressSave;
+    private double _pageSlotWidth;
+    private double _pageSlotHeight;
     private MangaBook? _pendingNextBook;
     private CancellationTokenSource? _catalogLoadCancellation;
     private System.Windows.Point? _holdZoomLastPointerInViewport;
@@ -261,6 +265,7 @@ public partial class ReaderWindow : Window
 
     private void ApplyFitMode()
     {
+        UpdateImageScrollStage();
         if (_fitMode == FitMode.Width)
         {
             ApplyFitWidth();
@@ -700,15 +705,17 @@ public partial class ReaderWindow : Window
 
     private void NormalizeDisplayedImageSizing()
     {
+        var slotHeight = FixedPageSlotHeight;
         if (ReaderImageRight.Visibility == Visibility.Visible
             && ReaderImage.Source is BitmapSource left
             && ReaderImageRight.Source is BitmapSource right)
         {
-            var normalizedHeight = Math.Max(left.PixelHeight, right.PixelHeight);
-            ReaderImage.Height = normalizedHeight;
-            ReaderImageRight.Height = normalizedHeight;
-            ReaderImage.Width = double.NaN;
-            ReaderImageRight.Width = double.NaN;
+            _pageSlotHeight = slotHeight;
+            _pageSlotWidth = slotHeight * PortraitPageSlotAspect;
+            ReaderImage.Width = _pageSlotWidth;
+            ReaderImage.Height = _pageSlotHeight;
+            ReaderImageRight.Width = _pageSlotWidth;
+            ReaderImageRight.Height = _pageSlotHeight;
             ReaderImage.Stretch = Stretch.Uniform;
             ReaderImageRight.Stretch = Stretch.Uniform;
             return;
@@ -716,12 +723,19 @@ public partial class ReaderWindow : Window
 
         if (ReaderImage.Source is BitmapSource single)
         {
-            ReaderImage.Width = single.PixelWidth;
-            ReaderImage.Height = single.PixelHeight;
-            ReaderImage.Stretch = Stretch.Fill;
+            var aspect = IsLandscape(single)
+                ? Math.Max(0.1, (double)single.PixelWidth / single.PixelHeight)
+                : PortraitPageSlotAspect;
+            _pageSlotHeight = slotHeight;
+            _pageSlotWidth = slotHeight * aspect;
+            ReaderImage.Width = _pageSlotWidth;
+            ReaderImage.Height = _pageSlotHeight;
+            ReaderImage.Stretch = Stretch.Uniform;
         }
         else
         {
+            _pageSlotWidth = 0;
+            _pageSlotHeight = 0;
             ReaderImage.Width = double.NaN;
             ReaderImage.Height = double.NaN;
             ReaderImage.Stretch = Stretch.None;
@@ -754,34 +768,17 @@ public partial class ReaderWindow : Window
 
     private double GetDisplayedPixelWidth()
     {
-        var left = ReaderImage.Source is BitmapSource l ? GetNormalizedPageWidth(l) : 0;
-        var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? GetNormalizedPageWidth(r) : 0;
-        return left + right;
+        if (_pageSlotWidth <= 0)
+        {
+            return 0;
+        }
+
+        return ReaderImageRight.Visibility == Visibility.Visible ? _pageSlotWidth * 2 : _pageSlotWidth;
     }
 
     private double GetDisplayedPixelHeight()
     {
-        if (ReaderImageRight.Visibility == Visibility.Visible && ReaderImage.Height > 0)
-        {
-            return ReaderImage.Height;
-        }
-
-        var left = ReaderImage.Source is BitmapSource l ? l.PixelHeight : 0;
-        var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? r.PixelHeight : 0;
-        return Math.Max(left, right);
-    }
-
-    private double GetNormalizedPageWidth(BitmapSource image)
-    {
-        if (ReaderImageRight.Visibility != Visibility.Visible
-            || ReaderImage.Source is not BitmapSource left
-            || ReaderImageRight.Source is not BitmapSource right)
-        {
-            return image.PixelWidth;
-        }
-
-        var normalizedHeight = Math.Max(left.PixelHeight, right.PixelHeight);
-        return image.PixelHeight > 0 ? image.PixelWidth * normalizedHeight / image.PixelHeight : image.PixelWidth;
+        return _pageSlotHeight;
     }
 
     private int GetDecodePixelWidth(bool isDoublePage)
@@ -806,6 +803,21 @@ public partial class ReaderWindow : Window
         var viewportHeight = ReaderScrollViewer.ViewportHeight > 0 ? ReaderScrollViewer.ViewportHeight : ReaderScrollViewer.ActualHeight;
         var padding = ReaderScrollViewer.Padding.Top + ReaderScrollViewer.Padding.Bottom;
         return Math.Max(0, viewportHeight - padding);
+    }
+
+    private void UpdateImageScrollStage()
+    {
+        var viewportWidth = GetReaderViewportWidth();
+        var viewportHeight = GetReaderViewportHeight();
+        if (viewportWidth > 0)
+        {
+            ImageScrollContent.MinWidth = viewportWidth;
+        }
+
+        if (viewportHeight > 0)
+        {
+            ImageScrollContent.MinHeight = viewportHeight;
+        }
     }
 
     private double GetAvailableContentWidth()
@@ -983,6 +995,11 @@ public partial class ReaderWindow : Window
 
     private void ReaderRoot_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (PageCatalogOverlay.Visibility == Visibility.Visible || IsPointerOverReaderChrome(e.OriginalSource))
+        {
+            return;
+        }
+
         ReleaseHoldZoom();
         e.Handled = true;
     }

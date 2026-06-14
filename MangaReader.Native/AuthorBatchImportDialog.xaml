@@ -78,19 +78,30 @@
                            Foreground="{StaticResource Brush.TextMuted}"/>
 
                 <Border Grid.Row="3" Style="{StaticResource AppDialogPanelBorder}" Padding="12">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl x:Name="CandidateList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:BatchImportCandidate}">
                                     <Border Margin="0,0,0,10" Style="{StaticResource AppDialogListItemBorder}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*" MinWidth="0"/>
                                                 <ColumnDefinition Width="210"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding FolderName}" Style="{StaticResource AppDialogLabelText}" TextTrimming="CharacterEllipsis"/>
-                                                <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Margin="0,8,0,0" Style="{StaticResource AppDialogTextBox}"/>
+                                            <StackPanel MinWidth="0" Margin="0,0,14,0">
+                                                <TextBlock Text="{Binding FolderName}"
+                                                           ToolTip="{Binding FolderName}"
+                                                           Style="{StaticResource AppDialogLabelText}"
+                                                           TextWrapping="NoWrap"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                                         ToolTip="{Binding Title}"
+                                                         Margin="0,8,0,0"
+                                                         MaxLines="1"
+                                                         TextWrapping="NoWrap"
+                                                         HorizontalScrollBarVisibility="Hidden"
+                                                         Style="{StaticResource AppDialogTextBox}"/>
                                             </StackPanel>
                                             <Border Grid.Column="1" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="12" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding SummaryText}"

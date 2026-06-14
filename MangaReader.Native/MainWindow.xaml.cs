@@ -3085,7 +3085,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var dialog = new TagCreateDialog(initialValue, _managedTagCategories.Keys) { Owner = this };
+        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories()) { Owner = this };
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
         {
             StatusText.Text = "没有创建标签。";
@@ -3385,10 +3385,28 @@ public partial class MainWindow : Window
     {
         if (_managedTagCategories.TryGetValue(tag, out var category) && !string.IsNullOrWhiteSpace(category))
         {
-            return category;
+            return IsPollutedTagCategory(tag, category) ? "自定义" : category;
         }
 
         return TagService.GetCategory(tag);
+    }
+
+    private IEnumerable<string> EnumerateKnownTagCategories()
+    {
+        return DefaultTagPresets.Select(tag => tag.Category)
+            .Concat(_managedTagCategories.Select(item => IsPollutedTagCategory(item.Key, item.Value) ? "自定义" : item.Value))
+            .Append("自定义")
+            .Select(category => category.Trim())
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private bool IsPollutedTagCategory(string tag, string category)
+    {
+        var trimmed = category.Trim();
+        return string.Equals(trimmed, tag, StringComparison.OrdinalIgnoreCase)
+            || (_managedTags.Contains(trimmed)
+                && !DefaultTagPresets.Any(preset => string.Equals(preset.Category, trimmed, StringComparison.OrdinalIgnoreCase)));
     }
 
     private bool IsExclusiveTag(string tag)
@@ -3584,7 +3602,7 @@ public partial class MainWindow : Window
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
-        var dialog = new TagEditDialog(chip, relatedBooks, _managedTagCategories.Keys) { Owner = this };
+        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories()) { Owner = this };
         var result = dialog.ShowDialog();
         if (dialog.OpenMoreRequested)
         {
