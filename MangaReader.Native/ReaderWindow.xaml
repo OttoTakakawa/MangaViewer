@@ -25,7 +25,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="18"
+                                CornerRadius="{StaticResource RadiusControl}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -63,7 +63,7 @@
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="18">
+                                    CornerRadius="{StaticResource RadiusControl}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -99,7 +99,7 @@
                                         Background="#111827"
                                         BorderBrush="#273244"
                                         BorderThickness="1"
-                                        CornerRadius="16"
+                                        CornerRadius="{StaticResource RadiusControl}"
                                         Effect="{StaticResource ToolbarShadow}">
                                     <ScrollViewer MaxHeight="240">
                                         <ItemsPresenter Margin="5"/>
@@ -124,7 +124,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="ItemRoot" Margin="2" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="11">
+                        <Border x:Name="ItemRoot" Margin="2" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusControl}">
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -151,7 +151,7 @@
                                     <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="#E5E7EB" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="2" Background="#E5E7EB"/>
+                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="#E5E7EB"/>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
@@ -160,7 +160,7 @@
                                     <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="#30FFFFFF" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="2" Background="#30FFFFFF"/>
+                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="#30FFFFFF"/>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
@@ -169,7 +169,7 @@
                                     <Thumb Width="16" Height="16" Background="#FFFFFF">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Width="16" Height="16" CornerRadius="8" Background="#FFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                                <Border Width="16" Height="16" CornerRadius="{StaticResource RadiusControl}" Background="#FFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -216,7 +216,7 @@
                 VerticalAlignment="Center"
                 MaxWidth="680"
                 Padding="22,18"
-                CornerRadius="24"
+                CornerRadius="{StaticResource RadiusPanel}"
                 Background="#EAFDFBF7"
                 BorderBrush="#33FFFFFF"
                 BorderThickness="1"
@@ -247,7 +247,7 @@
                     VerticalAlignment="Center"
                     Width="520"
                     Padding="22"
-                    CornerRadius="26"
+                    CornerRadius="{StaticResource RadiusPanel}"
                     Background="#EA080A0E"
                     BorderBrush="#22FFFFFF"
                     BorderThickness="1"
@@ -297,7 +297,7 @@
                 Background="#A6080A0E"
                 BorderBrush="#18FFFFFF"
                 BorderThickness="1"
-                CornerRadius="22"
+                CornerRadius="{StaticResource RadiusPanel}"
                 Effect="{StaticResource ToolbarShadow}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock x:Name="TitleText" Foreground="#F9FAFB" FontSize="14" FontWeight="SemiBold" MaxWidth="520" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -315,7 +315,7 @@
                 Background="#B0080A0E"
                 BorderBrush="#18FFFFFF"
                 BorderThickness="1"
-                CornerRadius="25"
+                CornerRadius="{StaticResource RadiusPanel}"
                 Effect="{StaticResource ToolbarShadow}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -359,7 +359,7 @@
                 VerticalAlignment="Top"
                 Margin="14,14,0,0"
                 Padding="13,8"
-                CornerRadius="18"
+                CornerRadius="{StaticResource RadiusControl}"
                 Background="#99080A0E"
                 BorderBrush="#18FFFFFF"
                 BorderThickness="1"

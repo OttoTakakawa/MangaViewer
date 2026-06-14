@@ -10,6 +10,8 @@ public static class AppLogger
     private static string _currentLogPath = "";
     private static StreamWriter? _writer;
 
+    public static event Action<string>? LineWritten;
+
     public static void Initialize(AppStorage storage)
     {
         storage.EnsureCreated();
@@ -63,6 +65,8 @@ public static class AppLogger
         catch (UnauthorizedAccessException)
         {
         }
+
+        LineWritten?.Invoke(line);
     }
 
     private static void EnsureWriter()

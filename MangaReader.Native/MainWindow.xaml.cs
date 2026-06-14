@@ -28,6 +28,7 @@ public partial class MainWindow : Window
             new PropertyMetadata(false));
 
     private const double WheelScrollMultiplier = 1.45;
+    private const int MaxLiveLogLines = 300;
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
 
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
     }
     private static readonly SolidColorBrush DarkBrush = FrozenBrush("#111827");
     private static readonly SolidColorBrush GrayForegroundBrush = FrozenBrush("#374151");
+    private static readonly SolidColorBrush TransparentBrush = FrozenBrush("#00FFFFFF");
     private static readonly SolidColorBrush LightBackgroundBrush = FrozenBrush("#F8FAFC");
     private static readonly SolidColorBrush LightBorderBrush = FrozenBrush("#E5E7EB");
 
@@ -58,6 +60,7 @@ public partial class MainWindow : Window
     private ICollectionView? _booksView;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedTags = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _managedAuthors = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagCategories = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _managedTagIsExclusive = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagUpdatedAt = new(StringComparer.OrdinalIgnoreCase);
@@ -65,10 +68,13 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, List<MangaBook>> _tagBooksByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _suppressedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _visibleCoverReferences = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CancellationTokenSource> _coverLoadCancellations = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _bookSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _tagSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _tagManagerSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _authorSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
+    private readonly DispatcherTimer _statusLogTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    private readonly Queue<string> _liveLogLines = new();
     private DispatcherOperation? _bookFilterRefreshOperation;
     private bool _refreshShelfOverviewAfterBookFilter;
     private bool _isRefreshingAuthorFilters;
@@ -80,6 +86,7 @@ public partial class MainWindow : Window
     private string _cachedSearchQuery = "";
     private string _cachedStatusFilter = "";
     private string _cachedAuthorFilter = "";
+    private string _lastStatusLogText = "";
     private bool _cachedFavoriteOnly;
     private bool _cachedShowHidden;
     private string[] _cachedActiveTagFilters = [];
@@ -122,14 +129,18 @@ public partial class MainWindow : Window
         _coverPipeline = new CoverThumbnailPipeline(_coverCache);
         SetDetailVisible(false);
         ShowHomeView();
-        UpdateStoragePathText();
         UpdateLogPanelVisibility();
+        AppLogger.LineWritten += AppLogger_LineWritten;
 
         ConfigureSearchDebounceTimers();
+        _statusLogTimer.Tick += StatusLogTimer_Tick;
+        _statusLogTimer.Start();
         VersionText.Text = $"v{UpdateService.CurrentVersionText}";
         Loaded += MainWindow_Loaded;
         Closing += (_, _) =>
         {
+            AppLogger.LineWritten -= AppLogger_LineWritten;
+            _statusLogTimer.Stop();
             StopSearchDebounceTimers();
             SaveCurrentProgress();
         };
@@ -141,6 +152,7 @@ public partial class MainWindow : Window
         {
             await Task.Run(() => _database.Initialize());
             LoadManagedTags();
+            LoadManagedAuthors();
             LoadShortcuts();
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
@@ -379,13 +391,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!_coverLoadCancellations.TryGetValue(key, out var loadCancellation))
+        {
+            loadCancellation = new CancellationTokenSource();
+            _coverLoadCancellations[key] = loadCancellation;
+        }
+
         try
         {
-            var image = await _coverPipeline.LoadAsync(book);
+            var image = await _coverPipeline.LoadAsync(book, loadCancellation.Token);
             if (_visibleCoverReferences.ContainsKey(key) && image is not null)
             {
                 book.CoverImage = image;
             }
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
         {
@@ -413,6 +434,11 @@ public partial class MainWindow : Window
         if (count <= 1)
         {
             _visibleCoverReferences.Remove(key);
+            if (_coverLoadCancellations.Remove(key, out var loadCancellation))
+            {
+                loadCancellation.Cancel();
+                loadCancellation.Dispose();
+            }
             return;
         }
 
@@ -442,6 +468,13 @@ public partial class MainWindow : Window
         var token = _scanCancellation.Token;
 
         StatusText.Text = "正在扫描漫画库...";
+        foreach (var cancellation in _coverLoadCancellations.Values)
+        {
+            cancellation.Cancel();
+            cancellation.Dispose();
+        }
+
+        _coverLoadCancellations.Clear();
         _visibleCoverReferences.Clear();
         Books.Clear();
         _currentBook = null;
@@ -805,6 +838,11 @@ public partial class MainWindow : Window
 
     private async void ManualBackup_Click(object sender, RoutedEventArgs e)
     {
+        await CreateManualBackupAsync();
+    }
+
+    private async Task CreateManualBackupAsync()
+    {
         var backupPath = await Task.Run(() => _database.CreateManualBackup());
         if (string.IsNullOrWhiteSpace(backupPath))
         {
@@ -815,7 +853,116 @@ public partial class MainWindow : Window
         StatusText.Text = $"已创建数据库备份：{Path.GetFileName(backupPath)}";
     }
 
+    private async void DataSafety_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new DataSafetyDialog(_storage)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        switch (dialog.RequestedAction)
+        {
+            case DataSafetyAction.CreateBackup:
+                await CreateManualBackupAsync();
+                break;
+            case DataSafetyAction.OpenBackupFolder:
+                OpenBackupFolder();
+                break;
+            case DataSafetyAction.OpenDataFolder:
+                OpenDataFolder();
+                break;
+            case DataSafetyAction.RestoreDatabase:
+                await RestoreDatabaseFromPathAsync(dialog.SelectedDatabasePath);
+                break;
+            case DataSafetyAction.CheckUpdate:
+                await CheckUpdateAsync(null);
+                break;
+        }
+    }
+
+    private async void RestoreDatabase_Click(object sender, RoutedEventArgs e)
+    {
+        await RestoreDatabaseFromPathAsync(null);
+    }
+
+    private async Task RestoreDatabaseFromPathAsync(string? selectedDatabasePath)
+    {
+        var sourcePath = selectedDatabasePath;
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            using var dialog = new WinForms.OpenFileDialog
+            {
+                Title = "选择要恢复的数据库备份",
+                InitialDirectory = Directory.Exists(_storage.BackupPath) ? _storage.BackupPath : _storage.Root,
+                Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() != WinForms.DialogResult.OK)
+            {
+                return;
+            }
+
+            sourcePath = dialog.FileName;
+        }
+
+        sourcePath = Path.GetFullPath(sourcePath);
+        if (sourcePath.Equals(Path.GetFullPath(_storage.DatabasePath), StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText.Text = "选择的就是当前正在使用的数据库，无需恢复。";
+            return;
+        }
+
+        var result = System.Windows.MessageBox.Show(
+            $"将把所选数据库恢复为当前数据目录的 app.db。\n\n当前数据库会先自动备份，恢复会在重启后生效。\n\n所选文件：{sourcePath}\n\n是否继续?",
+            "恢复数据库",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            StatusText.Text = "已取消恢复数据库。";
+            return;
+        }
+
+        try
+        {
+            var backupPath = await Task.Run(() =>
+            {
+                var currentBackup = _database.CreateManualBackup();
+                _storage.ScheduleDatabaseRestore(sourcePath);
+                return currentBackup;
+            });
+
+            StatusText.Text = string.IsNullOrWhiteSpace(backupPath)
+                ? "恢复数据库已排队，软件将重启后替换当前 app.db。"
+                : $"恢复数据库已排队，当前数据库已备份为：{Path.GetFileName(backupPath)}";
+
+            if (!RestartCurrentProcess())
+            {
+                StatusText.Text += " 自动重启失败，请手动重启软件完成恢复。";
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            AppLogger.Error("storage", ex, "Failed to schedule database restore.");
+            StatusText.Text = $"恢复数据库失败：{ex.Message}";
+        }
+    }
+
     private void OpenBackupFolder_Click(object sender, RoutedEventArgs e)
+    {
+        OpenBackupFolder();
+    }
+
+    private void OpenBackupFolder()
     {
         Directory.CreateDirectory(_storage.BackupPath);
         Process.Start(new ProcessStartInfo
@@ -828,6 +975,11 @@ public partial class MainWindow : Window
 
     private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
     {
+        OpenDataFolder();
+    }
+
+    private void OpenDataFolder()
+    {
         Directory.CreateDirectory(_storage.Root);
         Process.Start(new ProcessStartInfo
         {
@@ -839,13 +991,22 @@ public partial class MainWindow : Window
 
     private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
     {
+        await CheckUpdateAsync(sender as System.Windows.Controls.Button);
+    }
+
+    private async Task CheckUpdateAsync(System.Windows.Controls.Button? triggerButton)
+    {
         if (_isCheckingForUpdates)
         {
             return;
         }
 
         _isCheckingForUpdates = true;
-        CheckUpdateButton.IsEnabled = false;
+        if (triggerButton is not null)
+        {
+            triggerButton.IsEnabled = false;
+        }
+
         StatusText.Text = $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...";
 
         try
@@ -890,7 +1051,10 @@ public partial class MainWindow : Window
         finally
         {
             _isCheckingForUpdates = false;
-            CheckUpdateButton.IsEnabled = true;
+            if (triggerButton is not null)
+            {
+                triggerButton.IsEnabled = true;
+            }
         }
     }
 
@@ -919,7 +1083,6 @@ public partial class MainWindow : Window
         try
         {
             AppStorage.SaveCustomRoot(selectedPath);
-            StoragePathText.Text = $"下次启动将使用：{selectedPath}";
             AppLogger.Info("storage", $"Data root changed for next launch: {selectedPath}");
 
             var result = System.Windows.MessageBox.Show(
@@ -931,20 +1094,10 @@ public partial class MainWindow : Window
 
             if (result == MessageBoxResult.Yes)
             {
-                var executablePath = Environment.ProcessPath;
-                if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+                if (!RestartCurrentProcess())
                 {
                     StatusText.Text = "数据目录已指定。自动重启失败，请手动重启软件后生效。";
-                    return;
                 }
-
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = executablePath,
-                    WorkingDirectory = AppContext.BaseDirectory,
-                    UseShellExecute = true
-                });
-                Environment.Exit(0);
             }
             else
             {
@@ -956,6 +1109,24 @@ public partial class MainWindow : Window
             AppLogger.Error("storage", ex, "Failed to update data root.");
             StatusText.Text = $"数据目录设置失败：{ex.Message}";
         }
+    }
+
+    private bool RestartCurrentProcess()
+    {
+        var executablePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+        {
+            return false;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = executablePath,
+            WorkingDirectory = AppContext.BaseDirectory,
+            UseShellExecute = true
+        });
+        Environment.Exit(0);
+        return true;
     }
 
     private async void Relocate_Click(object sender, RoutedEventArgs e)
@@ -1620,6 +1791,7 @@ public partial class MainWindow : Window
             var authors = Books.Where(book => ShowHiddenBox?.IsChecked == true || !book.IsHidden)
                 .Select(book => book.Author.Trim())
                 .Where(author => !string.IsNullOrWhiteSpace(author))
+                .Concat(_managedAuthors)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(author => author)
                 .ToList();
@@ -1704,6 +1876,68 @@ public partial class MainWindow : Window
         UpdateLogPanelVisibility();
     }
 
+    private void AppLogger_LineWritten(string line)
+    {
+        Dispatcher.InvokeAsync(() => AppendLogOutput(line), DispatcherPriority.Background);
+    }
+
+    private void StatusLogTimer_Tick(object? sender, EventArgs e)
+    {
+        if (StatusText is null)
+        {
+            return;
+        }
+
+        var text = StatusText.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(text) || text == _lastStatusLogText)
+        {
+            return;
+        }
+
+        _lastStatusLogText = text;
+        AppendLogOutput($"{DateTimeOffset.Now:HH:mm:ss.fff} [STATUS] {text}");
+    }
+
+    private void AppendLogOutput(string line)
+    {
+        if (LogOutputText is null)
+        {
+            return;
+        }
+
+        _liveLogLines.Enqueue(line);
+        while (_liveLogLines.Count > MaxLiveLogLines)
+        {
+            _liveLogLines.Dequeue();
+        }
+
+        LogOutputText.Text = string.Join(Environment.NewLine, _liveLogLines);
+        if (_isLogPanelVisible && LogOutputScrollViewer is not null)
+        {
+            LogOutputScrollViewer.ScrollToEnd();
+        }
+    }
+
+    private void ClearLogOutput_Click(object sender, RoutedEventArgs e)
+    {
+        _liveLogLines.Clear();
+        if (LogOutputText is not null)
+        {
+            LogOutputText.Text = "";
+        }
+    }
+
+    private void OpenLogFolder_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(_storage.LogsPath);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = $"\"{_storage.LogsPath}\"",
+            UseShellExecute = true
+        });
+    }
+
     private void SetLibraryChromeCollapsed(bool collapsed)
     {
         _libraryChromeCollapsed = collapsed;
@@ -1738,14 +1972,13 @@ public partial class MainWindow : Window
 
         if (LogPanelToggleButton is not null)
         {
-            LogPanelToggleButton.Content = _isLogPanelVisible ? "收起日志" : "日志";
+            LogPanelToggleButton.Content = _isLogPanelVisible ? "收起日志" : "展开日志";
         }
-    }
 
-    private void UpdateStoragePathText()
-    {
-        var mode = _storage.UsesCustomRoot ? "自定义数据目录" : "默认数据目录";
-        StoragePathText.Text = $"{mode}：{_storage.Root}";
+        if (_isLogPanelVisible && LogOutputScrollViewer is not null)
+        {
+            LogOutputScrollViewer.ScrollToEnd();
+        }
     }
 
     private void RefreshBookFilter()
@@ -2080,8 +2313,14 @@ public partial class MainWindow : Window
         var favoriteCount = 0;
         var readingNowCount = 0;
         var finishedCount = 0;
+        var visibleCount = 0;
         foreach (var book in Books)
         {
+            if (FilterBook(book))
+            {
+                visibleCount++;
+            }
+
             if (book.IsHidden && !_cachedShowHidden)
             {
                 continue;
@@ -2101,8 +2340,6 @@ public partial class MainWindow : Window
                 finishedCount++;
             }
         }
-
-        var visibleCount = Books.Count(FilterBook);
 
         VisibleBookCountText.Text = $"{visibleCount} 本";
         TotalBookCountText.Text = _cachedShowHidden
@@ -2547,8 +2784,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        button.Background = active ? DarkBrush : System.Windows.Media.Brushes.Transparent;
-        button.Foreground = active ? System.Windows.Media.Brushes.White : GrayForegroundBrush;
+        button.Background = active ? LightBackgroundBrush : TransparentBrush;
+        button.BorderBrush = active ? LightBorderBrush : TransparentBrush;
+        button.Foreground = active ? DarkBrush : GrayForegroundBrush;
     }
 
     private void FastVerticalScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -2729,6 +2967,15 @@ public partial class MainWindow : Window
         foreach (var tag in _database.LoadSuppressedTags().Where(tag => !string.IsNullOrWhiteSpace(tag)))
         {
             _suppressedTags.Add(tag);
+        }
+    }
+
+    private void LoadManagedAuthors()
+    {
+        _managedAuthors.Clear();
+        foreach (var author in _database.LoadManagedAuthors().Select(author => author.Trim()).Where(author => !string.IsNullOrWhiteSpace(author)))
+        {
+            _managedAuthors.Add(author);
         }
     }
 
@@ -3002,10 +3249,17 @@ public partial class MainWindow : Window
 
     private void RefreshAuthorManagementItems(string? filter = null)
     {
-        var query = Books
+        var bookCounts = Books
             .Where(b => !string.IsNullOrWhiteSpace(b.Author))
             .GroupBy(b => b.Author, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new AuthorItem { Name = g.Key, BookCount = g.Count() });
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var author in _managedAuthors)
+        {
+            bookCounts.TryAdd(author, 0);
+        }
+
+        var query = bookCounts.Select(item => new AuthorItem { Name = item.Key, BookCount = item.Value });
 
         if (!string.IsNullOrWhiteSpace(filter))
         {
@@ -3027,6 +3281,15 @@ public partial class MainWindow : Window
         {
             AuthorManagerEmptyState.Visibility = AuthorManagerItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
+    }
+
+    private IEnumerable<string> EnumerateKnownAuthors()
+    {
+        return Books
+            .Select(book => book.Author.Trim())
+            .Where(author => !string.IsNullOrWhiteSpace(author))
+            .Concat(_managedAuthors)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
     private List<MangaBook> GetTagBooks(string tag)
@@ -3127,6 +3390,39 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void CreateAuthor_Click(object sender, RoutedEventArgs e)
+    {
+        var initialValue = AuthorSearchBox?.Text?.Trim() ?? "";
+        var dialog = new RenameDialog("新增作者", "创建一个暂未关联书籍的作者条目，后续导入或改名会自动合并。", "类型", "独立作者", "作者名称", initialValue)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var authorName = dialog.NewName.Trim();
+        if (EnumerateKnownAuthors().Any(author => string.Equals(author, authorName, StringComparison.OrdinalIgnoreCase)))
+        {
+            StatusText.Text = $"作者已存在：{authorName}";
+            return;
+        }
+
+        _managedAuthors.Add(authorName);
+        await Task.Run(() => _database.SaveManagedAuthor(authorName));
+
+        if (AuthorSearchBox is not null)
+        {
+            AuthorSearchBox.Text = "";
+        }
+
+        RefreshAuthorFilters();
+        RefreshAuthorManagementItems();
+        StatusText.Text = $"已新增作者：{authorName}";
+    }
+
     private async void RenameAuthor_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: AuthorItem item })
@@ -3145,11 +3441,25 @@ public partial class MainWindow : Window
             .ToList();
         var updates = booksToUpdate.Select(b => (b.Id, dialog.NewName)).ToList();
 
-        await Task.Run(() => _database.SaveBookAuthorsBatch(updates, "rename-author"));
+        var shouldRenameManagedAuthor = _managedAuthors.Contains(item.Name) || updates.Count == 0;
+        await Task.Run(() =>
+        {
+            _database.SaveBookAuthorsBatch(updates, "rename-author");
+            if (shouldRenameManagedAuthor)
+            {
+                _database.RenameManagedAuthor(item.Name, dialog.NewName);
+            }
+        });
         foreach (var book in booksToUpdate)
         {
             book.Author = dialog.NewName;
             book.NotifyAll();
+        }
+
+        if (shouldRenameManagedAuthor)
+        {
+            _managedAuthors.Remove(item.Name);
+            _managedAuthors.Add(dialog.NewName);
         }
 
         RefreshLibraryViews(sort: true);

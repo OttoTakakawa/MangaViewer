@@ -97,6 +97,11 @@ public sealed class LibraryDatabase
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS managed_authors (
+                name TEXT PRIMARY KEY,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS suppressed_tags (
                 name TEXT PRIMARY KEY,
                 updated_at TEXT NOT NULL
@@ -580,6 +585,71 @@ public sealed class LibraryDatabase
             result.Add(reader.GetString(0));
         }
         return result;
+    }
+
+    public List<string> LoadManagedAuthors()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM managed_authors ORDER BY name ASC;";
+        using var reader = command.ExecuteReader();
+        var result = new List<string>();
+        while (reader.Read())
+        {
+            result.Add(reader.GetString(0));
+        }
+        return result;
+    }
+
+    public void SaveManagedAuthor(string author)
+    {
+        BackupDatabase("before-managed-author-save", force: ShouldCreateMetadataBackup());
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO managed_authors(name, updated_at)
+            VALUES ($name, $updatedAt)
+            ON CONFLICT(name) DO UPDATE SET
+                updated_at = excluded.updated_at;
+            """;
+        command.Parameters.AddWithValue("$name", author);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+        _lastMetadataBackupAt = DateTimeOffset.Now;
+    }
+
+    public void RenameManagedAuthor(string oldName, string newName)
+    {
+        BackupDatabase("before-managed-author-rename", force: true);
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+
+        using (var deleteCommand = connection.CreateCommand())
+        {
+            deleteCommand.Transaction = transaction;
+            deleteCommand.CommandText = "DELETE FROM managed_authors WHERE name = $oldName;";
+            deleteCommand.Parameters.AddWithValue("$oldName", oldName);
+            deleteCommand.ExecuteNonQuery();
+        }
+
+        using (var upsertCommand = connection.CreateCommand())
+        {
+            upsertCommand.Transaction = transaction;
+            upsertCommand.CommandText =
+                """
+                INSERT INTO managed_authors(name, updated_at)
+                VALUES ($newName, $updatedAt)
+                ON CONFLICT(name) DO UPDATE SET
+                    updated_at = excluded.updated_at;
+                """;
+            upsertCommand.Parameters.AddWithValue("$newName", newName);
+            upsertCommand.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+            upsertCommand.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+        _lastMetadataBackupAt = DateTimeOffset.Now;
     }
 
     public void SaveManagedTag(string tag, string category = "自定义", bool isExclusive = false, string color = "")

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="添加漫画"
         Width="620"
-        Height="520"
+        Height="470"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -16,62 +16,38 @@
     <Window.Resources>
         <DropShadowEffect x:Key="DialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
 
-        <Style x:Key="DialogButton" TargetType="Button">
-            <Setter Property="Height" Value="42"/>
+        <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Height" Value="40"/>
             <Setter Property="MinWidth" Value="104"/>
             <Setter Property="Padding" Value="18,0"/>
-            <Setter Property="Background" Value="#111827"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#111827"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root" CornerRadius="21" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Opacity" Value="0.9"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Opacity" Value="0.78"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
-        <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource DialogButton}">
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+        <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="104"/>
+            <Setter Property="Padding" Value="18,0"/>
         </Style>
 
         <Style x:Key="DialogTextBox" TargetType="TextBox">
             <Setter Property="Height" Value="44"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="CaretBrush" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="Root" CornerRadius="22" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <Border x:Name="Root" CornerRadius="{StaticResource RadiusControl}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
                             <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#9CA3AF"/>
-                                <Setter TargetName="Root" Property="Background" Value="#FFFFFF"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -81,12 +57,12 @@
     </Window.Resources>
 
     <Grid Margin="22">
-        <Border CornerRadius="36"
+        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
                 Background="#01000000"
                 Effect="{StaticResource DialogShadow}"/>
-        <Border CornerRadius="32"
-                Background="#F6F7F9"
-                BorderBrush="#FFFFFF"
+        <Border CornerRadius="{StaticResource RadiusDialog}"
+                Background="{StaticResource Brush.AppBackground}"
+                BorderBrush="{StaticResource Brush.Surface}"
                 BorderThickness="1"
                 Padding="26"
                 SnapsToDevicePixels="True"
@@ -96,29 +72,29 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="×" Width="42" MinWidth="42" Padding="0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
+                    <Button DockPanel.Dock="Right" Content="×" Width="40" MinWidth="40" Padding="0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
                     <StackPanel>
-                        <TextBlock Text="添加漫画" FontSize="30" FontWeight="Black" Foreground="#111827"/>
-                        <TextBlock Text="拖入作者文件夹或漫画文件夹；也可以粘贴本地路径。" Margin="0,6,0,0" Foreground="#6B7280"/>
+                        <TextBlock Text="添加漫画" FontSize="30" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+                        <TextBlock Text="拖入作者文件夹或漫画文件夹；也可以粘贴本地路径。" Margin="0,6,0,0" Foreground="{StaticResource Brush.TextMuted}"/>
                     </StackPanel>
                 </DockPanel>
 
-                <Border Grid.Row="1" Margin="0,24,0,0" Padding="22" CornerRadius="26" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border Grid.Row="1" Margin="0,24,0,0" Padding="22" CornerRadius="{StaticResource RadiusField}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Text="把文件夹拖到这里" FontSize="22" FontWeight="Black" Foreground="#111827" HorizontalAlignment="Center"/>
+                        <TextBlock Text="把文件夹拖到这里" FontSize="22" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}" HorizontalAlignment="Center"/>
                         <TextBlock Grid.Row="1"
                                    Text="支持多文件夹；会继续进入作者批量导入确认窗口。"
                                    Margin="0,8,0,0"
-                                   Foreground="#6B7280"
+                                   Foreground="{StaticResource Brush.TextMuted}"
                                    HorizontalAlignment="Center"/>
                     </Grid>
                 </Border>
@@ -133,27 +109,29 @@
                     <Button Grid.Column="2" Content="加入路径" Click="AddPath_Click" Style="{StaticResource DialogGhostButton}"/>
                 </Grid>
 
-                <Border Grid.Row="3" Margin="0,18,0,0" CornerRadius="24" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14">
+                <Border Grid.Row="3" Margin="0,18,0,0" Height="92" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="10">
                     <Grid>
-                        <ItemsControl x:Name="FolderList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,0,8" Padding="14,10" CornerRadius="18" Background="#F8FAFC" BorderBrush="#EEF2F7" BorderThickness="1">
-                                        <TextBlock Text="{Binding}" Foreground="#111827" TextTrimming="CharacterEllipsis"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="FolderList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,6" Padding="12,8" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.SurfaceMuted}" BorderBrush="{StaticResource Brush.ScrollTrack}" BorderThickness="1">
+                                            <TextBlock Text="{Binding}" Foreground="{StaticResource Brush.TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                         <TextBlock x:Name="EmptyText"
                                    Text="尚未选择文件夹"
-                                   Foreground="#9CA3AF"
+                                   Foreground="{StaticResource Brush.TextSubtle}"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Grid>
                 </Border>
 
                 <DockPanel Grid.Row="4" Margin="0,20,0,0">
-                    <TextBlock x:Name="HintText" Foreground="#6B7280" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="HintText" Foreground="{StaticResource Brush.TextMuted}" VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
                         <Button Content="继续导入" Width="124" Click="Confirm_Click" Style="{StaticResource DialogButton}"/>

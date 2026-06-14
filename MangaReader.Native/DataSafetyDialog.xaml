@@ -1,0 +1,180 @@
+<Window x:Class="MangaReader.Native.DataSafetyDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="数据安全"
+        Width="720"
+        Height="620"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+    <Window.Resources>
+        <DropShadowEffect x:Key="DialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
+
+        <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="104"/>
+            <Setter Property="Padding" Value="18,0"/>
+        </Style>
+
+        <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="104"/>
+            <Setter Property="Padding" Value="18,0"/>
+        </Style>
+
+        <Style x:Key="DialogDangerButton" TargetType="Button" BasedOn="{StaticResource AppDangerButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="104"/>
+            <Setter Property="Padding" Value="18,0"/>
+        </Style>
+
+        <Style x:Key="BackupListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Root"
+                                Margin="0,0,0,8"
+                                Padding="14,10"
+                                CornerRadius="{StaticResource RadiusPanel}"
+                                Background="{StaticResource Brush.SurfaceMuted}"
+                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                BorderThickness="1">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#EEF2F7"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="22">
+        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
+                Background="#01000000"
+                Effect="{StaticResource DialogShadow}"/>
+        <Border CornerRadius="{StaticResource RadiusDialog}"
+                Background="{StaticResource Brush.Surface}"
+                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                BorderThickness="1"
+                Padding="26"
+                SnapsToDevicePixels="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Width="40" Height="40" Style="{StaticResource DialogGhostButton}"/>
+                    <StackPanel>
+                        <TextBlock Text="数据安全" FontSize="30" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+                        <TextBlock Text="管理数据库备份与恢复。漫画图片不会复制，真正需要保护的是 app.db。"
+                                   Margin="0,6,0,0"
+                                   Foreground="{StaticResource Brush.TextMuted}"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <Border Grid.Row="1"
+                        Margin="0,20,0,16"
+                        Padding="14"
+                        CornerRadius="{StaticResource RadiusPanel}"
+                        Background="{StaticResource Brush.SurfaceMuted}"
+                        BorderBrush="{StaticResource Brush.BorderSubtle}"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="当前数据目录" Foreground="{StaticResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="DataRootText"
+                                   Margin="0,6,0,0"
+                                   Foreground="{StaticResource Brush.TextPrimary}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock x:Name="BackupSummaryText"
+                                   DockPanel.Dock="Left"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource Brush.TextMuted}"
+                                   FontWeight="SemiBold"/>
+                    </DockPanel>
+                    <ListBox x:Name="BackupList"
+                             Grid.Row="1"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             ItemContainerStyle="{StaticResource BackupListItemStyle}"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding FileName}"
+                                                   FontSize="14"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource Brush.TextPrimary}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding DetailText}"
+                                                   Margin="0,4,0,0"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource Brush.TextMuted}"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding SizeText}"
+                                               Margin="18,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Brush.TextSubtle}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+
+                <Grid Grid.Row="3" Margin="0,22,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Left" Content="立即备份" Click="CreateBackup_Click" Style="{StaticResource DialogButton}" Margin="0,0,8,0"/>
+                        <Button DockPanel.Dock="Right" Content="恢复选中" Click="RestoreSelected_Click" Style="{StaticResource DialogDangerButton}"/>
+                    </DockPanel>
+                    <WrapPanel Grid.Row="1" Margin="0,10,0,0" HorizontalAlignment="Right">
+                        <Button Content="打开备份目录" Click="OpenBackupFolder_Click" Style="{StaticResource DialogGhostButton}" Margin="0,0,8,0"/>
+                        <Button Content="打开数据目录" Click="OpenDataFolder_Click" Style="{StaticResource DialogGhostButton}" Margin="0,0,8,0"/>
+                        <Button Content="选择其他 DB" Click="ChooseExternalDatabase_Click" Style="{StaticResource DialogGhostButton}" Margin="0,0,8,0"/>
+                        <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource DialogGhostButton}"/>
+                    </WrapPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
