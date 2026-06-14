@@ -53,6 +53,7 @@ public partial class ReaderWindow : Window
     private WindowState _previousWindowState;
     private double _holdZoomBaseValue = 1;
     private int _pageLoadRequestId;
+    private CancellationTokenSource? _pageLoadCancellation;
     private int _backgroundMode;
     private bool _isLoadingViewerPreferences;
     private bool _isNextBookPromptOpen;
@@ -102,6 +103,9 @@ public partial class ReaderWindow : Window
     {
         _controlsRevealTimer.Stop();
         _doublePageGapSaveTimer.Stop();
+        _pageLoadCancellation?.Cancel();
+        _pageLoadCancellation?.Dispose();
+        _pageLoadCancellation = null;
         var book = _book;
         var wheelMode = WheelModeBox.SelectedIndex.ToString();
         _ = Task.Run(() =>
@@ -406,6 +410,11 @@ public partial class ReaderWindow : Window
         if (_book.Pages.Count == 0) return;
         HideNextBookPrompt();
         var requestId = ++_pageLoadRequestId;
+        _pageLoadCancellation?.Cancel();
+        _pageLoadCancellation?.Dispose();
+        var loadCancellation = new CancellationTokenSource();
+        _pageLoadCancellation = loadCancellation;
+        var cancellationToken = loadCancellation.Token;
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _boundaryHint = "";
         var firstPath = _book.Pages[safeIndex];
@@ -418,18 +427,21 @@ public partial class ReaderWindow : Window
             var doubleDecodeWidth = GetDecodePixelWidth(true);
             var page = await Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
+                cancellationToken.ThrowIfCancellationRequested();
                 var useDouble = doublePageMode && safeIndex + 1 < _book.Pages.Count && !IsLandscape(first);
                 BitmapSource? second = null;
                 if (useDouble)
                 {
                     second = ImageLoader.LoadBitmap(_book.Pages[safeIndex + 1], doubleDecodeWidth);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
 
                 return new LoadedPage(first, second, useDouble);
-            });
+            }, cancellationToken);
 
-            if (requestId != _pageLoadRequestId)
+            if (requestId != _pageLoadRequestId || cancellationToken.IsCancellationRequested)
             {
                 return;
             }
@@ -466,6 +478,9 @@ public partial class ReaderWindow : Window
             _ = Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
             HideReaderMessage();
             AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {

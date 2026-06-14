@@ -7,17 +7,9 @@
         xmlns:models="clr-namespace:MangaReader.Native.Models"
         mc:Ignorable="d"
         Title="漫画库" Height="900" Width="1500" MinHeight="760" MinWidth="1180"
-        Background="#F6F7F9" WindowStartupLocation="CenterScreen">
+        Background="{StaticResource Brush.AppBackground}" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-        <CornerRadius x:Key="RadiusClip">4</CornerRadius>
-        <CornerRadius x:Key="RadiusProgress">5</CornerRadius>
-        <CornerRadius x:Key="RadiusControl">9</CornerRadius>
-        <CornerRadius x:Key="RadiusPanel">10</CornerRadius>
-        <CornerRadius x:Key="RadiusField">11</CornerRadius>
-        <CornerRadius x:Key="RadiusTag">16</CornerRadius>
-        <CornerRadius x:Key="RadiusDialog">32</CornerRadius>
-        <CornerRadius x:Key="RadiusPill">999</CornerRadius>
         <DropShadowEffect x:Key="BookShadow" Color="#111827" BlurRadius="18" ShadowDepth="6" Opacity="0.14"/>
         <DropShadowEffect x:Key="PanelShadow" Color="#111827" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
 
@@ -28,7 +20,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Background" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Template">
@@ -55,26 +47,26 @@
             </Setter>
         </Style>
         <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
         </Style>
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#FFF1F2"/>
-            <Setter Property="BorderBrush" Value="#FECDD3"/>
-            <Setter Property="Foreground" Value="#9F1239"/>
+            <Setter Property="Background" Value="{StaticResource Brush.DangerSurface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.DangerBorder}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.Danger}"/>
         </Style>
         <Style x:Key="FilterPillButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="18,10"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Root"
                                 Background="{TemplateBinding Background}"
-                                BorderBrush="#E5E7EB"
+                                BorderBrush="{StaticResource Brush.BorderSubtle}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusField}"
                                 Padding="{TemplateBinding Padding}">
@@ -99,14 +91,14 @@
             <Setter Property="Height" Value="32"/>
             <Setter Property="Padding" Value="12,5"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#E2E8F0"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
         </Style>
         <Style x:Key="PillProgressBar" TargetType="ProgressBar">
             <Setter Property="Height" Value="10"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="Background" Value="#E5E7EB"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -126,8 +118,8 @@
         <Style x:Key="FilterPillTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="16,6"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -155,10 +147,10 @@
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="MinHeight" Value="42"/>
             <Setter Property="Padding" Value="12,5"/>
-            <Setter Property="BorderBrush" Value="#D8DEE8"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -173,10 +165,10 @@
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="MinHeight" Value="42"/>
             <Setter Property="Padding" Value="12,5"/>
-            <Setter Property="BorderBrush" Value="#D8DEE8"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -223,8 +215,8 @@
                                    PopupAnimation="Slide">
                                 <Border Margin="0,6,0,0"
                                         Width="{Binding ActualWidth, ElementName=ComboRoot}"
-                                        Background="#FFFFFF"
-                                        BorderBrush="#D8DEE8"
+                                        Background="{StaticResource Brush.Surface}"
+                                        BorderBrush="{StaticResource Brush.BorderStrong}"
                                         BorderThickness="1"
                                         CornerRadius="{StaticResource RadiusField}"
                                         Effect="{StaticResource PanelShadow}">
@@ -251,8 +243,8 @@
             <EventSetter Event="PreviewMouseLeftButtonDown" Handler="FilterComboBox_PreviewMouseLeftButtonDown"/>
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="16,6"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -308,8 +300,8 @@
                                    PopupAnimation="Slide">
                                 <Border Margin="0,8,0,0"
                                         Width="{Binding ActualWidth, ElementName=ComboRoot}"
-                                        Background="#FFFFFF"
-                                        BorderBrush="#E5E7EB"
+                                        Background="{StaticResource Brush.Surface}"
+                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
                                         BorderThickness="1"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Effect="{StaticResource PanelShadow}">
@@ -335,7 +327,7 @@
         <Style TargetType="ComboBoxItem">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -372,7 +364,7 @@
         </Style>
         <Style TargetType="CheckBox">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Foreground" Value="#4B5563"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -383,8 +375,8 @@
                         <Border x:Name="PillRoot"
                                 MinHeight="36"
                                 Padding="12,7"
-                                Background="#F8FAFC"
-                                BorderBrush="#E5E7EB"
+                                Background="{StaticResource Brush.SurfaceMuted}"
+                                BorderBrush="{StaticResource Brush.BorderSubtle}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -1410,7 +1402,7 @@
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                 ScrollViewer.CanContentScroll="False"
+                                 ScrollViewer.CanContentScroll="True"
                                  Focusable="False">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
@@ -1535,7 +1527,7 @@
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                 ScrollViewer.CanContentScroll="False"
+                                 ScrollViewer.CanContentScroll="True"
                                  Focusable="False">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">

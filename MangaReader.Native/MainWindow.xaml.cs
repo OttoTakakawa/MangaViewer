@@ -69,6 +69,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _tagSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _tagManagerSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _authorSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
+    private DispatcherOperation? _bookFilterRefreshOperation;
+    private bool _refreshShelfOverviewAfterBookFilter;
     private bool _isRefreshingAuthorFilters;
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
@@ -662,7 +664,7 @@ public partial class MainWindow : Window
         var book = _currentBook;
         await Task.Run(() => _database.SaveMetadata(book));
         _currentBook.NotifyAll();
-        _booksView?.Refresh();
+        ScheduleBookViewRefresh(refreshShelfOverview: false);
         StatusText.Text = $"已切换《{_currentBook.Title}》的卡片样式：样式 {_currentBook.BookStyleIndex + 1}。";
     }
 
@@ -1175,7 +1177,7 @@ public partial class MainWindow : Window
             book.NotifyAll();
         }
 
-        _booksView?.Refresh();
+        ScheduleBookViewRefresh(refreshShelfOverview: false);
         FillCurrentBookIfAffected(selectedBooks);
         StatusText.Text = $"已批量应用卡片样式 {targetStyle + 1}：{selectedBooks.Count} 本。";
     }
@@ -1749,8 +1751,33 @@ public partial class MainWindow : Window
     private void RefreshBookFilter()
     {
         CacheBookFilterState();
+        ScheduleBookViewRefresh(refreshShelfOverview: true);
+    }
+
+    private void ScheduleBookViewRefresh(bool refreshShelfOverview)
+    {
+        _refreshShelfOverviewAfterBookFilter |= refreshShelfOverview;
+        if (_bookFilterRefreshOperation is not null
+            && _bookFilterRefreshOperation.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing)
+        {
+            return;
+        }
+
+        _bookFilterRefreshOperation = Dispatcher.InvokeAsync(
+            ExecuteBookViewRefresh,
+            DispatcherPriority.Background);
+    }
+
+    private void ExecuteBookViewRefresh()
+    {
+        var refreshShelfOverview = _refreshShelfOverviewAfterBookFilter;
+        _refreshShelfOverviewAfterBookFilter = false;
+        _bookFilterRefreshOperation = null;
         _booksView?.Refresh();
-        RefreshShelfOverview();
+        if (refreshShelfOverview)
+        {
+            RefreshShelfOverview();
+        }
     }
 
     private void CacheBookFilterState()
@@ -1931,7 +1958,7 @@ public partial class MainWindow : Window
 
         if (refresh)
         {
-            _booksView.Refresh();
+            ScheduleBookViewRefresh(refreshShelfOverview: false);
         }
     }
 

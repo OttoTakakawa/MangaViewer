@@ -14,9 +14,9 @@
             <Setter Property="Height" Value="40"/>
             <Setter Property="MinWidth" Value="96"/>
             <Setter Property="Padding" Value="20,0"/>
-            <Setter Property="Background" Value="#111827"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -25,7 +25,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Root"
-                                CornerRadius="20"
+                                CornerRadius="{StaticResource RadiusPill}"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}">
@@ -45,9 +45,9 @@
         </Style>
 
         <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource DialogPillButton}">
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
         </Style>
 
         <Style x:Key="DialogCloseButton" TargetType="Button" BasedOn="{StaticResource DialogGhostButton}">
@@ -61,17 +61,17 @@
         <Style x:Key="DialogTextBox" TargetType="TextBox">
             <Setter Property="Height" Value="46"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="CaretBrush" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border CornerRadius="23"
+                        <Border CornerRadius="{StaticResource RadiusPill}"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}">
@@ -84,8 +84,8 @@
 
         <Style TargetType="ComboBoxItem">
             <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
@@ -108,9 +108,9 @@
         <Style x:Key="DialogComboBox" TargetType="ComboBox">
             <Setter Property="Height" Value="46"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Template">
@@ -123,9 +123,9 @@
                                           ClickMode="Press">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border CornerRadius="23"
+                                        <Border CornerRadius="{StaticResource RadiusPill}"
                                                 Background="{TemplateBinding Background}"
-                                                BorderBrush="#E5E7EB"
+                                                BorderBrush="{StaticResource Brush.BorderSubtle}"
                                                 BorderThickness="1">
                                             <Grid>
                                                 <ContentPresenter Margin="16,0,42,0"
@@ -145,9 +145,9 @@
                                    PopupAnimation="Fade">
                                 <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         Margin="0,8,0,0"
-                                        CornerRadius="18"
-                                        Background="#FFFFFF"
-                                        BorderBrush="#E5E7EB"
+                                        CornerRadius="{StaticResource RadiusComboPopup}"
+                                        Background="{StaticResource Brush.Surface}"
+                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
                                         BorderThickness="1"
                                         Padding="6">
                                     <Border.Effect>
@@ -167,9 +167,9 @@
         <Style x:Key="DialogEditableComboBox" TargetType="ComboBox">
             <Setter Property="Height" Value="46"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="Foreground" Value="#111827"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="IsEditable" Value="True"/>
@@ -179,17 +179,17 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <Border CornerRadius="23"
+                            <Border CornerRadius="{StaticResource RadiusPill}"
                                     Background="{TemplateBinding Background}"
-                                    BorderBrush="#E5E7EB"
+                                    BorderBrush="{StaticResource Brush.BorderSubtle}"
                                     BorderThickness="1">
                                 <Grid>
                                     <TextBox x:Name="PART_EditableTextBox"
                                              Margin="16,0,42,0"
                                              VerticalAlignment="Center"
                                              Background="Transparent"
-                                             Foreground="#111827"
-                                             CaretBrush="#111827"
+                                             Foreground="{StaticResource Brush.TextPrimary}"
+                                             CaretBrush="{StaticResource Brush.TextPrimary}"
                                              BorderThickness="0"
                                              FontSize="14"
                                              Focusable="True"
@@ -213,9 +213,9 @@
                                    PopupAnimation="Fade">
                                 <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         Margin="0,8,0,0"
-                                        CornerRadius="18"
-                                        Background="#FFFFFF"
-                                        BorderBrush="#E5E7EB"
+                                        CornerRadius="{StaticResource RadiusComboPopup}"
+                                        Background="{StaticResource Brush.Surface}"
+                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
                                         BorderThickness="1"
                                         Padding="6">
                                     <Border.Effect>
@@ -234,13 +234,13 @@
     </Window.Resources>
 
     <Grid Margin="22">
-        <Border CornerRadius="36"
+        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
                 Background="#01000000">
             <Border.Effect>
                 <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.18"/>
             </Border.Effect>
         </Border>
-        <Border CornerRadius="32" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
+        <Border CornerRadius="{StaticResource RadiusDialog}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -302,38 +302,19 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,0"
-                                        Background="{Binding}" Cursor="Hand"
+                                <Border Style="{StaticResource ColorSwatchBorderStyle}"
+                                        Background="{Binding}"
                                         MouseLeftButtonDown="ColorSwatch_Click"
-                                        BorderBrush="#E5E7EB" BorderThickness="1">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Opacity" Value="0.8"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                </Border>
+                                        Margin="0,0,8,0"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,0"
-                            Background="Transparent" Cursor="Hand"
+                    <Border Style="{StaticResource AddColorSwatchBorderStyle}"
+                            Margin="0,0,8,0"
                             MouseLeftButtonDown="AddCustomColor_Click"
-                            BorderBrush="#D1D5DB" BorderThickness="1.5">
+                            ToolTip="添加自定义颜色">
                         <TextBlock Text="+" Foreground="#9CA3AF" FontSize="22"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Opacity" Value="0.7"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
                     </Border>
                     <ItemsControl x:Name="CustomColorPicker">
                         <ItemsControl.ItemsPanel>
@@ -343,25 +324,15 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,8"
-                                        Background="{Binding}" Cursor="Hand"
+                                <Border Style="{StaticResource ColorSwatchBorderStyle}"
+                                        Background="{Binding}"
                                         MouseLeftButtonDown="ColorSwatch_Click"
-                                        BorderBrush="#E5E7EB" BorderThickness="1">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Opacity" Value="0.8"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                </Border>
+                                        Margin="0,0,8,8"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </WrapPanel>
-                <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="16" HorizontalAlignment="Left" SnapsToDevicePixels="True">
+                <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="{StaticResource RadiusTag}" HorizontalAlignment="Left" SnapsToDevicePixels="True">
                     <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="#374151"/>
                 </Border>
             </StackPanel>
