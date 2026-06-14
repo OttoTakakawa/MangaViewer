@@ -16,7 +16,7 @@ public partial class ReaderWindow : Window
 {
     private const double WheelZoomStep = 0.08;
     private const double HoldZoomFactor = 2.6;
-    private static readonly TimeSpan PageLoadCoalesceDelay = TimeSpan.FromMilliseconds(80);
+    private static readonly TimeSpan PageLoadCoalesceDelay = TimeSpan.FromMilliseconds(24);
     private static readonly TimeSpan ProgressSaveDelay = TimeSpan.FromMilliseconds(650);
     private static readonly TimeSpan FitModeApplyDelay = TimeSpan.FromMilliseconds(80);
 
@@ -637,9 +637,7 @@ public partial class ReaderWindow : Window
             }
             UpdateNavigationState();
             HideReaderMessage();
-            _ = Dispatcher.InvokeAsync(
-                () => ApplyFitModeForRequest(requestId),
-                DispatcherPriority.Render);
+            ApplyFitModeForRequest(requestId);
             ScheduleProgressSave();
         }
         catch (OperationCanceledException)
