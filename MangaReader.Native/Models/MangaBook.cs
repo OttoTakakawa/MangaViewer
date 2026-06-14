@@ -142,7 +142,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     public string ReadCountBadgeText => ReadCount <= 0 ? "" : ReadCountText;
     public string ReadStateText => ReadCount > 0 ? $"读过 {ReadCount} 次" : ReadingStatusText;
     public string ReadingMetaText => $"{ReadStateText} · {ProgressText}";
-    public string LibraryMetaText => $"{ReadingStatusText} · {PageCountText} · {SizeText}";
+    public string LibraryMetaText => $"{ReadStateText} · {PageCountText} · {SizeText}";
     public string ReadingStatusText => ReadingStatus switch
     {
         "reading" => "在读",

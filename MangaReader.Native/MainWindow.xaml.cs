@@ -1616,7 +1616,7 @@ public partial class MainWindow : Window
         try
         {
             var authors = Books.Where(book => ShowHiddenBox?.IsChecked == true || !book.IsHidden)
-                .Select(book => book.Author)
+                .Select(book => book.Author.Trim())
                 .Where(author => !string.IsNullOrWhiteSpace(author))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(author => author)
@@ -2884,36 +2884,39 @@ public partial class MainWindow : Window
         // Always rebuild group filter options (new groups may have been added)
         if (TagGroupFilterBox is not null)
         {
-            TagGroupFilterBox.Items.Clear();
-            TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "全部分组" });
-            var categories = knownTags
-                .Select(t => TagCategory(t))
-                .Where(c => !string.IsNullOrWhiteSpace(c))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(TagCategoryOrder)
-                .ThenBy(c => c, StringComparer.OrdinalIgnoreCase);
-            foreach (var cat in categories)
-            {
-                TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = cat });
-            }
-
-            // Restore previous selection if still present
-            var restoredIndex = 0;
-            if (!string.IsNullOrEmpty(previousGroupFilter))
-            {
-                for (int i = 1; i < TagGroupFilterBox.Items.Count; i++)
-                {
-                    if (TagGroupFilterBox.Items[i] is System.Windows.Controls.ComboBoxItem item
-                        && string.Equals(item.Content as string, previousGroupFilter, StringComparison.OrdinalIgnoreCase))
-                    {
-                        restoredIndex = i;
-                        break;
-                    }
-                }
-            }
+            // ⚠️ 锁必须在 Items.Clear() 之前设置，否则 Items 变更触发的
+            // SelectionChanged → TagManagerFilter_Changed → 递归调用本方方法，
+            // 会导致 Items 被反复重建，最终造成下拉框内出现重复项。
             _isRefreshingTagFilter = true;
             try
             {
+                TagGroupFilterBox.Items.Clear();
+                TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "全部分组" });
+                var categories = knownTags
+                    .Select(t => TagCategory(t).Trim())
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(TagCategoryOrder)
+                    .ThenBy(c => c, StringComparer.OrdinalIgnoreCase);
+                foreach (var cat in categories)
+                {
+                    TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = cat });
+                }
+
+                // Restore previous selection if still present
+                var restoredIndex = 0;
+                if (!string.IsNullOrEmpty(previousGroupFilter))
+                {
+                    for (int i = 1; i < TagGroupFilterBox.Items.Count; i++)
+                    {
+                        if (TagGroupFilterBox.Items[i] is System.Windows.Controls.ComboBoxItem item
+                            && string.Equals(item.Content as string, previousGroupFilter, StringComparison.OrdinalIgnoreCase))
+                        {
+                            restoredIndex = i;
+                            break;
+                        }
+                    }
+                }
                 TagGroupFilterBox.SelectedIndex = restoredIndex;
             }
             finally
