@@ -925,7 +925,7 @@
                         </Border>
 
                         <StackPanel x:Name="HomeSectionsPanel">
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
+                        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding ContinueReadingBooks}" ItemTemplate="{StaticResource HomeWideBookTemplate}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -961,7 +961,7 @@
                         <TextBlock x:Name="FavoriteShowcaseEmptyText" Text="还没有收藏作品，先在书库里挑几本真正想反复回看的漫画。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
 
                         <TextBlock Text="最近加入" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
+                        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
                             <ItemsControl ItemsSource="{Binding RecentlyAddedBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
