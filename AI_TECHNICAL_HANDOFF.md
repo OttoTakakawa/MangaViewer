@@ -211,7 +211,18 @@
 
 - `MangaReader.Native/MangaReader.Native.csproj` 的 `Version`、`AssemblyVersion`、`FileVersion`、`InformationalVersion`。
 
-本地发布：
+本地发布（推荐用打包脚本）：
+
+```powershell
+# Standalone 自包含（~60MB，不需要 .NET 8 Runtime）
+.\pack.ps1 -Mode standalone
+# Runtime-dep 轻量版（需要 .NET 8 Runtime）
+.\pack.ps1 -Mode runtime-dep
+```
+
+脚本会自动从 `icon.png` 生成 `AppIcon.ico`，然后 `dotnet publish` 到 `_release/`。
+
+也可以手动发布：
 
 ```powershell
 dotnet publish .\MangaReader.Native\MangaReader.Native.csproj -c Release -r win-x64 --self-contained true -o .\_release\0.3.xx
@@ -276,15 +287,49 @@ dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 - 不要把耗时扫描、DB 大量读取放到 UI 线程。
 - 大集合 UI 刷新不要逐项 Add。
 - `RefreshBookFilter()` 不得自动触发 `RefreshHomeShelves()`。
-- 阅读器“下一本”必须严格遵循当前书库筛选和排序。
+- 阅读器”下一本”必须严格遵循当前书库筛选和排序。
 - 阅读器正常翻页不弹中心提示，只在图片读取失败时显示错误。
 - 阅读器页切换不要加淡入动画，用户认为不跟手。
 - 书库顶部统计不要恢复椭圆底色。
 - 首页继续阅读三张卡片保持一行。
 - 不要恢复左键双击隐藏 UI。
 - 不要恢复作者排序。
+- 所有 `_database.*` 写操作必须包裹 `await Task.Run(() => ...)`，不得在 UI 线程直接调用。
+- `CoverCache.LoadOrCreate` 必须包裹 `Task.Run`，不得在 UI 线程直接调用。
+- `MangaBook.NotifyAll()` 已简化为单次 `PropertyChangedEventArgs(“”)`，不要恢复 38 次逐项通知。
+- `SolidColorBrush` 必须缓存为 `static readonly` 并 `Freeze()`，不要每次 new 或调用 `ColorConverter.ConvertFromString`。
+- 标签管理页 / 作者管理页使用 Grid 三行布局 + ListBox 内置虚拟化，不要用 ScrollViewer 包裹 ListBox（会导致虚拟化失效）。
+- 对话框使用双层 Border 方案（外层承载阴影，内层承载内容），不要在单层 Border 上直接挂 DropShadowEffect。
+- 对话框风格统一为冷色浅调（白底 + 浅灰输入框），不要使用暖色奶油调。
 
-## 12. 建议的改动流程
+## 12. 异步 I/O 模式
+
+`LibraryDatabase` 的所有方法保持同步（`void` / `T` 返回），不做 async 改造。在调用点用 `await Task.Run(() => ...)` 包裹：
+
+```csharp
+// 正确：
+private async void SaveMetadata_Click(object sender, RoutedEventArgs e)
+{
+    var book = _currentBook;
+    await Task.Run(() => _database.SaveMetadata(book));
+    _currentBook.NotifyAll();
+    RefreshLibraryViews(tagManager: false, sort: true);
+}
+
+// 错误：直接在 UI 线程调用
+private void SaveMetadata_Click(object sender, RoutedEventArgs e)
+{
+    _database.SaveMetadata(_currentBook);  // 阻塞 UI
+}
+```
+
+关键原则：
+- DB 操作在 `Task.Run` 中。
+- UI 更新（`NotifyAll`、`RefreshLibraryViews`、`FillMetadataEditors`）在 `await` 之后的 UI 线程。
+- Closing 事件中无法 await，用 `_ = Task.Run(...)` fire-and-forget。
+- 捕获局部变量（`var book = _currentBook`）传入 `Task.Run`，避免闭包捕获 `this`。
+
+## 13. 建议的改动流程
 
 1. 先读本文件和 `漫画阅读器开发文档.md` 最近版本记录。
 2. 用 `rg` 找目标控件、方法或字段。

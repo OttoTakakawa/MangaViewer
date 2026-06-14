@@ -4,15 +4,19 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <ApplicationIcon>AppIcon.ico</ApplicationIcon>
-    <Version>0.3.97</Version>
-    <AssemblyVersion>0.3.97.0</AssemblyVersion>
-    <FileVersion>0.3.97.0</FileVersion>
-    <InformationalVersion>0.3.97</InformationalVersion>
+    <Version>0.3.98</Version>
+    <AssemblyVersion>0.3.98.0</AssemblyVersion>
+    <FileVersion>0.3.98.0</FileVersion>
+    <InformationalVersion>0.3.98</InformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="..\icon.png" Link="Assets\icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
