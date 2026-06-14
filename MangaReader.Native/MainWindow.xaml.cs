@@ -78,6 +78,7 @@ public partial class MainWindow : Window
     private DispatcherOperation? _bookFilterRefreshOperation;
     private bool _refreshShelfOverviewAfterBookFilter;
     private bool _isRefreshingAuthorFilters;
+    private bool _tagGroupFilterOptionsDirty = true;
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
     private bool _isDetailDrawerCollapsed;
@@ -2946,6 +2947,7 @@ public partial class MainWindow : Window
 
     private void LoadManagedTags()
     {
+        _tagGroupFilterOptionsDirty = true;
         _managedTags.Clear();
         _managedTagCategories.Clear();
         _managedTagIsExclusive.Clear();
@@ -2984,6 +2986,7 @@ public partial class MainWindow : Window
         var resolvedCategory = category ?? TagCategory(tag);
         var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
         var resolvedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
+        _tagGroupFilterOptionsDirty = true;
         _suppressedTags.Remove(tag);
         _managedTags.Add(tag);
         _managedTagCategories[tag] = resolvedCategory;
@@ -3148,19 +3151,17 @@ public partial class MainWindow : Window
         var query = TagManagerSearchBox?.Text.Trim() ?? "";
         var sortMode = TagSortBox?.SelectedIndex ?? 0;
 
-        // Remember current selection before rebuilding items
+        // Remember current selection before rebuilding items.
         var previousGroupFilter = TagGroupFilterBox?.SelectedIndex > 0
             ? (TagGroupFilterBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string ?? ""
             : "";
 
         var knownTags = EnumerateKnownTags().ToList();
 
-        // Always rebuild group filter options (new groups may have been added)
-        if (TagGroupFilterBox is not null)
+        // Rebuild group filter options only when tag data changed. Rebuilding on every
+        // SelectionChanged clears the drop-down while the user is selecting an item.
+        if (_tagGroupFilterOptionsDirty && TagGroupFilterBox is not null)
         {
-            // ⚠️ 锁必须在 Items.Clear() 之前设置，否则 Items 变更触发的
-            // SelectionChanged → TagManagerFilter_Changed → 递归调用本方方法，
-            // 会导致 Items 被反复重建，最终造成下拉框内出现重复项。
             _isRefreshingTagFilter = true;
             try
             {
@@ -3192,6 +3193,7 @@ public partial class MainWindow : Window
                     }
                 }
                 TagGroupFilterBox.SelectedIndex = restoredIndex;
+                _tagGroupFilterOptionsDirty = false;
             }
             finally
             {
@@ -3622,6 +3624,7 @@ public partial class MainWindow : Window
         _managedTagCategories[newName] = newCategory;
         _managedTagIsExclusive[newName] = newIsExclusive;
         _managedTagUpdatedAt[newName] = DateTimeOffset.Now.ToString("O");
+        _tagGroupFilterOptionsDirty = true;
         if (!string.IsNullOrWhiteSpace(newColor))
         {
             _managedTagColors[newName] = newColor;
@@ -3698,6 +3701,8 @@ public partial class MainWindow : Window
         _managedTagCategories.Remove(chip.Name);
         _managedTagIsExclusive.Remove(chip.Name);
         _managedTagUpdatedAt.Remove(chip.Name);
+        _managedTagColors.Remove(chip.Name);
+        _tagGroupFilterOptionsDirty = true;
         if (isBuiltIn)
         {
             _suppressedTags.Add(chip.Name);
