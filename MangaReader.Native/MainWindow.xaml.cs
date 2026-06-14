@@ -2861,35 +2861,70 @@ public partial class MainWindow : Window
         ActiveTagFilterList.Visibility = chips.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private bool _isRefreshingTagFilter;
+
     private void TagManagerFilter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        if (_isRefreshingTagFilter) return;
         RefreshTagManagementItems();
     }
 
     private void RefreshTagManagementItems()
     {
         var query = TagManagerSearchBox?.Text.Trim() ?? "";
-        var groupFilter = TagGroupFilterBox?.SelectedIndex > 0
+        var sortMode = TagSortBox?.SelectedIndex ?? 0;
+
+        // Remember current selection before rebuilding items
+        var previousGroupFilter = TagGroupFilterBox?.SelectedIndex > 0
             ? (TagGroupFilterBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string ?? ""
             : "";
-        var sortMode = TagSortBox?.SelectedIndex ?? 0;
 
         var knownTags = EnumerateKnownTags().ToList();
 
-        // Populate group filter options (only once, or if categories changed)
-        if (TagGroupFilterBox is not null && TagGroupFilterBox.Items.Count <= 1)
+        // Always rebuild group filter options (new groups may have been added)
+        if (TagGroupFilterBox is not null)
         {
+            TagGroupFilterBox.Items.Clear();
+            TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "全部分组" });
             var categories = knownTags
                 .Select(t => TagCategory(t))
+                .Where(c => !string.IsNullOrWhiteSpace(c))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(TagCategoryOrder)
                 .ThenBy(c => c, StringComparer.OrdinalIgnoreCase);
             foreach (var cat in categories)
             {
-                if (!string.IsNullOrWhiteSpace(cat))
-                    TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = cat });
+                TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = cat });
+            }
+
+            // Restore previous selection if still present
+            var restoredIndex = 0;
+            if (!string.IsNullOrEmpty(previousGroupFilter))
+            {
+                for (int i = 1; i < TagGroupFilterBox.Items.Count; i++)
+                {
+                    if (TagGroupFilterBox.Items[i] is System.Windows.Controls.ComboBoxItem item
+                        && string.Equals(item.Content as string, previousGroupFilter, StringComparison.OrdinalIgnoreCase))
+                    {
+                        restoredIndex = i;
+                        break;
+                    }
+                }
+            }
+            _isRefreshingTagFilter = true;
+            try
+            {
+                TagGroupFilterBox.SelectedIndex = restoredIndex;
+            }
+            finally
+            {
+                _isRefreshingTagFilter = false;
             }
         }
+
+        var groupFilter = TagGroupFilterBox?.SelectedIndex > 0
+            ? (TagGroupFilterBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string ?? ""
+            : "";
 
         // Filter by search query
         var filtered = knownTags
