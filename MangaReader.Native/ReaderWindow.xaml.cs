@@ -16,6 +16,9 @@ public partial class ReaderWindow : Window
 {
     private const double WheelZoomStep = 0.08;
     private const double HoldZoomFactor = 2.6;
+    private static readonly TimeSpan PageLoadCoalesceDelay = TimeSpan.FromMilliseconds(80);
+    private static readonly TimeSpan ProgressSaveDelay = TimeSpan.FromMilliseconds(650);
+    private static readonly TimeSpan FitModeApplyDelay = TimeSpan.FromMilliseconds(80);
 
     private static SolidColorBrush FrozenBrush(string hex)
     {
@@ -40,6 +43,9 @@ public partial class ReaderWindow : Window
     private const string DoublePageGapPreferenceKey = "reader.doublepage.gap";
     private readonly DispatcherTimer _controlsRevealTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private readonly DispatcherTimer _doublePageGapSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(260) };
+    private readonly DispatcherTimer _pageLoadCoalesceTimer = new() { Interval = PageLoadCoalesceDelay };
+    private readonly DispatcherTimer _progressSaveTimer = new() { Interval = ProgressSaveDelay };
+    private readonly DispatcherTimer _fitModeApplyTimer = new() { Interval = FitModeApplyDelay };
     private readonly MangaBook _book;
     private readonly LibraryDatabase _database;
     private readonly List<Key> _nextKeys;
@@ -56,10 +62,16 @@ public partial class ReaderWindow : Window
     private WindowState _previousWindowState;
     private double _holdZoomBaseValue = 1;
     private int _pageLoadRequestId;
+    private int _requestedPageIndex;
+    private int? _queuedPageIndex;
+    private int? _activePageLoadIndex;
     private CancellationTokenSource? _pageLoadCancellation;
     private int _backgroundMode;
     private bool _isLoadingViewerPreferences;
     private bool _isNextBookPromptOpen;
+    private bool _isPageDecodeActive;
+    private bool _isClosing;
+    private bool _hasPendingProgressSave;
     private MangaBook? _pendingNextBook;
     private CancellationTokenSource? _catalogLoadCancellation;
     private System.Windows.Point? _holdZoomLastPointerInViewport;
@@ -87,11 +99,15 @@ public partial class ReaderWindow : Window
         _prevKeys = prevKeys;
         _nextBookResolver = nextBookResolver;
         _openBookRequest = openBookRequest;
+        _requestedPageIndex = Math.Clamp(book.LastReadPageIndex, 0, Math.Max(0, book.PageCount - 1));
         DataContext = this;
         Title = book.Title;
         TitleText.Text = book.Title;
         _controlsRevealTimer.Tick += ControlsRevealTimer_Tick;
         _doublePageGapSaveTimer.Tick += DoublePageGapSaveTimer_Tick;
+        _pageLoadCoalesceTimer.Tick += PageLoadCoalesceTimer_Tick;
+        _progressSaveTimer.Tick += ProgressSaveTimer_Tick;
+        _fitModeApplyTimer.Tick += FitModeApplyTimer_Tick;
         KeyDown += ReaderWindow_KeyDown;
         SizeChanged += ReaderWindow_SizeChanged;
         Closing += ReaderWindow_Closing;
@@ -104,13 +120,18 @@ public partial class ReaderWindow : Window
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
     {
         AppLogger.Info("reader-open", $"Reader loaded: {_book.Title}, pages={_book.Pages.Count}, start={_book.LastReadPageIndex + 1}");
-        Dispatcher.InvokeAsync(() => LoadPage(_book.LastReadPageIndex), DispatcherPriority.ApplicationIdle);
+        Dispatcher.InvokeAsync(() => RequestPageLoad(_book.LastReadPageIndex, immediate: true), DispatcherPriority.ApplicationIdle);
     }
 
     private void ReaderWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _isClosing = true;
         _controlsRevealTimer.Stop();
         _doublePageGapSaveTimer.Stop();
+        _pageLoadCoalesceTimer.Stop();
+        _progressSaveTimer.Stop();
+        _fitModeApplyTimer.Stop();
+        _hasPendingProgressSave = false;
         _pageLoadCancellation?.Cancel();
         _pageLoadCancellation?.Dispose();
         _pageLoadCancellation = null;
@@ -121,7 +142,7 @@ public partial class ReaderWindow : Window
         var wheelMode = WheelModeBox.SelectedIndex.ToString();
         _ = Task.Run(() =>
         {
-            _database.SaveProgress(book);
+            SaveProgressSafely(book);
             _database.SaveShortcut("reader.wheelmode", wheelMode);
         });
         SaveDoublePageGapPreference();
@@ -129,7 +150,7 @@ public partial class ReaderWindow : Window
 
     private void PreviousPage_Click(object sender, RoutedEventArgs e)
     {
-        var targetIndex = _book.LastReadPageIndex - GetPreviousStep();
+        var targetIndex = _requestedPageIndex - GetPreviousStep();
         if (targetIndex < 0)
         {
             _boundaryHint = "已经是第一页";
@@ -137,19 +158,19 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        LoadPage(targetIndex);
+        RequestPageLoad(targetIndex);
     }
 
     private void NextPage_Click(object sender, RoutedEventArgs e)
     {
-        var targetIndex = _book.LastReadPageIndex + _displayedPageCount;
+        var targetIndex = _requestedPageIndex + GetNavigationStepForRequestedPage();
         if (targetIndex >= _book.Pages.Count)
         {
             TryGoToNextBook();
             return;
         }
 
-        LoadPage(targetIndex);
+        RequestPageLoad(targetIndex);
     }
 
     private void TryGoToNextBook()
@@ -259,6 +280,26 @@ public partial class ReaderWindow : Window
         ApplyFitMode();
     }
 
+    private void ScheduleFitModeApply()
+    {
+        if (_isClosing)
+        {
+            return;
+        }
+
+        _fitModeApplyTimer.Stop();
+        _fitModeApplyTimer.Start();
+    }
+
+    private void FitModeApplyTimer_Tick(object? sender, EventArgs e)
+    {
+        _fitModeApplyTimer.Stop();
+        if (!_isClosing && IsLoaded)
+        {
+            ApplyFitMode();
+        }
+    }
+
     private void SaveProgressSafely(MangaBook book)
     {
         try
@@ -269,6 +310,31 @@ public partial class ReaderWindow : Window
         {
             AppLogger.Error("reader-save-progress", ex, $"Failed to save progress for {book.Title}.");
         }
+    }
+
+    private void ScheduleProgressSave()
+    {
+        if (_isClosing)
+        {
+            return;
+        }
+
+        _hasPendingProgressSave = true;
+        _progressSaveTimer.Stop();
+        _progressSaveTimer.Start();
+    }
+
+    private void ProgressSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _progressSaveTimer.Stop();
+        if (!_hasPendingProgressSave || _isClosing)
+        {
+            return;
+        }
+
+        _hasPendingProgressSave = false;
+        var book = _book;
+        _ = Task.Run(() => SaveProgressSafely(book));
     }
 
     private void ApplyFitWidth()
@@ -332,7 +398,7 @@ public partial class ReaderWindow : Window
 
     private void ReadingModeBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (IsLoaded) LoadPage(_book.LastReadPageIndex);
+        if (IsLoaded) RequestPageLoad(_requestedPageIndex, immediate: true, forceReload: true);
     }
 
     private void WheelModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -443,7 +509,55 @@ public partial class ReaderWindow : Window
         }
     }
 
-    private async void LoadPage(int pageIndex)
+    private void RequestPageLoad(int pageIndex, bool immediate = false, bool forceReload = false)
+    {
+        if (_isClosing || _book.Pages.Count == 0)
+        {
+            return;
+        }
+
+        var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
+        _requestedPageIndex = safeIndex;
+
+        if (_isPageDecodeActive)
+        {
+            if (forceReload || _activePageLoadIndex != safeIndex)
+            {
+                _queuedPageIndex = safeIndex;
+                _pageLoadCancellation?.Cancel();
+            }
+            return;
+        }
+
+        _queuedPageIndex = safeIndex;
+        _pageLoadCoalesceTimer.Stop();
+        if (immediate)
+        {
+            StartQueuedPageLoad();
+            return;
+        }
+
+        _pageLoadCoalesceTimer.Start();
+    }
+
+    private void PageLoadCoalesceTimer_Tick(object? sender, EventArgs e)
+    {
+        _pageLoadCoalesceTimer.Stop();
+        StartQueuedPageLoad();
+    }
+
+    private void StartQueuedPageLoad()
+    {
+        if (_isPageDecodeActive || _queuedPageIndex is not { } pageIndex)
+        {
+            return;
+        }
+
+        _queuedPageIndex = null;
+        LoadPageCore(pageIndex);
+    }
+
+    private async void LoadPageCore(int pageIndex)
     {
         if (_book.Pages.Count == 0) return;
         HideNextBookPrompt();
@@ -458,6 +572,8 @@ public partial class ReaderWindow : Window
         var firstPath = _book.Pages[safeIndex];
         var doublePageMode = IsDoublePageMode();
         var rightToLeft = IsRightToLeftMode();
+        _isPageDecodeActive = true;
+        _activePageLoadIndex = safeIndex;
 
         try
         {
@@ -496,9 +612,6 @@ public partial class ReaderWindow : Window
             ReaderImageRight.Source = null;
             ReaderImageRight.Visibility = Visibility.Collapsed;
             _displayedPageCount = 1;
-            AppLogger.Info(
-                "reader-load-page",
-                $"Decoded page {safeIndex + 1} for {_book.Title}. size={page.First.PixelWidth}x{page.First.PixelHeight}, path={firstPath}");
 
             if (page.UseDouble && page.Second is not null)
             {
@@ -522,14 +635,12 @@ public partial class ReaderWindow : Window
             {
                 _book.ReadingStatus = "reading";
             }
-            var progressBook = _book;
             UpdateNavigationState();
             HideReaderMessage();
             _ = Dispatcher.InvokeAsync(
                 () => ApplyFitModeForRequest(requestId),
                 DispatcherPriority.Render);
-            _ = Task.Run(() => SaveProgressSafely(progressBook));
-            AppLogger.Info("reader-load-page", $"Loaded page {_book.LastReadPageIndex + 1} for {_book.Title}.");
+            ScheduleProgressSave();
         }
         catch (OperationCanceledException)
         {
@@ -540,6 +651,22 @@ public partial class ReaderWindow : Window
             var message = $"图片读取失败：{ex.Message}";
             PageText.Text = message;
             ShowReaderMessage("图片读取失败", $"{message}\n\n{firstPath}");
+        }
+        finally
+        {
+            if (_pageLoadCancellation == loadCancellation)
+            {
+                _pageLoadCancellation = null;
+            }
+
+            loadCancellation.Dispose();
+            _isPageDecodeActive = false;
+            _activePageLoadIndex = null;
+            if (!_isClosing && _queuedPageIndex is not null)
+            {
+                _pageLoadCoalesceTimer.Stop();
+                _pageLoadCoalesceTimer.Start();
+            }
         }
     }
 
@@ -558,6 +685,18 @@ public partial class ReaderWindow : Window
     private bool IsDoublePageMode() => (ReadingModeBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "双页";
     private bool IsRightToLeftMode() => (DirectionBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "从右到左";
     private int GetPreviousStep() => IsDoublePageMode() ? 2 : 1;
+    private int GetNavigationStepForRequestedPage()
+    {
+        if (!IsDoublePageMode())
+        {
+            return 1;
+        }
+
+        return _requestedPageIndex == _book.LastReadPageIndex
+            ? _displayedPageCount
+            : 2;
+    }
+
     private static bool IsLandscape(BitmapSource image) => image.PixelWidth > image.PixelHeight * 1.15;
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
 
@@ -567,7 +706,7 @@ public partial class ReaderWindow : Window
             && ReaderImage.Source is BitmapSource left
             && ReaderImageRight.Source is BitmapSource right)
         {
-            var normalizedHeight = Math.Max(left.Height, right.Height);
+            var normalizedHeight = Math.Max(left.PixelHeight, right.PixelHeight);
             ReaderImage.Height = normalizedHeight;
             ReaderImageRight.Height = normalizedHeight;
             ReaderImage.Width = double.NaN;
@@ -577,11 +716,21 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        ReaderImage.Height = double.NaN;
+        if (ReaderImage.Source is BitmapSource single)
+        {
+            ReaderImage.Width = single.PixelWidth;
+            ReaderImage.Height = single.PixelHeight;
+            ReaderImage.Stretch = Stretch.Fill;
+        }
+        else
+        {
+            ReaderImage.Width = double.NaN;
+            ReaderImage.Height = double.NaN;
+            ReaderImage.Stretch = Stretch.None;
+        }
+
         ReaderImageRight.Height = double.NaN;
-        ReaderImage.Width = double.NaN;
         ReaderImageRight.Width = double.NaN;
-        ReaderImage.Stretch = Stretch.None;
         ReaderImageRight.Stretch = Stretch.None;
     }
 
@@ -619,8 +768,8 @@ public partial class ReaderWindow : Window
             return ReaderImage.Height;
         }
 
-        var left = ReaderImage.Source is BitmapSource l ? l.Height : 0;
-        var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? r.Height : 0;
+        var left = ReaderImage.Source is BitmapSource l ? l.PixelHeight : 0;
+        var right = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource r ? r.PixelHeight : 0;
         return Math.Max(left, right);
     }
 
@@ -630,16 +779,16 @@ public partial class ReaderWindow : Window
             || ReaderImage.Source is not BitmapSource left
             || ReaderImageRight.Source is not BitmapSource right)
         {
-            return image.Width;
+            return image.PixelWidth;
         }
 
-        var normalizedHeight = Math.Max(left.Height, right.Height);
-        return image.Height > 0 ? image.Width * normalizedHeight / image.Height : image.Width;
+        var normalizedHeight = Math.Max(left.PixelHeight, right.PixelHeight);
+        return image.PixelHeight > 0 ? image.PixelWidth * normalizedHeight / image.PixelHeight : image.PixelWidth;
     }
 
     private int GetDecodePixelWidth(bool isDoublePage)
     {
-        var viewport = ReaderScrollViewer.ViewportWidth > 0 ? ReaderScrollViewer.ViewportWidth : ReaderScrollViewer.ActualWidth;
+        var viewport = GetReaderViewportWidth();
         if (viewport <= 0) viewport = 960;
         var zoom = ZoomSlider?.Value ?? 1.0;
         var perPage = isDoublePage ? viewport / 2.0 : viewport;
@@ -647,9 +796,23 @@ public partial class ReaderWindow : Window
         return (int)Math.Clamp(decoded, 800, 2600);
     }
 
-    private double GetAvailableContentWidth()
+    private double GetReaderViewportWidth()
     {
         var viewportWidth = ReaderScrollViewer.ViewportWidth > 0 ? ReaderScrollViewer.ViewportWidth : ReaderScrollViewer.ActualWidth;
+        var padding = ReaderScrollViewer.Padding.Left + ReaderScrollViewer.Padding.Right;
+        return Math.Max(0, viewportWidth - padding);
+    }
+
+    private double GetReaderViewportHeight()
+    {
+        var viewportHeight = ReaderScrollViewer.ViewportHeight > 0 ? ReaderScrollViewer.ViewportHeight : ReaderScrollViewer.ActualHeight;
+        var padding = ReaderScrollViewer.Padding.Top + ReaderScrollViewer.Padding.Bottom;
+        return Math.Max(0, viewportHeight - padding);
+    }
+
+    private double GetAvailableContentWidth()
+    {
+        var viewportWidth = GetReaderViewportWidth();
         var hostMargin = ImageHost.Margin.Left + ImageHost.Margin.Right;
         var leftImageMargin = ReaderImage.Margin.Left + ReaderImage.Margin.Right;
         var rightImageMargin = ReaderImageRight.Visibility == Visibility.Visible
@@ -661,7 +824,7 @@ public partial class ReaderWindow : Window
 
     private double GetAvailableContentHeight()
     {
-        var viewportHeight = ReaderScrollViewer.ViewportHeight > 0 ? ReaderScrollViewer.ViewportHeight : ReaderScrollViewer.ActualHeight;
+        var viewportHeight = GetReaderViewportHeight();
         var hostMargin = ImageHost.Margin.Top + ImageHost.Margin.Bottom;
         var imageMargin = ReaderImage.Margin.Top + ReaderImage.Margin.Bottom;
         return Math.Max(0, viewportHeight - hostMargin - imageMargin);
@@ -1003,7 +1166,7 @@ public partial class ReaderWindow : Window
 
     private void ReaderWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        Dispatcher.InvokeAsync(ApplyFitMode, DispatcherPriority.Loaded);
+        ScheduleFitModeApply();
     }
 
     private void CycleBackgroundButton_Click(object sender, RoutedEventArgs e)
@@ -1212,7 +1375,7 @@ public partial class ReaderWindow : Window
         }
 
         HidePageCatalog();
-        LoadPage(item.PageIndex);
+        RequestPageLoad(item.PageIndex, immediate: true);
         e.Handled = true;
     }
 
