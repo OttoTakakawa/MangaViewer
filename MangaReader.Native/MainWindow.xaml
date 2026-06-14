@@ -1402,7 +1402,7 @@
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                 ScrollViewer.CanContentScroll="True"
+                                 ScrollViewer.CanContentScroll="False"
                                  Focusable="False">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
@@ -1527,7 +1527,7 @@
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                 ScrollViewer.CanContentScroll="True"
+                                 ScrollViewer.CanContentScroll="False"
                                  Focusable="False">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
