@@ -1132,7 +1132,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type models:TagChip}">
-                                        <Border Margin="3" Padding="10,6" CornerRadius="{StaticResource RadiusControl}" Background="{Binding Color}" MouseMove="TagChip_MouseMove" MouseLeftButtonDown="TagChip_Click">
+                                        <Border Margin="3" Padding="10,6" CornerRadius="{StaticResource RadiusControl}" Background="{Binding Color}" MouseMove="TagChip_MouseMove" MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
                                             <Border.ContextMenu>
                                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                                     <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
@@ -1675,13 +1675,21 @@
                         </Border>
 
                         <StackPanel>
-                        <Grid Margin="0,0,0,6">
+                        <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="书籍详情" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" x:Name="EditModeButton" Content="编辑" Click="ToggleEditMode_Click" Style="{StaticResource TinyButton}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    x:Name="ToggleFavoriteButton"
+                                    Content="未收藏"
+                                    Click="ToggleFavorite_Click"
+                                    Style="{StaticResource TinyButton}"
+                                    VerticalAlignment="Center"/>
+                            <Button Grid.Column="3" x:Name="EditModeButton" Content="编辑" Click="ToggleEditMode_Click" Style="{StaticResource TinyButton}" VerticalAlignment="Center"/>
                         </Grid>
                         <TextBlock x:Name="EditModeHintText" Text="只读模式：点击“编辑”后修改信息" Margin="0,0,0,10" Foreground="#81756B"/>
                         <StackPanel x:Name="ReadOnlyInfoPanel">
@@ -1705,33 +1713,39 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="12"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
-                                    <TextBlock x:Name="ReadOnlyStatusText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
-                                    <Button x:Name="ToggleFavoriteButton"
-                                            Content="未收藏"
-                                            Click="ToggleFavorite_Click"
-                                            Style="{StaticResource TinyButton}"
-                                            HorizontalAlignment="Left"
-                                            Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="4">
                                     <TextBlock Text="页数" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyPageCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="6">
+                                <StackPanel Grid.Column="2">
                                     <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyCoverPageText" FontSize="16" Foreground="#25211E"/>
                                 </StackPanel>
                             </Grid>
+                            <TextBlock Text="阅读" Style="{StaticResource LabelText}"/>
+                            <Border Padding="12" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
+                                        <TextBlock x:Name="ReadOnlyStatusText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
+                                        <TextBlock x:Name="ReadOnlyReadCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
+                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -1753,16 +1767,6 @@
                                     <TextBlock x:Name="ReadOnlyTagsText" FontSize="15" Foreground="#25211E" TextWrapping="Wrap" MaxHeight="42"/>
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
-                            <Border Padding="12" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,10">
-                                <DockPanel>
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
-                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
-                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
-                                    </StackPanel>
-                                    <TextBlock x:Name="ReadOnlyReadCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E" VerticalAlignment="Center"/>
-                                </DockPanel>
-                            </Border>
                             <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
                             <Border Padding="12" CornerRadius="{StaticResource RadiusPanel}" Background="#F8F2EC" Margin="0,0,0,12" MaxHeight="72">
                                 <TextBlock x:Name="ReadOnlySummaryText" TextWrapping="Wrap" Foreground="#25211E" LineHeight="20"/>
@@ -1774,6 +1778,7 @@
                                 <Button x:Name="HideBookButton" Content="隐藏作品" Click="HideBook_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
                                 <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
                             </WrapPanel>
+                            <Button Content="返回书库" Click="ReturnToLibrary_Click" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
                         </StackPanel>
                         <StackPanel x:Name="EditFormPanel" Visibility="Collapsed">
                         <TextBlock Text="书名" Style="{StaticResource LabelText}"/>
@@ -1807,13 +1812,14 @@
                                 </ComboBox>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
-                                <Button x:Name="ToggleFavoriteEditButton"
-                                        Content="未收藏"
-                                        Click="ToggleFavorite_Click"
-                                        Style="{StaticResource TinyButton}"
-                                        HorizontalAlignment="Left"
-                                        Margin="0,2,0,0"/>
+                                <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
+                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
+                                    </StackPanel>
+                                    <TextBox x:Name="ReadCountBox"/>
+                                </DockPanel>
                             </StackPanel>
                         </Grid>
 
@@ -1841,8 +1847,6 @@
                                 <ColumnDefinition Width="1.7*"/>
                                 <ColumnDefinition Width="12"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="12"/>
-                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="Tag（逗号分隔）" Style="{StaticResource LabelText}"/>
@@ -1851,16 +1855,6 @@
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
                                 <TextBox x:Name="CoverPageBox"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
-                                <DockPanel>
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
-                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
-                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
-                                    </StackPanel>
-                                    <TextBox x:Name="ReadCountBox"/>
-                                </DockPanel>
                             </StackPanel>
                         </Grid>
                         <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
@@ -1875,6 +1869,7 @@
                             <Button Content="重新定位" Click="Relocate_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,8"/>
                             <Button Content="删除库记录" Click="DeleteBook_Click" Style="{StaticResource DangerButton}" Margin="0,0,8,8"/>
                         </WrapPanel>
+                        <Button Content="返回书库" Click="ReturnToLibrary_Click" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
                         </StackPanel>
 
                         <Border Visibility="Collapsed" Margin="0,22,0,0" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#F6EFE7">

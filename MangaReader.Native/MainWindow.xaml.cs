@@ -27,6 +27,7 @@ public partial class MainWindow : Window
 
     private const double WheelScrollMultiplier = 1.45;
     private const int MaxLiveLogLines = 300;
+    private const string TagDragDataFormat = "MangaReader.TagName";
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
 
@@ -88,6 +89,7 @@ public partial class MainWindow : Window
     private string _lastStatusLogText = "";
     private bool _cachedFavoriteOnly;
     private bool _cachedShowHidden;
+    private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
 
     public RangeObservableCollection<MangaBook> Books { get; } = [];
@@ -731,6 +733,15 @@ public partial class MainWindow : Window
         StatusText.Text = _currentBook.IsFavorite
             ? $"已收藏《{_currentBook.Title}》。"
             : $"已取消收藏《{_currentBook.Title}》。";
+    }
+
+    private void ReturnToLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        BooksList.SelectedItem = null;
+        _currentBook = null;
+        SetEditMode(false);
+        SetDetailVisible(false);
+        StatusText.Text = "已返回书库。";
     }
 
     private async Task ChangeReadCount(int delta)
@@ -1489,6 +1500,21 @@ public partial class MainWindow : Window
         RestartDebounceTimer(_tagSearchDebounceTimer);
     }
 
+    private void TagChip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TagChip chip })
+        {
+            return;
+        }
+
+        _tagDragStartPoint = e.GetPosition(this);
+        if (e.ClickCount >= 2)
+        {
+            ToggleTagFilter(chip);
+            e.Handled = true;
+        }
+    }
+
     private void TagChip_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: TagChip chip } || chip.IsSelected)
@@ -1496,7 +1522,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        DragDrop.DoDragDrop((DependencyObject)sender, chip.Name, System.Windows.DragDropEffects.Copy);
+        var currentPosition = e.GetPosition(this);
+        if (_tagDragStartPoint is { } start
+            && Math.Abs(currentPosition.X - start.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(currentPosition.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        var data = new System.Windows.DataObject();
+        data.SetData(TagDragDataFormat, chip.Name);
+        data.SetData(typeof(string), chip.Name);
+        DragDrop.DoDragDrop((DependencyObject)sender, data, System.Windows.DragDropEffects.Copy);
     }
 
     private async void BooksList_Drop(object sender, System.Windows.DragEventArgs e)
@@ -1510,12 +1547,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!e.Data.GetDataPresent(typeof(string)))
+        if (!e.Data.GetDataPresent(TagDragDataFormat) && !e.Data.GetDataPresent(typeof(string)))
         {
             return;
         }
 
-        var tag = e.Data.GetData(typeof(string)) as string;
+        var tag = e.Data.GetData(TagDragDataFormat) as string ?? e.Data.GetData(typeof(string)) as string;
         var book = FindAncestor<System.Windows.Controls.ListBoxItem>((DependencyObject)e.OriginalSource)?.DataContext as MangaBook
             ?? BooksList.SelectedItem as MangaBook;
         if (string.IsNullOrWhiteSpace(tag) || book is null)
@@ -1533,6 +1570,7 @@ public partial class MainWindow : Window
         }
         RefreshLibraryViews(authors: false, sort: false);
         StatusText.Text = $"已给《{book.Title}》添加 Tag：{tag}";
+        e.Handled = true;
     }
 
     private async void LibraryPagePanel_Drop(object sender, System.Windows.DragEventArgs e)
@@ -1572,6 +1610,14 @@ public partial class MainWindow : Window
 
     private void UpdateImportDragFeedback(System.Windows.DragEventArgs e)
     {
+        if (e.Data.GetDataPresent(TagDragDataFormat))
+        {
+            e.Effects = System.Windows.DragDropEffects.Copy;
+            HideImportDropFeedback();
+            e.Handled = true;
+            return;
+        }
+
         var folders = GetDroppedFolders(e.Data);
         if (folders.Count == 0)
         {
@@ -1681,7 +1727,6 @@ public partial class MainWindow : Window
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
         HideBookButtonEdit.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
         ToggleFavoriteButton.Content = book.IsFavorite ? "已收藏" : "未收藏";
-        ToggleFavoriteEditButton.Content = book.IsFavorite ? "已收藏" : "未收藏";
     }
 
     private void SetDetailVisible(bool visible)
@@ -2123,31 +2168,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void TagChip_Click(object sender, MouseButtonEventArgs e)
+    private void ToggleTagFilter(TagChip chip)
     {
-        if (sender is not FrameworkElement { DataContext: TagChip chip })
-        {
-            return;
-        }
-
-        if (chip.IsSelected)
-        {
-            return;
-        }
-
-        if (_currentBook is not null)
-        {
-            UpsertManagedTag(chip.Name, chip.Category, chip.IsExclusive);
-            AddTagToBookRespectingRules(_currentBook, chip.Name);
-            TagsBox.Text = _currentBook.Tags;
-            var book = _currentBook;
-            await Task.Run(() => _database.SaveMetadata(book));
-            _currentBook.NotifyAll();
-            RefreshLibraryViews(authors: false, sort: false);
-            StatusText.Text = $"已给《{_currentBook.Title}》添加 Tag：{chip.Name}";
-            return;
-        }
-
         if (_activeTagFilters.Contains(chip.Name))
         {
             _activeTagFilters.Remove(chip.Name);
@@ -2972,6 +2994,44 @@ public partial class MainWindow : Window
         return null;
     }
 
+    private void SyncBookTagChips(MangaBook book)
+    {
+        var tags = TagService.ParseTags(book.Tags).ToList();
+        var current = book.TagItems.ToList();
+        var matches = current.Count == tags.Count;
+        if (matches)
+        {
+            for (var i = 0; i < tags.Count; i++)
+            {
+                var tag = tags[i];
+                var item = current[i];
+                if (!string.Equals(item.Name, tag, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(item.Category, TagCategory(tag), StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(item.Color, TagColor(tag), StringComparison.OrdinalIgnoreCase))
+                {
+                    matches = false;
+                    break;
+                }
+            }
+        }
+
+        if (matches)
+        {
+            return;
+        }
+
+        book.TagItems.Clear();
+        foreach (var tag in tags)
+        {
+            book.TagItems.Add(new TagChip
+            {
+                Name = tag,
+                Category = TagCategory(tag),
+                Color = TagColor(tag)
+            });
+        }
+    }
+
     private IEnumerable<string> EnumerateKnownTags()
     {
         return DefaultTagPresets.Select(tag => tag.Name)
@@ -2987,6 +3047,7 @@ public partial class MainWindow : Window
         _tagBooksByName.Clear();
         foreach (var book in _allBooks)
         {
+            SyncBookTagChips(book);
             foreach (var item in book.TagItems)
             {
                 if (string.IsNullOrWhiteSpace(item.Name))

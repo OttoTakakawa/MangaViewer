@@ -85,25 +85,41 @@
                                 <DataTemplate DataType="{x:Type models:BatchImportCandidate}">
                                     <Border Margin="0,0,0,10" Style="{StaticResource AppDialogListItemBorder}">
                                         <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" MinWidth="0"/>
-                                                <ColumnDefinition Width="210"/>
+                                                <ColumnDefinition Width="14"/>
+                                                <ColumnDefinition Width="220"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel MinWidth="0" Margin="0,0,14,0">
-                                                <TextBlock Text="{Binding FolderName}"
-                                                           ToolTip="{Binding FolderName}"
-                                                           Style="{StaticResource AppDialogLabelText}"
-                                                           TextWrapping="NoWrap"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                                <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
-                                                         ToolTip="{Binding Title}"
-                                                         Margin="0,8,0,0"
-                                                         MaxLines="1"
-                                                         TextWrapping="NoWrap"
-                                                         HorizontalScrollBarVisibility="Hidden"
-                                                         Style="{StaticResource AppDialogTextBox}"/>
-                                            </StackPanel>
-                                            <Border Grid.Column="1" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="12" VerticalAlignment="Center">
+                                            <TextBlock Grid.Row="0"
+                                                       Grid.Column="0"
+                                                       Text="{Binding FolderName}"
+                                                       ToolTip="{Binding FolderName}"
+                                                       Style="{StaticResource AppDialogLabelText}"
+                                                       TextWrapping="NoWrap"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBox Grid.Row="1"
+                                                     Grid.Column="0"
+                                                     Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="{Binding Title}"
+                                                     Margin="0,8,0,0"
+                                                     MaxLines="1"
+                                                     TextWrapping="NoWrap"
+                                                     HorizontalScrollBarVisibility="Hidden"
+                                                     Style="{StaticResource AppDialogTextBox}"/>
+                                            <Border Grid.Row="1"
+                                                    Grid.Column="2"
+                                                    Margin="0,8,0,0"
+                                                    MinHeight="52"
+                                                    CornerRadius="{StaticResource RadiusControl}"
+                                                    Background="{StaticResource Brush.Surface}"
+                                                    BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                                    BorderThickness="1"
+                                                    Padding="12"
+                                                    VerticalAlignment="Stretch">
                                                 <TextBlock Text="{Binding SummaryText}"
                                                            TextAlignment="Right"
                                                            Foreground="{StaticResource Brush.TextPrimary}"
