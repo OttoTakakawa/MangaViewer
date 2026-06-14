@@ -2861,21 +2861,61 @@ public partial class MainWindow : Window
         ActiveTagFilterList.Visibility = chips.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private void TagManagerFilter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        RefreshTagManagementItems();
+    }
+
     private void RefreshTagManagementItems()
     {
         var query = TagManagerSearchBox?.Text.Trim() ?? "";
+        var groupFilter = TagGroupFilterBox?.SelectedIndex > 0
+            ? (TagGroupFilterBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string ?? ""
+            : "";
+        var sortMode = TagSortBox?.SelectedIndex ?? 0;
+
         var knownTags = EnumerateKnownTags().ToList();
-        var chips = knownTags
+
+        // Populate group filter options (only once, or if categories changed)
+        if (TagGroupFilterBox is not null && TagGroupFilterBox.Items.Count <= 1)
+        {
+            var categories = knownTags
+                .Select(t => TagCategory(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(TagCategoryOrder)
+                .ThenBy(c => c, StringComparer.OrdinalIgnoreCase);
+            foreach (var cat in categories)
+            {
+                if (!string.IsNullOrWhiteSpace(cat))
+                    TagGroupFilterBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = cat });
+            }
+        }
+
+        // Filter by search query
+        var filtered = knownTags
             .Select(tag => CreateTagChip(tag))
             .Where(tag => string.IsNullOrWhiteSpace(query)
                 || tag.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                || tag.Category.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(tag => TagCategoryOrder(tag.Category))
-            .ThenByDescending(tag => tag.UsageCount)
-            .ThenBy(tag => tag.Name)
-            .ToList();
+                || tag.Category.Contains(query, StringComparison.OrdinalIgnoreCase));
 
-        TagManagerItems.ReplaceRange(chips);
+        // Filter by group
+        if (!string.IsNullOrWhiteSpace(groupFilter))
+        {
+            filtered = filtered.Where(tag =>
+                string.Equals(tag.Category, groupFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Sort
+        var sorted = sortMode switch
+        {
+            1 => filtered.OrderByDescending(tag => tag.UsageCount).ThenBy(tag => tag.Name).ToList(),
+            2 => filtered.OrderBy(tag => tag.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+            _ => filtered.OrderBy(tag => TagCategoryOrder(tag.Category))
+                         .ThenByDescending(tag => tag.UsageCount)
+                         .ThenBy(tag => tag.Name).ToList(),
+        };
+
+        TagManagerItems.ReplaceRange(sorted);
 
         if (TagManagerTotalCountText is not null)
         {
@@ -2891,7 +2931,7 @@ public partial class MainWindow : Window
         }
         if (TagManagerEmptyState is not null)
         {
-            TagManagerEmptyState.Visibility = chips.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            TagManagerEmptyState.Visibility = sorted.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 

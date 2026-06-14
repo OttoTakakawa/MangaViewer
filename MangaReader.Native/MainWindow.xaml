@@ -1394,7 +1394,15 @@
                         </Grid.RowDefinitions>
                         <DockPanel Margin="0,0,0,12">
                             <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
-                            <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
+                            <ComboBox x:Name="TagSortBox" DockPanel.Dock="Right" Width="130" Height="44" Margin="10,0,0,0" SelectedIndex="0" SelectionChanged="TagManagerFilter_Changed" Style="{StaticResource FilterPillComboBox}">
+                                <ComboBoxItem Content="按组排序"/>
+                                <ComboBoxItem Content="按使用量"/>
+                                <ComboBoxItem Content="按名称"/>
+                            </ComboBox>
+                            <ComboBox x:Name="TagGroupFilterBox" DockPanel.Dock="Right" Width="130" Height="44" Margin="10,0,0,0" SelectedIndex="0" SelectionChanged="TagManagerFilter_Changed" Style="{StaticResource FilterPillComboBox}">
+                                <ComboBoxItem Content="全部分组"/>
+                            </ComboBox>
+                            <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签"/>
                         </DockPanel>
                         <ListBox Grid.Row="1" x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}"
                                  BorderThickness="0" Background="Transparent"
