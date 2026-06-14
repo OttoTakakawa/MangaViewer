@@ -858,7 +858,7 @@
                             <Button x:Name="AuthorsNavButton" Content="作者" Click="NavAuthors_Click" Style="{StaticResource SidebarNavButton}"/>
                         </StackPanel>
 
-                        <StackPanel Margin="0,0,0,8">
+                        <StackPanel Margin="0,0,0,18">
                             <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.ScrollTrack}" Margin="8,0,8,10">
                                 <TextBlock Text="工具"
                                            HorizontalAlignment="Center"
@@ -872,17 +872,26 @@
                                 <Button Content="备份数据" Click="DataSafety_Click" Style="{StaticResource SidebarActionButton}"/>
                             </StackPanel>
                         </StackPanel>
+
+                        <StackPanel Margin="0,0,0,8">
+                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                                <TextBlock Text="调试"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource Brush.TextMuted}"
+                                           FontSize="12"
+                                           FontWeight="Bold"/>
+                            </Border>
+                            <StackPanel Width="132" HorizontalAlignment="Center">
+                                <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}"/>
+                                <Button x:Name="LogPanelToggleButton"
+                                        Content="展开日志"
+                                        Click="ToggleStatusPanel_Click"
+                                        Style="{StaticResource SidebarActionButton}"/>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
-
-                <Button x:Name="LogPanelToggleButton"
-                        DockPanel.Dock="Bottom"
-                        Content="展开日志"
-                        Click="ToggleStatusPanel_Click"
-                        Style="{StaticResource SidebarLogToggleButton}"
-                        Width="132"
-                        HorizontalAlignment="Center"
-                        Margin="0,12,0,0"/>
             </DockPanel>
         </Border>
 
@@ -1183,6 +1192,7 @@
                              ItemsSource="{Binding Books}"
                              ItemContainerStyle="{StaticResource LibraryListItemStyle}"
                              ItemTemplate="{StaticResource LibraryBookTemplate}"
+                             Margin="8,0,24,0"
                              SelectionChanged="BooksList_SelectionChanged"
                              MouseDoubleClick="BooksList_MouseDoubleClick"
                              AllowDrop="True"
@@ -1612,12 +1622,12 @@
         <Border x:Name="DetailShell"
                 Grid.Column="1"
                 Grid.ColumnSpan="2"
-                Width="378"
+                Width="560"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Stretch"
                 Panel.ZIndex="10"
                 Visibility="Collapsed"
-                Margin="22,26,26,26"
+                Margin="22,26,0,26"
                 Padding="22"
                 CornerRadius="{StaticResource RadiusPanel}"
                 Background="#FFFFFF"
@@ -1635,17 +1645,45 @@
                         <TextBlock Text="书籍信息、标签和简介会在这里以卡片方式编辑。" Margin="24,8" Foreground="#81756B" TextWrapping="Wrap" TextAlignment="Center"/>
                     </StackPanel>
 
-                    <StackPanel x:Name="DetailPanel" Visibility="Collapsed">
+                    <DockPanel x:Name="DetailPanel" Visibility="Collapsed" LastChildFill="True">
+                        <Border DockPanel.Dock="Left"
+                                Width="148"
+                                Margin="0,0,22,0"
+                                Padding="10"
+                                CornerRadius="{StaticResource RadiusPanel}"
+                                Background="#F8F2EC"
+                                BorderBrush="#EFE3D7"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <Border Width="126"
+                                        Height="178"
+                                        CornerRadius="{StaticResource RadiusPanel}"
+                                        Background="#E8DDD2"
+                                        ClipToBounds="True"
+                                        Effect="{StaticResource BookShadow}">
+                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                </Border>
+                                <TextBlock Text="封面预览"
+                                           Margin="0,12,0,4"
+                                           HorizontalAlignment="Center"
+                                           Foreground="#81756B"
+                                           FontSize="12"
+                                           FontWeight="Bold"/>
+                                <TextBlock x:Name="DetailCoverPageText"
+                                           HorizontalAlignment="Center"
+                                           Foreground="#A08F81"
+                                           FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel>
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="书籍详情" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button x:Name="ToggleFavoriteButton" Content="收藏" Click="ToggleFavorite_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
-                                <Button x:Name="EditModeButton" Content="编辑" Click="ToggleEditMode_Click" Style="{StaticResource TinyButton}"/>
-                            </StackPanel>
+                            <Button Grid.Column="1" x:Name="EditModeButton" Content="编辑" Click="ToggleEditMode_Click" Style="{StaticResource TinyButton}" VerticalAlignment="Center"/>
                         </Grid>
                         <TextBlock x:Name="EditModeHintText" Text="只读模式：点击“编辑”后修改信息" Margin="0,0,0,20" Foreground="#81756B"/>
                         <StackPanel x:Name="ReadOnlyInfoPanel">
@@ -1665,10 +1703,19 @@
                                     <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyStatusText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
-                                    <TextBlock x:Name="ReadOnlyFavoriteText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
-                                </StackPanel>
+                                <DockPanel Grid.Column="2" LastChildFill="True">
+                                    <Button x:Name="ToggleFavoriteButton"
+                                            DockPanel.Dock="Right"
+                                            Content="收藏"
+                                            Click="ToggleFavorite_Click"
+                                            Style="{StaticResource TinyButton}"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Top"/>
+                                    <StackPanel>
+                                        <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
+                                        <TextBlock x:Name="ReadOnlyFavoriteText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
+                                    </StackPanel>
+                                </DockPanel>
                                 <StackPanel Grid.Column="4">
                                     <TextBlock Text="页数" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyPageCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
@@ -1792,22 +1839,10 @@
                                 <Button Content="保存快捷键" Click="SaveShortcuts_Click" Style="{StaticResource TinyButton}" Margin="0,12,0,0"/>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
                 </Grid>
             </ScrollViewer>
         </Border>
-        <Button x:Name="DetailDrawerToggleButton"
-                Grid.Column="1"
-                Grid.ColumnSpan="2"
-                Width="36"
-                Height="76"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Panel.ZIndex="11"
-                Visibility="Collapsed"
-                Content="‹"
-                Click="ToggleDetailDrawer_Click"
-                Style="{StaticResource TinyButton}"
-                Margin="0,0,26,0"/>
     </Grid>
 </Window>

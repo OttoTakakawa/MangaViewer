@@ -80,7 +80,6 @@ public partial class MainWindow : Window
     private bool _tagGroupFilterOptionsDirty = true;
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
-    private bool _isDetailDrawerCollapsed;
     private bool _isCheckingForUpdates;
     private string _currentNavigationKey = "home";
     private string _cachedSearchQuery = "";
@@ -538,7 +537,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        _isDetailDrawerCollapsed = false;
         SetDetailVisible(true);
         FillMetadataEditors(_currentBook);
         SetEditMode(false);
@@ -1659,6 +1657,7 @@ public partial class MainWindow : Window
 
     private void FillMetadataEditors(MangaBook book)
     {
+        DetailPanel.DataContext = book;
         TitleBox.Text = book.Title;
         AuthorBox.Text = book.Author;
         ForeignNameBox.Text = book.ForeignName;
@@ -1679,6 +1678,7 @@ public partial class MainWindow : Window
         ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(book.ImportedAt);
         ReadOnlyTagsText.Text = EmptyAsPlaceholder(book.Tags);
         ReadOnlyCoverPageText.Text = (book.CoverPageIndex + 1).ToString();
+        DetailCoverPageText.Text = $"第 {book.CoverPageIndex + 1} 页";
         ReadOnlyReadCountText.Text = book.ReadCountText;
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
@@ -1688,21 +1688,15 @@ public partial class MainWindow : Window
 
     private void SetDetailVisible(bool visible)
     {
-        if (DetailPanel is null || DetailShell is null || DetailColumn is null || DetailDrawerToggleButton is null)
+        if (DetailPanel is null || DetailShell is null || DetailColumn is null)
         {
             return;
         }
 
         DetailColumn.Width = new GridLength(0);
-        DetailDrawerToggleButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        DetailDrawerToggleButton.Content = _isDetailDrawerCollapsed ? "‹" : "›";
-        DetailDrawerToggleButton.ToolTip = _isDetailDrawerCollapsed ? "展开详情" : "收起详情";
-        DetailDrawerToggleButton.Margin = _isDetailDrawerCollapsed
-            ? new Thickness(0, 0, 26, 0)
-            : new Thickness(0, 0, 404, 0);
-        DetailPanel.Visibility = visible && !_isDetailDrawerCollapsed ? Visibility.Visible : Visibility.Collapsed;
+        DetailPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
-        if (visible && !_isDetailDrawerCollapsed)
+        if (visible)
         {
             MotionService.ShowDrawer(DetailShell);
         }
@@ -1717,20 +1711,8 @@ public partial class MainWindow : Window
 
         if (!visible)
         {
-            _isDetailDrawerCollapsed = false;
             SetEditMode(false);
         }
-    }
-
-    private void ToggleDetailDrawer_Click(object sender, RoutedEventArgs e)
-    {
-        if (_currentBook is null || BooksList.SelectedItem is null)
-        {
-            return;
-        }
-
-        _isDetailDrawerCollapsed = !_isDetailDrawerCollapsed;
-        SetDetailVisible(true);
     }
 
     private void SetEditMode(bool enabled)
