@@ -1386,83 +1386,86 @@
                 </Grid>
 
                 <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                    <DockPanel LastChildFill="True">
-                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12" LastChildFill="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Margin="0,0,0,12">
                             <Button DockPanel.Dock="Right" Content="新建候选标签" Click="CreateManagedTag_Click" Style="{StaticResource FilterPillButton}" Margin="10,0,0,0" Height="44"/>
                             <TextBox x:Name="TagManagerSearchBox" Height="44" TextChanged="TagManagerSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索标签；新建请点右侧按钮"/>
                         </DockPanel>
-                        <ListBox x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}"
+                        <ListBox Grid.Row="1" x:Name="TagManagerList" ItemsSource="{Binding TagManagerItems}"
                                  BorderThickness="0" Background="Transparent"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
                                  ScrollViewer.CanContentScroll="True"
-                                 HorizontalAlignment="Stretch"
-                                 HorizontalContentAlignment="Stretch"
                                  Focusable="False">
-                                    <ListBox.ItemContainerStyle>
-                                        <Style TargetType="ListBoxItem">
-                                            <Setter Property="Padding" Value="0"/>
-                                            <Setter Property="Margin" Value="0"/>
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                            <Setter Property="Background" Value="Transparent"/>
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Setter Property="Focusable" Value="False"/>
-                                            <Setter Property="IsHitTestVisible" Value="True"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="ListBoxItem">
-                                                        <ContentPresenter/>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </ListBox.ItemContainerStyle>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type models:TagChip}">
-                                            <Border Margin="0,0,0,10" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                                                <Border.ContextMenu>
-                                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                        <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
-                                                        <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
-                                                        <Separator/>
-                                                        <MenuItem Header="按此标签筛选" Click="TagManagerFilter_Click"/>
-                                                    </ContextMenu>
-                                                </Border.ContextMenu>
-                                                <DockPanel LastChildFill="True">
-                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                        <Button Content="按此标签筛选" Click="TagManagerFilter_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
-                                                        <Button Content="编辑标签" Click="RenameTagButton_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
-                                                        <Button Content="删除" Click="DeleteTagButton_Click" Style="{StaticResource DangerButton}"/>
-                                                    </StackPanel>
-                                                    <StackPanel>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Border Background="{Binding Color}" CornerRadius="14" Padding="10,5" Margin="0,0,10,0">
-                                                                <TextBlock Text="{Binding Category}" Foreground="#25211E" FontSize="11" FontWeight="SemiBold"/>
-                                                            </Border>
-                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="#25211E"/>
-                                                        </StackPanel>
-                                                        <WrapPanel Margin="0,8,0,0">
-                                                            <TextBlock Text="已关联 " Foreground="#6B7280"/>
-                                                            <TextBlock Text="{Binding UsageCount}" Foreground="#6B7280"/>
-                                                            <TextBlock Text=" 本漫画" Foreground="#6B7280"/>
-                                                            <TextBlock Text=" · " Foreground="#6B7280"/>
-                                                            <TextBlock Text="{Binding SourceText}" Foreground="#6B7280"/>
-                                                            <TextBlock Text=" · " Foreground="#6B7280"/>
-                                                            <TextBlock Text="{Binding TypeText, Mode=OneWay}" Foreground="#6B7280"/>
-                                                        </WrapPanel>
-                                                    </StackPanel>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Focusable" Value="False"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter HorizontalAlignment="Stretch"/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:TagChip}">
+                                    <Border Margin="0,0,0,10" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" HorizontalAlignment="Stretch">
+                                        <Border.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
+                                                <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="按此标签筛选" Click="TagManagerFilter_Click"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <DockPanel LastChildFill="True">
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Button Content="按此标签筛选" Click="TagManagerFilter_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+                                                <Button Content="编辑标签" Click="RenameTagButton_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+                                                <Button Content="删除" Click="DeleteTagButton_Click" Style="{StaticResource DangerButton}"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Background="{Binding Color}" CornerRadius="14" Padding="10,5" Margin="0,0,10,0">
+                                                        <TextBlock Text="{Binding Category}" Foreground="#25211E" FontSize="11" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="#25211E"/>
+                                                </StackPanel>
+                                                <WrapPanel Margin="0,8,0,0">
+                                                    <TextBlock Text="已关联 " Foreground="#6B7280"/>
+                                                    <TextBlock Text="{Binding UsageCount}" Foreground="#6B7280"/>
+                                                    <TextBlock Text=" 本漫画" Foreground="#6B7280"/>
+                                                    <TextBlock Text=" · " Foreground="#6B7280"/>
+                                                    <TextBlock Text="{Binding SourceText}" Foreground="#6B7280"/>
+                                                    <TextBlock Text=" · " Foreground="#6B7280"/>
+                                                    <TextBlock Text="{Binding TypeText, Mode=OneWay}" Foreground="#6B7280"/>
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
                         </ListBox>
-                        <Border x:Name="TagManagerEmptyState" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
+                        <Border Grid.Row="2" x:Name="TagManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
                             <TextBlock Text="当前没有命中的标签，可以换个关键词，或者新建一个新的标签。"
                                        Foreground="#6B7280"
                                        TextWrapping="Wrap"/>
                         </Border>
-                    </DockPanel>
+                    </Grid>
                 </Border>
             </Grid>
 
@@ -1511,59 +1514,61 @@
                 </Grid>
 
                 <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="10" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                    <DockPanel LastChildFill="True">
-                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12" LastChildFill="True">
-                            <TextBox x:Name="AuthorSearchBox" Height="44" TextChanged="AuthorSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索作者名"/>
-                        </DockPanel>
-                        <ListBox x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}"
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBox x:Name="AuthorSearchBox" Height="44" Margin="0,0,0,12" TextChanged="AuthorSearchBox_TextChanged" Style="{StaticResource FilterPillTextBox}" ToolTip="搜索作者名"/>
+                        <ListBox Grid.Row="1" x:Name="AuthorManagerList" ItemsSource="{Binding AuthorManagerItems}"
                                  BorderThickness="0" Background="Transparent"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  VirtualizingStackPanel.IsVirtualizing="True"
                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
                                  ScrollViewer.CanContentScroll="True"
-                                 HorizontalAlignment="Stretch"
-                                 HorizontalContentAlignment="Stretch"
                                  Focusable="False">
-                                    <ListBox.ItemContainerStyle>
-                                        <Style TargetType="ListBoxItem">
-                                            <Setter Property="Padding" Value="0"/>
-                                            <Setter Property="Margin" Value="0"/>
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                            <Setter Property="Background" Value="Transparent"/>
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Setter Property="Focusable" Value="False"/>
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="ListBoxItem">
-                                                        <ContentPresenter/>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </ListBox.ItemContainerStyle>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type models:AuthorItem}">
-                                            <Border Margin="0,0,0,6" Padding="14,10" CornerRadius="9" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
-                                                <DockPanel>
-                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                        <Button Content="筛选" Click="FilterByAuthor_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
-                                                        <Button Content="改名" Click="RenameAuthor_Click" Style="{StaticResource GhostButton}"/>
-                                                    </StackPanel>
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#25211E"/>
-                                                        <TextBlock Text="{Binding BookCount, StringFormat={}{0} 本书籍}" FontSize="12" Foreground="#6B7280"/>
-                                                    </StackPanel>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Focusable" Value="False"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter HorizontalAlignment="Stretch"/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:AuthorItem}">
+                                    <Border Margin="0,0,0,6" Padding="14,10" CornerRadius="9" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" HorizontalAlignment="Stretch">
+                                        <DockPanel LastChildFill="True">
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Button Content="筛选" Click="FilterByAuthor_Click" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+                                                <Button Content="改名" Click="RenameAuthor_Click" Style="{StaticResource GhostButton}"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#25211E"/>
+                                                <TextBlock Text="{Binding BookCount, StringFormat={}{0} 本书籍}" FontSize="12" Foreground="#6B7280"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
                         </ListBox>
-                        <Border x:Name="AuthorManagerEmptyState" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
+                        <Border Grid.Row="2" x:Name="AuthorManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="9" Background="#F8FAFC">
                             <TextBlock Text="没有匹配的作者。"
                                        Foreground="#6B7280"
                                        TextWrapping="Wrap"/>
                         </Border>
-                    </DockPanel>
+                    </Grid>
                 </Border>
             </Grid>
         </Grid>
