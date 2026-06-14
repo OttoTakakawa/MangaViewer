@@ -1,9 +1,7 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -57,7 +55,6 @@ public partial class MainWindow : Window
     private List<Key> _nextKeys = [Key.Right, Key.Space];
     private List<Key> _prevKeys = [Key.Left];
     private bool _isEditMode;
-    private ICollectionView? _booksView;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedAuthors = new(StringComparer.OrdinalIgnoreCase);
@@ -75,8 +72,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _authorSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _statusLogTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
     private readonly Queue<string> _liveLogLines = new();
-    private DispatcherOperation? _bookFilterRefreshOperation;
+    private List<MangaBook> _allBooks = [];
+    private CancellationTokenSource _filterCts = new();
     private bool _refreshShelfOverviewAfterBookFilter;
+    private bool _ensureLibraryViewAfterBookFilter;
     private bool _isRefreshingAuthorFilters;
     private bool _tagGroupFilterOptionsDirty = true;
     private bool _libraryChromeCollapsed;
@@ -120,8 +119,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = this;
-        _booksView = CollectionViewSource.GetDefaultView(Books);
-        _booksView.Filter = FilterBook;
 
         _storage.EnsureCreated();
         _database = new LibraryDatabase(_storage);
@@ -143,6 +140,8 @@ public partial class MainWindow : Window
             AppLogger.LineWritten -= AppLogger_LineWritten;
             _statusLogTimer.Stop();
             StopSearchDebounceTimers();
+            _filterCts.Cancel();
+            _filterCts.Dispose();
             SaveCurrentProgress();
         };
     }
@@ -223,7 +222,7 @@ public partial class MainWindow : Window
 
         if (folders.Count > 1)
         {
-            StatusText.Text = $"多文件夹导入处理完成：{folders.Count} 个文件夹，当前书库 {Books.Count} 本漫画。";
+            StatusText.Text = $"多文件夹导入处理完成：{folders.Count} 个文件夹，当前书库 {_allBooks.Count} 本漫画。";
         }
     }
 
@@ -253,7 +252,7 @@ public partial class MainWindow : Window
         ShowImportProgress(authorName, 0, candidates.Count, "准备导入...");
         _database.SaveLibraryRoot(rootPath);
         var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
-        var booksByPath = Books.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
+        var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
         var importedCount = 0;
         var failures = new List<string>();
         var booksToSave = new List<(MangaBook Book, bool IsAlreadyVisible)>();
@@ -329,14 +328,13 @@ public partial class MainWindow : Window
                 booksByPath[book.FolderPath] = book;
             }
         }
-        Books.AddRange(newBooks);
+        _allBooks.AddRange(newBooks);
 
         HideImportProgress();
-        RefreshLibraryViews(sort: true);
+        RefreshLibraryViews(sort: true, ensureLibraryView: true);
         RefreshHomeShelves();
-        EnsureLibraryViewCanShowBooks();
         StatusText.Text = failures.Count == 0
-            ? $"批量导入完成：{authorName} · 新增/更新 {importedCount} 本，当前书库 {Books.Count} 本漫画。"
+            ? $"批量导入完成：{authorName} · 新增/更新 {importedCount} 本，当前书库 {_allBooks.Count} 本漫画。"
             : $"批量导入完成：{authorName} · 成功 {importedCount} 本，失败 {failures.Count} 本。";
 
         if (failures.Count > 0)
@@ -477,7 +475,9 @@ public partial class MainWindow : Window
 
         _coverLoadCancellations.Clear();
         _visibleCoverReferences.Clear();
+        _filterCts.Cancel();
         Books.Clear();
+        _allBooks = [];
         _currentBook = null;
         SetDetailVisible(false);
 
@@ -511,12 +511,11 @@ public partial class MainWindow : Window
             var visibleBooks = scanned.Scanned.Concat(missingBooks).ToList();
             await Task.Run(() => _database.UpsertBooksBatch(visibleBooks), token);
 
-            Books.AddRange(visibleBooks);
+            _allBooks = visibleBooks;
 
-            RefreshLibraryViews(sort: true);
+            RefreshLibraryViews(sort: true, ensureLibraryView: true);
             RefreshHomeShelves();
-            EnsureLibraryViewCanShowBooks();
-            StatusText.Text = $"扫描完成：{Books.Count} 本漫画。";
+            StatusText.Text = $"扫描完成：{_allBooks.Count} 本漫画。";
         }
         catch (OperationCanceledException)
         {
@@ -790,6 +789,7 @@ public partial class MainWindow : Window
         }
 
         await Task.Run(() => _database.DeleteBook(book));
+        _allBooks.Remove(book);
         Books.Remove(book);
         _currentBook = null;
         BooksList.SelectedItem = null;
@@ -1789,7 +1789,7 @@ public partial class MainWindow : Window
         var selectedAuthor = AuthorFilterBox?.SelectedItem as string;
         try
         {
-            var authors = Books.Where(book => ShowHiddenBox?.IsChecked == true || !book.IsHidden)
+            var authors = _allBooks.Where(book => ShowHiddenBox?.IsChecked == true || !book.IsHidden)
                 .Select(book => book.Author.Trim())
                 .Where(author => !string.IsNullOrWhiteSpace(author))
                 .Concat(_managedAuthors)
@@ -1982,35 +1982,94 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RefreshBookFilter()
+    private void RefreshBookFilter(bool ensureLibraryView = false)
     {
         CacheBookFilterState();
-        ScheduleBookViewRefresh(refreshShelfOverview: true);
+        ScheduleBookViewRefresh(refreshShelfOverview: true, ensureLibraryView);
     }
 
-    private void ScheduleBookViewRefresh(bool refreshShelfOverview)
+    private void ScheduleBookViewRefresh(bool refreshShelfOverview, bool ensureLibraryView = false)
     {
         _refreshShelfOverviewAfterBookFilter |= refreshShelfOverview;
-        if (_bookFilterRefreshOperation is not null
-            && _bookFilterRefreshOperation.Status is DispatcherOperationStatus.Pending or DispatcherOperationStatus.Executing)
+        _ensureLibraryViewAfterBookFilter |= ensureLibraryView;
+        _filterCts.Cancel();
+        _filterCts = new CancellationTokenSource();
+
+        var refreshShelf = _refreshShelfOverviewAfterBookFilter;
+        var ensureLibrary = _ensureLibraryViewAfterBookFilter;
+        _refreshShelfOverviewAfterBookFilter = false;
+        _ensureLibraryViewAfterBookFilter = false;
+        var snapshot = _allBooks.ToList();
+        var sortIndex = SortBox?.SelectedIndex ?? 0;
+        var searchQuery = _cachedSearchQuery;
+        var statusFilter = _cachedStatusFilter;
+        var authorFilter = _cachedAuthorFilter;
+        var favoriteOnly = _cachedFavoriteOnly;
+        var showHidden = _cachedShowHidden;
+        var activeTags = _cachedActiveTagFilters.ToArray();
+        var token = _filterCts.Token;
+
+        _ = ExecuteBookViewRefreshAsync(
+            snapshot,
+            sortIndex,
+            searchQuery,
+            statusFilter,
+            authorFilter,
+            favoriteOnly,
+            showHidden,
+            activeTags,
+            refreshShelf,
+            ensureLibrary,
+            token);
+    }
+
+    private async Task ExecuteBookViewRefreshAsync(
+        List<MangaBook> snapshot,
+        int sortIndex,
+        string searchQuery,
+        string statusFilter,
+        string authorFilter,
+        bool favoriteOnly,
+        bool showHidden,
+        string[] activeTags,
+        bool refreshShelfOverview,
+        bool ensureLibraryView,
+        CancellationToken token)
+    {
+        List<MangaBook> filtered;
+        try
+        {
+            filtered = await Task.Run(
+                () => FilterAndSortBooks(
+                    snapshot,
+                    sortIndex,
+                    searchQuery,
+                    statusFilter,
+                    authorFilter,
+                    favoriteOnly,
+                    showHidden,
+                    activeTags,
+                    token),
+                token);
+        }
+        catch (OperationCanceledException)
         {
             return;
         }
 
-        _bookFilterRefreshOperation = Dispatcher.InvokeAsync(
-            ExecuteBookViewRefresh,
-            DispatcherPriority.Background);
-    }
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
 
-    private void ExecuteBookViewRefresh()
-    {
-        var refreshShelfOverview = _refreshShelfOverviewAfterBookFilter;
-        _refreshShelfOverviewAfterBookFilter = false;
-        _bookFilterRefreshOperation = null;
-        _booksView?.Refresh();
+        Books.ReplaceRange(filtered);
         if (refreshShelfOverview)
         {
             RefreshShelfOverview();
+        }
+        if (ensureLibraryView)
+        {
+            EnsureLibraryViewCanShowBooks();
         }
     }
 
@@ -2030,7 +2089,8 @@ public partial class MainWindow : Window
         bool authors = true,
         bool sort = false,
         bool filter = true,
-        bool activeTags = false)
+        bool activeTags = false,
+        bool ensureLibraryView = false)
     {
         if (tags || tagManager || activeTags)
         {
@@ -2058,7 +2118,7 @@ public partial class MainWindow : Window
         }
         if (filter)
         {
-            RefreshBookFilter();
+            RefreshBookFilter(ensureLibraryView);
         }
     }
 
@@ -2153,41 +2213,9 @@ public partial class MainWindow : Window
 
     private void ApplyBookSort(bool refresh = true)
     {
-        if (_booksView is null || SortBox is null)
+        if (SortBox is null)
         {
             return;
-        }
-
-        _booksView.SortDescriptions.Clear();
-        switch (SortBox.SelectedIndex)
-        {
-            case 1:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.LastReadPageIndex), ListSortDirection.Descending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            case 2:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.PageCount), ListSortDirection.Descending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            case 3:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.TotalBytes), ListSortDirection.Descending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            case 4:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ReadCount), ListSortDirection.Descending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            case 5:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ImportedAt), ListSortDirection.Descending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            case 6:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.ProducedAt), ListSortDirection.Descending));
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
-            default:
-                _booksView.SortDescriptions.Add(new SortDescription(nameof(MangaBook.Title), ListSortDirection.Ascending));
-                break;
         }
 
         if (refresh)
@@ -2196,61 +2224,82 @@ public partial class MainWindow : Window
         }
     }
 
-    private bool FilterBook(object item)
+    private static List<MangaBook> FilterAndSortBooks(
+        List<MangaBook> allBooks,
+        int sortIndex,
+        string searchQuery,
+        string statusFilter,
+        string authorFilter,
+        bool favoriteOnly,
+        bool showHidden,
+        string[] activeTags,
+        CancellationToken token)
     {
-        if (item is not MangaBook book)
+        var filtered = allBooks.Where(book =>
         {
-            return false;
-        }
+            token.ThrowIfCancellationRequested();
+            if (book.IsHidden && !showHidden)
+            {
+                return false;
+            }
 
-        if (book.IsHidden && !_cachedShowHidden)
+            if (favoriteOnly && !book.IsFavorite)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter)
+                && !string.Equals(book.ReadingStatus, statusFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(authorFilter)
+                && authorFilter != "全部作者"
+                && !string.Equals(book.Author, authorFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (activeTags.Length > 0
+                && !activeTags.All(activeTag =>
+                    book.TagItems.Any(tag => string.Equals(tag.Name, activeTag, StringComparison.OrdinalIgnoreCase))))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(searchQuery))
+            {
+                return true;
+            }
+
+            return Contains(book.Title, searchQuery)
+                || Contains(book.Author, searchQuery)
+                || Contains(book.CharacterName, searchQuery)
+                || Contains(book.ForeignName, searchQuery)
+                || Contains(book.Tags, searchQuery)
+                || Contains(book.Summary, searchQuery)
+                || Contains(book.ProducedAt, searchQuery)
+                || Contains(book.ImportedAt, searchQuery)
+                || Contains(book.ReadingStatusText, searchQuery)
+                || Contains(book.PageCountText, searchQuery)
+                || Contains(book.SizeText, searchQuery)
+                || Contains(book.IsFavorite ? "收藏" : "", searchQuery)
+                || Contains(book.ReadCountText, searchQuery);
+        });
+
+        var sorted = sortIndex switch
         {
-            return false;
-        }
+            1 => filtered.OrderByDescending(book => book.LastReadPageIndex).ThenBy(book => book.Title),
+            2 => filtered.OrderByDescending(book => book.PageCount).ThenBy(book => book.Title),
+            3 => filtered.OrderByDescending(book => book.TotalBytes).ThenBy(book => book.Title),
+            4 => filtered.OrderByDescending(book => book.ReadCount).ThenBy(book => book.Title),
+            5 => filtered.OrderByDescending(book => book.ImportedAt).ThenBy(book => book.Title),
+            6 => filtered.OrderByDescending(book => book.ProducedAt).ThenBy(book => book.Title),
+            _ => filtered.OrderBy(book => book.Title),
+        };
 
-        if (_cachedFavoriteOnly && !book.IsFavorite)
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(_cachedStatusFilter)
-            && !string.Equals(book.ReadingStatus, _cachedStatusFilter, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(_cachedAuthorFilter)
-            && _cachedAuthorFilter != "全部作者"
-            && !string.Equals(book.Author, _cachedAuthorFilter, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (_cachedActiveTagFilters.Length > 0
-            && !_cachedActiveTagFilters.All(activeTag =>
-                book.TagItems.Any(tag => string.Equals(tag.Name, activeTag, StringComparison.OrdinalIgnoreCase))))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(_cachedSearchQuery))
-        {
-            return true;
-        }
-
-        return Contains(book.Title, _cachedSearchQuery)
-            || Contains(book.Author, _cachedSearchQuery)
-            || Contains(book.CharacterName, _cachedSearchQuery)
-            || Contains(book.ForeignName, _cachedSearchQuery)
-            || Contains(book.Tags, _cachedSearchQuery)
-            || Contains(book.Summary, _cachedSearchQuery)
-            || Contains(book.ProducedAt, _cachedSearchQuery)
-            || Contains(book.ImportedAt, _cachedSearchQuery)
-            || Contains(book.ReadingStatusText, _cachedSearchQuery)
-            || Contains(book.PageCountText, _cachedSearchQuery)
-            || Contains(book.SizeText, _cachedSearchQuery)
-            || Contains(book.IsFavorite ? "收藏" : "", _cachedSearchQuery)
-            || Contains(book.ReadCountText, _cachedSearchQuery);
+        return sorted.ToList();
     }
 
     private string GetSelectedReadingStatus()
@@ -2314,14 +2363,9 @@ public partial class MainWindow : Window
         var favoriteCount = 0;
         var readingNowCount = 0;
         var finishedCount = 0;
-        var visibleCount = 0;
-        foreach (var book in Books)
+        var visibleCount = Books.Count;
+        foreach (var book in _allBooks)
         {
-            if (FilterBook(book))
-            {
-                visibleCount++;
-            }
-
             if (book.IsHidden && !_cachedShowHidden)
             {
                 continue;
@@ -2344,7 +2388,7 @@ public partial class MainWindow : Window
 
         VisibleBookCountText.Text = $"{visibleCount} 本";
         TotalBookCountText.Text = _cachedShowHidden
-            ? $"/ 共 {Books.Count} 本"
+            ? $"/ 共 {_allBooks.Count} 本"
             : $"/ 共 {libraryCount} 本";
         FavoriteCountText.Text = $"{favoriteCount} 本";
         ReadingNowCountText.Text = $"{readingNowCount} 本";
@@ -2359,12 +2403,12 @@ public partial class MainWindow : Window
 
     private List<MangaBook> GetVisibleBooks()
     {
-        return Books.Where(FilterBook).ToList();
+        return Books.ToList();
     }
 
     private List<MangaBook> GetSelectedBatchBooks()
     {
-        return Books
+        return _allBooks
             .Where(book => book.IsSelectedForBatch)
             .ToList();
     }
@@ -2376,7 +2420,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var selectedCount = Books.Count(book => book.IsSelectedForBatch);
+        var selectedCount = _allBooks.Count(book => book.IsSelectedForBatch);
         BatchSelectionText.Text = selectedCount == 0 ? "0 本" : $"{selectedCount} 本";
         UpdateBatchSelectionModeVisuals(clearSelection: false);
     }
@@ -2406,7 +2450,7 @@ public partial class MainWindow : Window
 
     private void ClearBatchSelection()
     {
-        foreach (var book in Books.Where(book => book.IsSelectedForBatch))
+        foreach (var book in _allBooks.Where(book => book.IsSelectedForBatch))
         {
             book.IsSelectedForBatch = false;
         }
@@ -2545,7 +2589,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var homeBooks = Books
+        var homeBooks = _allBooks
             .Where(book => !book.IsHidden && !book.IsMissing && book.Pages.Count > 0)
             .ToList();
 
@@ -2686,8 +2730,7 @@ public partial class MainWindow : Window
         if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
         SetDetailVisible(_currentBook is not null && BooksList.SelectedItem is not null);
         UpdateNavigationVisuals();
-        RefreshBookFilter();
-        EnsureLibraryViewCanShowBooks();
+        RefreshBookFilter(ensureLibraryView: true);
     }
 
     private void ShowTagsView()
@@ -2729,12 +2772,12 @@ public partial class MainWindow : Window
 
     private void EnsureLibraryViewCanShowBooks()
     {
-        if (Books.Count == 0 || _booksView is null)
+        if (_allBooks.Count == 0)
         {
             return;
         }
 
-        if (Books.Any(FilterBook))
+        if (Books.Count > 0)
         {
             return;
         }
@@ -2746,7 +2789,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        ShelfEmptyHintText.Text = $"已识别 {Books.Count} 本漫画，但视图没有显示。请重新扫描书库；如果仍为空，这是列表视图刷新问题。";
+        ShelfEmptyHintText.Text = $"已识别 {_allBooks.Count} 本漫画，但视图没有显示。请重新扫描书库；如果仍为空，这是列表视图刷新问题。";
     }
 
     private void SetAuthorFilter(string authorName)
@@ -2906,7 +2949,7 @@ public partial class MainWindow : Window
     {
         return DefaultTagPresets.Select(tag => tag.Name)
             .Concat(_managedTags)
-            .Concat(Books.SelectMany(book => book.TagItems.Select(tag => tag.Name)))
+            .Concat(_allBooks.SelectMany(book => book.TagItems.Select(tag => tag.Name)))
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .Where(tag => !_suppressedTags.Contains(tag) || GetTagUsageCount(tag) > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase);
@@ -2915,7 +2958,7 @@ public partial class MainWindow : Window
     private void RebuildTagIndex()
     {
         _tagBooksByName.Clear();
-        foreach (var book in Books)
+        foreach (var book in _allBooks)
         {
             foreach (var item in book.TagItems)
             {
@@ -3251,7 +3294,7 @@ public partial class MainWindow : Window
 
     private void RefreshAuthorManagementItems(string? filter = null)
     {
-        var bookCounts = Books
+        var bookCounts = _allBooks
             .Where(b => !string.IsNullOrWhiteSpace(b.Author))
             .GroupBy(b => b.Author, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
@@ -3277,7 +3320,7 @@ public partial class MainWindow : Window
         }
         if (AuthorBookTotalText is not null)
         {
-            AuthorBookTotalText.Text = $"{Books.Count(b => !string.IsNullOrWhiteSpace(b.Author))} 本";
+            AuthorBookTotalText.Text = $"{_allBooks.Count(b => !string.IsNullOrWhiteSpace(b.Author))} 本";
         }
         if (AuthorManagerEmptyState is not null)
         {
@@ -3287,7 +3330,7 @@ public partial class MainWindow : Window
 
     private IEnumerable<string> EnumerateKnownAuthors()
     {
-        return Books
+        return _allBooks
             .Select(book => book.Author.Trim())
             .Where(author => !string.IsNullOrWhiteSpace(author))
             .Concat(_managedAuthors)
@@ -3438,7 +3481,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var booksToUpdate = Books
+        var booksToUpdate = _allBooks
             .Where(b => string.Equals(b.Author, item.Name, StringComparison.OrdinalIgnoreCase))
             .ToList();
         var updates = booksToUpdate.Select(b => (b.Id, dialog.NewName)).ToList();
@@ -3510,7 +3553,7 @@ public partial class MainWindow : Window
 
     private async void EditTagAcrossLibrary(TagChip chip)
     {
-        var relatedBooks = Books
+        var relatedBooks = _allBooks
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
@@ -3563,7 +3606,7 @@ public partial class MainWindow : Window
         var affectedBooks = new List<(MangaBook Book, string Tags)>();
         if (renamedTag || newIsExclusive)
         {
-            foreach (var book in Books)
+            foreach (var book in _allBooks)
             {
                 var tags = book.TagItems.Select(item => item.Name).ToList();
                 if (!tags.Any(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase)))
@@ -3671,7 +3714,7 @@ public partial class MainWindow : Window
         }
 
         var affectedBooks = new List<(MangaBook Book, string Tags)>();
-        foreach (var book in Books)
+        foreach (var book in _allBooks)
         {
             var tags = book.TagItems.Select(item => item.Name).ToList();
             if (!tags.Any(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase)))

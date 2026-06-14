@@ -4,10 +4,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <ApplicationIcon>AppIcon.ico</ApplicationIcon>
-    <Version>0.3.98.27</Version>
-    <AssemblyVersion>0.3.98.27</AssemblyVersion>
-    <FileVersion>0.3.98.27</FileVersion>
-    <InformationalVersion>0.3.98.27</InformationalVersion>
+    <Version>0.3.98.28</Version>
+    <AssemblyVersion>0.3.98.28</AssemblyVersion>
+    <FileVersion>0.3.98.28</FileVersion>
+    <InformationalVersion>0.3.98.28</InformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
