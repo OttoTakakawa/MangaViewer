@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="新建标签"
-        Width="580"
-        Height="520"
+        Width="624"
+        Height="564"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -227,10 +227,14 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="32" Background="#F3EDE4" BorderBrush="#FFF8EF" BorderThickness="1" Padding="26">
-        <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.22"/>
-        </Border.Effect>
+    <Grid Margin="22">
+        <Border CornerRadius="36"
+                Background="#01000000">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.22"/>
+            </Border.Effect>
+        </Border>
+        <Border CornerRadius="32" Background="#F3EDE4" BorderBrush="#FFF8EF" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -318,5 +322,6 @@
                 <Button Content="创建" Width="96" Click="Confirm_Click" Style="{StaticResource DialogPillButton}"/>
             </StackPanel>
         </Grid>
-    </Border>
+        </Border>
+    </Grid>
 </Window>

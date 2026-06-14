@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:MangaReader.Native.Models"
         Title="编辑标签"
-        Width="620"
-        Height="560"
+        Width="664"
+        Height="604"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -228,10 +228,14 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="32" Background="#F3EDE4" BorderBrush="#FFF8EF" BorderThickness="1" Padding="26">
-        <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.22"/>
-        </Border.Effect>
+    <Grid Margin="22">
+        <Border CornerRadius="36"
+                Background="#01000000">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.22"/>
+            </Border.Effect>
+        </Border>
+        <Border CornerRadius="32" Background="#F3EDE4" BorderBrush="#FFF8EF" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -350,5 +354,6 @@
                 <Button Content="保存" Width="96" Click="Confirm_Click" Style="{StaticResource DialogPillButton}"/>
             </StackPanel>
         </Grid>
-    </Border>
+        </Border>
+    </Grid>
 </Window>
