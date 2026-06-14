@@ -2832,6 +2832,11 @@ public partial class MainWindow : Window
 
     private void FastVerticalScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (TryScrollNestedHorizontalShelf(sender, e))
+        {
+            return;
+        }
+
         if (sender is not System.Windows.Controls.ScrollViewer viewer || viewer.ScrollableHeight <= 0)
         {
             return;
@@ -2856,6 +2861,31 @@ public partial class MainWindow : Window
 
         viewer.ScrollToHorizontalOffset(nextOffset);
         e.Handled = true;
+    }
+
+    private static bool TryScrollNestedHorizontalShelf(object sender, MouseWheelEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || sender is not System.Windows.Controls.ScrollViewer outerViewer)
+        {
+            return false;
+        }
+
+        var nestedViewer = FindAncestor<System.Windows.Controls.ScrollViewer>(source);
+        if (nestedViewer is null || ReferenceEquals(nestedViewer, outerViewer) || nestedViewer.ScrollableWidth <= 0)
+        {
+            return false;
+        }
+
+        var nextOffset = ClampOffset(nestedViewer.HorizontalOffset - e.Delta * WheelScrollMultiplier, nestedViewer.ScrollableWidth);
+        if (Math.Abs(nextOffset - nestedViewer.HorizontalOffset) < 0.1)
+        {
+            return false;
+        }
+
+        nestedViewer.ScrollToHorizontalOffset(nextOffset);
+        e.Handled = true;
+        return true;
     }
 
     private void FastItemsScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
