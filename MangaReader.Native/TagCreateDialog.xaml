@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="新建标签"
         Width="624"
-        Height="564"
+        Height="580"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -12,11 +12,11 @@
     <Window.Resources>
         <Style x:Key="DialogPillButton" TargetType="Button">
             <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="92"/>
-            <Setter Property="Padding" Value="18,0"/>
-            <Setter Property="Background" Value="#26211D"/>
-            <Setter Property="Foreground" Value="#F8F3EA"/>
-            <Setter Property="BorderBrush" Value="#332C27"/>
+            <Setter Property="MinWidth" Value="96"/>
+            <Setter Property="Padding" Value="20,0"/>
+            <Setter Property="Background" Value="#111827"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#111827"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -33,10 +33,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#3A322B"/>
+                                <Setter TargetName="Root" Property="Background" Value="#1F2937"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#15120F"/>
+                                <Setter TargetName="Root" Property="Background" Value="#0F172A"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -45,9 +45,9 @@
         </Style>
 
         <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource DialogPillButton}">
-            <Setter Property="Background" Value="#ECE4DA"/>
-            <Setter Property="Foreground" Value="#2A241F"/>
-            <Setter Property="BorderBrush" Value="#DED3C7"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
         </Style>
 
         <Style x:Key="DialogCloseButton" TargetType="Button" BasedOn="{StaticResource DialogGhostButton}">
@@ -61,10 +61,10 @@
         <Style x:Key="DialogTextBox" TargetType="TextBox">
             <Setter Property="Height" Value="46"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#211D19"/>
-            <Setter Property="Foreground" Value="#F8F3EA"/>
-            <Setter Property="CaretBrush" Value="#F8F3EA"/>
-            <Setter Property="BorderBrush" Value="#3A332D"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="CaretBrush" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="14"/>
@@ -84,8 +84,8 @@
 
         <Style TargetType="ComboBoxItem">
             <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="Background" Value="#211D19"/>
-            <Setter Property="Foreground" Value="#F8F3EA"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="#111827"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
@@ -94,10 +94,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#3A322B"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#E5E7EB"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#4A4037"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#D1D5DB"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -108,9 +108,9 @@
         <Style x:Key="DialogComboBox" TargetType="ComboBox">
             <Setter Property="Height" Value="46"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#211D19"/>
-            <Setter Property="Foreground" Value="#F8F3EA"/>
-            <Setter Property="BorderBrush" Value="#3A332D"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Template">
@@ -125,14 +125,14 @@
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border CornerRadius="23"
                                                 Background="{TemplateBinding Background}"
-                                                BorderBrush="#3A332D"
+                                                BorderBrush="#E5E7EB"
                                                 BorderThickness="1">
                                             <Grid>
                                                 <ContentPresenter Margin="16,0,42,0"
                                                                   VerticalAlignment="Center"
                                                                   HorizontalAlignment="Left"
                                                                   Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
-                                                <TextBlock Text="⌄" Foreground="#C8B9AA" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2"/>
+                                                <TextBlock Text="⌄" Foreground="#9CA3AF" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2"/>
                                             </Grid>
                                         </Border>
                                     </ControlTemplate>
@@ -146,10 +146,13 @@
                                 <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         Margin="0,8,0,0"
                                         CornerRadius="18"
-                                        Background="#211D19"
-                                        BorderBrush="#3A332D"
+                                        Background="#FFFFFF"
+                                        BorderBrush="#E5E7EB"
                                         BorderThickness="1"
                                         Padding="6">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.12"/>
+                                    </Border.Effect>
                                     <ScrollViewer>
                                         <ItemsPresenter/>
                                     </ScrollViewer>
@@ -164,9 +167,9 @@
         <Style x:Key="DialogEditableComboBox" TargetType="ComboBox">
             <Setter Property="Height" Value="46"/>
             <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="#211D19"/>
-            <Setter Property="Foreground" Value="#F8F3EA"/>
-            <Setter Property="BorderBrush" Value="#3A332D"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="IsEditable" Value="True"/>
@@ -178,21 +181,21 @@
                         <Grid>
                             <Border CornerRadius="23"
                                     Background="{TemplateBinding Background}"
-                                    BorderBrush="#3A332D"
+                                    BorderBrush="#E5E7EB"
                                     BorderThickness="1">
                                 <Grid>
                                     <TextBox x:Name="PART_EditableTextBox"
                                              Margin="16,0,42,0"
                                              VerticalAlignment="Center"
                                              Background="Transparent"
-                                             Foreground="#F8F3EA"
-                                             CaretBrush="#F8F3EA"
+                                             Foreground="#111827"
+                                             CaretBrush="#111827"
                                              BorderThickness="0"
                                              FontSize="14"
                                              Focusable="True"
                                              IsReadOnly="{Binding IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}"
                                              Padding="0"/>
-                                    <TextBlock Text="⌄" Foreground="#C8B9AA" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2" IsHitTestVisible="False"/>
+                                    <TextBlock Text="⌄" Foreground="#9CA3AF" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2" IsHitTestVisible="False"/>
                                 </Grid>
                             </Border>
                             <ToggleButton x:Name="ToggleButton"
@@ -211,10 +214,13 @@
                                 <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                         Margin="0,8,0,0"
                                         CornerRadius="18"
-                                        Background="#211D19"
-                                        BorderBrush="#3A332D"
+                                        Background="#FFFFFF"
+                                        BorderBrush="#E5E7EB"
                                         BorderThickness="1"
                                         Padding="6">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.12"/>
+                                    </Border.Effect>
                                     <ScrollViewer MaxHeight="200">
                                         <ItemsPresenter/>
                                     </ScrollViewer>
@@ -231,10 +237,10 @@
         <Border CornerRadius="36"
                 Background="#01000000">
             <Border.Effect>
-                <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.22"/>
+                <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.18"/>
             </Border.Effect>
         </Border>
-        <Border CornerRadius="32" Background="#F3EDE4" BorderBrush="#FFF8EF" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
+        <Border CornerRadius="32" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -246,13 +252,13 @@
 
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Style="{StaticResource DialogCloseButton}"/>
-                <TextBlock Text="新建标签" FontSize="30" FontWeight="Black" Foreground="#201B17"/>
+                <TextBlock Text="新建标签" FontSize="30" FontWeight="Black" Foreground="#111827"/>
             </DockPanel>
 
             <TextBlock Grid.Row="1"
                        Text="互斥标签：同一分组只允许一本书保留一个；不互斥标签适合题材、主题、风格。"
                        Margin="0,8,0,0"
-                       Foreground="#7C6F64"
+                       Foreground="#6B7280"
                        TextWrapping="Wrap"/>
 
             <Grid Grid.Row="2" Margin="0,24,0,0">
@@ -262,7 +268,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <StackPanel>
-                    <TextBlock Text="标签名称" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                    <TextBlock Text="标签名称" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                     <TextBox x:Name="TagNameBox" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
                 </StackPanel>
                 <Grid Grid.Row="2">
@@ -272,11 +278,11 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="标签分组（可输入自定义）" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="标签分组（可输入自定义）" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                         <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource DialogEditableComboBox}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="规则" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="规则" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                         <ComboBox x:Name="TagTypeBox" Margin="0,8,0,0" Style="{StaticResource DialogComboBox}">
                             <ComboBoxItem Content="互斥"/>
                             <ComboBoxItem Content="不互斥"/>
@@ -286,40 +292,83 @@
             </Grid>
 
             <StackPanel Grid.Row="3" Margin="0,22,0,0">
-                <TextBlock Text="标签颜色" Foreground="#74685E" FontSize="12" FontWeight="SemiBold"/>
-                <ItemsControl x:Name="ColorPicker" Margin="0,10,0,0">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,8"
-                                    Background="{Binding}" Cursor="Hand"
-                                    MouseLeftButtonDown="ColorSwatch_Click"
-                                    BorderBrush="#3A332D" BorderThickness="1">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Opacity" Value="0.8"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <TextBlock Text="标签颜色" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                <WrapPanel Margin="0,10,0,0">
+                    <ItemsControl x:Name="PresetColorPicker">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,0"
+                                        Background="{Binding}" Cursor="Hand"
+                                        MouseLeftButtonDown="ColorSwatch_Click"
+                                        BorderBrush="#E5E7EB" BorderThickness="1">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Opacity" Value="0.8"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,0"
+                            Background="Transparent" Cursor="Hand"
+                            MouseLeftButtonDown="AddCustomColor_Click"
+                            BorderBrush="#D1D5DB" BorderThickness="1.5">
+                        <TextBlock Text="+" Foreground="#9CA3AF" FontSize="22"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="0.7"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+                    <ItemsControl x:Name="CustomColorPicker">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="36" Height="36" CornerRadius="18" Margin="0,0,8,8"
+                                        Background="{Binding}" Cursor="Hand"
+                                        MouseLeftButtonDown="ColorSwatch_Click"
+                                        BorderBrush="#E5E7EB" BorderThickness="1">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Opacity" Value="0.8"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </WrapPanel>
                 <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="16" HorizontalAlignment="Left" SnapsToDevicePixels="True">
-                    <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="#25211E"/>
+                    <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="#374151"/>
                 </Border>
             </StackPanel>
 
-            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
-                <Button Content="取消" Width="96" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
-                <Button Content="创建" Width="96" Click="Confirm_Click" Style="{StaticResource DialogPillButton}"/>
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,8">
+                <Button Content="取消" Width="96" Height="40" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
+                <Button Content="创建" Width="96" Height="40" Click="Confirm_Click" Style="{StaticResource DialogPillButton}"/>
             </StackPanel>
         </Grid>
         </Border>

@@ -1,20 +1,22 @@
 using MangaReader.Native.Models;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using WinForms = System.Windows.Forms;
 
 namespace MangaReader.Native;
 
 public partial class TagEditDialog : Window
 {
-    private static readonly string[] AvailableColors =
+    private static readonly string[] PresetColors =
     [
         "#F4B6C2", "#B7D7A8", "#A9CCE3", "#F7DC6F",
-        "#D7BDE2", "#F5CBA7", "#AED6F1", "#A3E4D7",
-        "#E8F1FF", "#FFF2D6", "#EAF7E8", "#EFE5DA"
+        "#D7BDE2", "#F5CBA7", "#AED6F1"
     ];
 
+    public ObservableCollection<string> CustomColors { get; } = new();
     private string _selectedColor;
 
     public string TagName => TagNameBox.Text.Trim();
@@ -35,7 +37,13 @@ public partial class TagEditDialog : Window
         PopulateCategories(existingCategories);
         SelectCategory(tag.Category);
         TagTypeBox.SelectedIndex = tag.IsExclusive ? 0 : 1;
-        ColorPicker.ItemsSource = AvailableColors;
+
+        PresetColorPicker.ItemsSource = PresetColors;
+        CustomColorPicker.ItemsSource = CustomColors;
+
+        if (!PresetColors.Contains(tag.Color, StringComparer.OrdinalIgnoreCase))
+            CustomColors.Add(tag.Color);
+
         _selectedColor = tag.Color;
         SelectColor(_selectedColor);
 
@@ -44,6 +52,30 @@ public partial class TagEditDialog : Window
             TagNameBox.Focus();
             TagNameBox.SelectAll();
         };
+    }
+
+    private void AddCustomColor_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (CustomColors.Count >= 8) return;
+
+        using var dialog = new WinForms.ColorDialog { FullOpen = true };
+        if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+        {
+            var color = $"#{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}";
+            if (!CustomColors.Contains(color, StringComparer.OrdinalIgnoreCase))
+            {
+                CustomColors.Add(color);
+            }
+            SelectColor(color);
+        }
+    }
+
+    private void ColorSwatch_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is string color)
+        {
+            SelectColor(color);
+        }
     }
 
     private void PopulateCategories(IEnumerable<string>? existingCategories)
@@ -95,16 +127,9 @@ public partial class TagEditDialog : Window
     private void SelectColor(string color)
     {
         _selectedColor = color;
-        SelectedColorPreview.Background = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+        SelectedColorPreview.Background = new SolidColorBrush(
+            (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
         SelectedColorText.Text = $"已选颜色：{color}";
-    }
-
-    private void ColorSwatch_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is System.Windows.Controls.Border border && border.Background is SolidColorBrush brush)
-        {
-            SelectColor(brush.Color.ToString());
-        }
     }
 
     private void More_Click(object sender, RoutedEventArgs e)

@@ -664,7 +664,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <TextBlock Text="★" Foreground="#9A5A00" FontSize="13" FontWeight="Black"/>
+                            <TextBlock Text="★" Foreground="#F59E0B" FontSize="14"/>
                         </Border>
                         <CheckBox IsChecked="{Binding IsSelectedForBatch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   Style="{StaticResource BatchSelectCheckBox}"
@@ -788,7 +788,7 @@
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="★" Foreground="#9A5A00" FontSize="14" FontWeight="Black"/>
+                        <TextBlock Text="★" Foreground="#F59E0B" FontSize="14"/>
                     </Border>
                 </Grid>
             </Border>
@@ -823,7 +823,7 @@
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="★" Foreground="#9A5A00" FontSize="11" FontWeight="Black"/>
+                        <TextBlock Text="★" Foreground="#F59E0B" FontSize="12"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="10,4,0,0">
                         <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="#25211E" TextTrimming="CharacterEllipsis"/>
