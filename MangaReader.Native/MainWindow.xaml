@@ -1622,21 +1622,19 @@
         <Border x:Name="DetailShell"
                 Grid.Column="1"
                 Grid.ColumnSpan="2"
-                Width="560"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Stretch"
+                Width="860"
+                MaxHeight="780"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
                 Panel.ZIndex="10"
                 Visibility="Collapsed"
-                Margin="22,26,0,26"
-                Padding="22"
+                Margin="26"
+                Padding="24"
                 CornerRadius="{StaticResource RadiusPanel}"
                 Background="#FFFFFF"
                 BorderBrush="#E5E7EB"
                 BorderThickness="1"
                 Effect="{StaticResource PanelShadow}">
-            <Border.RenderTransform>
-                <TranslateTransform X="0"/>
-            </Border.RenderTransform>
             <ScrollViewer VerticalScrollBarVisibility="Hidden" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
                 <Grid>
                     <StackPanel x:Name="EmptyDetailPanel" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,80,0,0">
@@ -1647,21 +1645,21 @@
 
                     <DockPanel x:Name="DetailPanel" Visibility="Collapsed" LastChildFill="True">
                         <Border DockPanel.Dock="Left"
-                                Width="148"
-                                Margin="0,0,22,0"
-                                Padding="10"
+                                Width="304"
+                                Margin="0,0,26,0"
+                                Padding="14"
                                 CornerRadius="{StaticResource RadiusPanel}"
                                 Background="#F8F2EC"
                                 BorderBrush="#EFE3D7"
                                 BorderThickness="1">
                             <StackPanel>
-                                <Border Width="126"
-                                        Height="178"
+                                <Border Width="276"
+                                        Height="390"
                                         CornerRadius="{StaticResource RadiusPanel}"
-                                        Background="#E8DDD2"
+                                        Background="#EEE5DC"
                                         ClipToBounds="True"
                                         Effect="{StaticResource BookShadow}">
-                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                    <Image Source="{Binding CoverImage}" Stretch="Uniform"/>
                                 </Border>
                                 <TextBlock Text="封面预览"
                                            Margin="0,12,0,4"
@@ -1703,19 +1701,15 @@
                                     <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyStatusText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
                                 </StackPanel>
-                                <DockPanel Grid.Column="2" LastChildFill="True">
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
                                     <Button x:Name="ToggleFavoriteButton"
-                                            DockPanel.Dock="Right"
-                                            Content="收藏"
+                                            Content="未收藏"
                                             Click="ToggleFavorite_Click"
                                             Style="{StaticResource TinyButton}"
-                                            Margin="8,0,0,0"
-                                            VerticalAlignment="Top"/>
-                                    <StackPanel>
-                                        <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
-                                        <TextBlock x:Name="ReadOnlyFavoriteText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
-                                    </StackPanel>
-                                </DockPanel>
+                                            HorizontalAlignment="Left"
+                                            Margin="0,2,0,0"/>
+                                </StackPanel>
                                 <StackPanel Grid.Column="4">
                                     <TextBlock Text="页数" Style="{StaticResource LabelText}"/>
                                     <TextBlock x:Name="ReadOnlyPageCountText" FontSize="16" FontWeight="Bold" Foreground="#25211E"/>
@@ -1782,7 +1776,12 @@
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="收藏" Style="{StaticResource LabelText}"/>
-                                <CheckBox x:Name="FavoriteBox" Content="收藏这本漫画" Margin="0,4,0,0"/>
+                                <Button x:Name="ToggleFavoriteEditButton"
+                                        Content="未收藏"
+                                        Click="ToggleFavorite_Click"
+                                        Style="{StaticResource TinyButton}"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
 

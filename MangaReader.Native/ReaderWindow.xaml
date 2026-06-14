@@ -188,6 +188,7 @@
                           VerticalScrollBarVisibility="Hidden"
                           Background="#050608"
                           Padding="6"
+                          PreviewMouseDown="ReaderScrollViewer_PreviewMouseDown"
                           PreviewMouseWheel="ReaderScrollViewer_PreviewMouseWheel"
                           PreviewMouseLeftButtonDown="ReaderScrollViewer_PreviewMouseLeftButtonDown"
                           PreviewMouseLeftButtonUp="ReaderScrollViewer_PreviewMouseLeftButtonUp"
@@ -288,6 +289,116 @@
             </Border>
         </Grid>
 
+        <Grid x:Name="PageCatalogOverlay"
+              Panel.ZIndex="16"
+              Background="#99000000"
+              Visibility="Collapsed"
+              PreviewMouseWheel="PageCatalogOverlay_PreviewMouseWheel">
+            <Border Margin="42"
+                    Padding="20"
+                    CornerRadius="{StaticResource RadiusPanel}"
+                    Background="#F0080A0E"
+                    BorderBrush="#22FFFFFF"
+                    BorderThickness="1"
+                    Effect="{StaticResource ToolbarShadow}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="目录"
+                                       FontSize="22"
+                                       FontWeight="Black"
+                                       Foreground="#F9FAFB"/>
+                            <TextBlock Text="左键跳转页面；右键可将图片设为封面。"
+                                       Margin="0,6,0,0"
+                                       FontSize="12"
+                                       Foreground="#94A3B8"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="关闭"
+                                Click="ClosePageCatalog_Click"
+                                VerticalAlignment="Center"/>
+                    </Grid>
+                    <ListBox x:Name="PageCatalogList"
+                             Grid.Row="1"
+                             ItemsSource="{Binding PageCatalogItems}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="142"
+                                        Height="210"
+                                        Margin="7"
+                                        Padding="8"
+                                        CornerRadius="{StaticResource RadiusControl}"
+                                        Background="#141E293B"
+                                        BorderBrush="#26FFFFFF"
+                                        BorderThickness="1"
+                                        Cursor="Hand"
+                                        MouseLeftButtonDown="PageCatalogItem_MouseLeftButtonDown">
+                                    <Border.ContextMenu>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                            <MenuItem Header="设为封面" Click="SetCatalogPageAsCover_Click"/>
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Border CornerRadius="{StaticResource RadiusControl}"
+                                                Background="#0F172A"
+                                                ClipToBounds="True">
+                                            <Image Source="{Binding Thumbnail}"
+                                                   Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="LowQuality"/>
+                                        </Border>
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding PageText}"
+                                                   Margin="0,8,0,0"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="#CBD5E1"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
+
         <Border x:Name="TopToolbar"
                 Panel.ZIndex="10"
                 VerticalAlignment="Top"
@@ -329,6 +440,7 @@
                     <Button x:Name="FitWidthButton" Content="适宽" Click="FitWidth_Click"/>
                     <Button x:Name="FitHeightButton" Content="适高" Click="FitHeight_Click"/>
                     <Button x:Name="BackgroundButton" Content="背景" Click="CycleBackgroundButton_Click"/>
+                    <Button x:Name="CatalogButton" Content="目录" Click="CatalogButton_Click"/>
                 </StackPanel>
                 <Slider Grid.Column="1" x:Name="ZoomSlider" Minimum="0.05" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="ZoomSlider_ValueChanged" Margin="0,0,14,0"/>
                 <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>

@@ -623,7 +623,6 @@ public partial class MainWindow : Window
         _currentBook.Title = title;
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
         _currentBook.ReadingStatus = GetSelectedReadingStatus();
-        _currentBook.IsFavorite = FavoriteBox.IsChecked == true;
         if (!TryNormalizeDate(ProducedAtBox.Text, out var producedAt))
         {
             StatusText.Text = "出品时间格式不正确，请使用类似 2002-03-09 的标准格式。";
@@ -1667,12 +1666,10 @@ public partial class MainWindow : Window
         CoverPageBox.Text = (book.CoverPageIndex + 1).ToString();
         ReadCountBox.Text = book.ReadCount.ToString();
         SetSelectedReadingStatus(book.ReadingStatus);
-        FavoriteBox.IsChecked = book.IsFavorite;
         SummaryBox.Text = book.Summary;
         ReadOnlyAuthorText.Text = EmptyAsPlaceholder(book.Author);
         ReadOnlyForeignNameText.Text = EmptyAsPlaceholder(book.ForeignName);
         ReadOnlyStatusText.Text = book.ReadingStatusText;
-        ReadOnlyFavoriteText.Text = book.IsFavorite ? "已收藏" : "未收藏";
         ReadOnlyPageCountText.Text = book.PageCount.ToString();
         ReadOnlyProducedAtText.Text = EmptyAsPlaceholder(book.ProducedAt);
         ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(book.ImportedAt);
@@ -1683,7 +1680,8 @@ public partial class MainWindow : Window
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
         HideBookButtonEdit.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
-        ToggleFavoriteButton.Content = book.IsFavorite ? "取消收藏" : "收藏";
+        ToggleFavoriteButton.Content = book.IsFavorite ? "已收藏" : "未收藏";
+        ToggleFavoriteEditButton.Content = book.IsFavorite ? "已收藏" : "未收藏";
     }
 
     private void SetDetailVisible(bool visible)
@@ -1698,11 +1696,11 @@ public partial class MainWindow : Window
 
         if (visible)
         {
-            MotionService.ShowDrawer(DetailShell);
+            MotionService.ShowWithFade(DetailShell);
         }
         else if (DetailShell.Visibility == Visibility.Visible)
         {
-            MotionService.HideDrawer(DetailShell);
+            MotionService.HideWithFade(DetailShell);
         }
         else
         {

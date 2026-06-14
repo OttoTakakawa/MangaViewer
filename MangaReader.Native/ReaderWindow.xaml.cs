@@ -1,5 +1,8 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -58,6 +61,10 @@ public partial class ReaderWindow : Window
     private bool _isLoadingViewerPreferences;
     private bool _isNextBookPromptOpen;
     private MangaBook? _pendingNextBook;
+    private CancellationTokenSource? _catalogLoadCancellation;
+    private System.Windows.Point? _holdZoomLastPointerInViewport;
+
+    public ObservableCollection<PageCatalogItem> PageCatalogItems { get; } = [];
 
     private enum FitMode
     {
@@ -80,6 +87,7 @@ public partial class ReaderWindow : Window
         _prevKeys = prevKeys;
         _nextBookResolver = nextBookResolver;
         _openBookRequest = openBookRequest;
+        DataContext = this;
         Title = book.Title;
         TitleText.Text = book.Title;
         _controlsRevealTimer.Tick += ControlsRevealTimer_Tick;
@@ -106,6 +114,9 @@ public partial class ReaderWindow : Window
         _pageLoadCancellation?.Cancel();
         _pageLoadCancellation?.Dispose();
         _pageLoadCancellation = null;
+        _catalogLoadCancellation?.Cancel();
+        _catalogLoadCancellation?.Dispose();
+        _catalogLoadCancellation = null;
         var book = _book;
         var wheelMode = WheelModeBox.SelectedIndex.ToString();
         _ = Task.Run(() =>
@@ -351,7 +362,12 @@ public partial class ReaderWindow : Window
         }
         else if (e.Key == Key.Escape)
         {
-            if (_isNextBookPromptOpen)
+            if (PageCatalogOverlay.Visibility == Visibility.Visible)
+            {
+                HidePageCatalog();
+                e.Handled = true;
+            }
+            else if (_isNextBookPromptOpen)
             {
                 NextBookCancel_Click(sender, new RoutedEventArgs());
                 e.Handled = true;
@@ -374,7 +390,7 @@ public partial class ReaderWindow : Window
         switch (key)
         {
             case Key.W:
-                ToggleFullscreen();
+                CyclePresentationMode();
                 return true;
             case Key.E:
                 SetFitMode(FitMode.Height);
@@ -655,6 +671,7 @@ public partial class ReaderWindow : Window
         if (BottomToolbar is not null) BottomToolbar.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
         if (HiddenControlsBadge is not null) HiddenControlsBadge.Visibility = hidden ? Visibility.Visible : Visibility.Collapsed;
         if (ToggleControlsButton is not null) ToggleControlsButton.Content = hidden ? "显示" : "隐藏";
+        UpdatePresentationButton();
 
         if (hidden)
         {
@@ -671,6 +688,11 @@ public partial class ReaderWindow : Window
 
     private void ReaderScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (PageCatalogOverlay.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
         switch (WheelModeBox.SelectedIndex)
         {
             case 1:
@@ -699,14 +721,36 @@ public partial class ReaderWindow : Window
 
     private void ReaderScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (PageCatalogOverlay.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
         NavigateByClickPosition(e.GetPosition(ReaderScrollViewer));
+        e.Handled = true;
+    }
+
+    private void ReaderScrollViewer_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle)
+        {
+            return;
+        }
+
+        CyclePresentationMode();
         e.Handled = true;
     }
 
     private void ReaderScrollViewer_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (PageCatalogOverlay.Visibility == Visibility.Visible)
+        {
+            return;
+        }
+
         _isHoldZoomActive = true;
         _holdZoomBaseValue = ZoomSlider.Value;
+        _holdZoomLastPointerInViewport = null;
         try
         {
             Mouse.Capture(ReaderScrollViewer);
@@ -786,9 +830,19 @@ public partial class ReaderWindow : Window
             return;
         }
 
+        if (_holdZoomLastPointerInViewport is { } previousPointer)
+        {
+            var delta = pointerInViewport - previousPointer;
+            ReaderScrollViewer.ScrollToHorizontalOffset(Math.Max(0, ReaderScrollViewer.HorizontalOffset - delta.X));
+            ReaderScrollViewer.ScrollToVerticalOffset(Math.Max(0, ReaderScrollViewer.VerticalOffset - delta.Y));
+            _holdZoomLastPointerInViewport = pointerInViewport;
+            return;
+        }
+
         var contentPoint = ImageHost.TranslatePoint(imageHostPosition, ImageScrollContent);
         ReaderScrollViewer.ScrollToHorizontalOffset(Math.Max(0, contentPoint.X - pointerInViewport.X));
         ReaderScrollViewer.ScrollToVerticalOffset(Math.Max(0, contentPoint.Y - pointerInViewport.Y));
+        _holdZoomLastPointerInViewport = pointerInViewport;
     }
 
     private void ReleaseHoldZoom()
@@ -799,6 +853,7 @@ public partial class ReaderWindow : Window
         }
 
         _isHoldZoomActive = false;
+        _holdZoomLastPointerInViewport = null;
         ZoomSlider.Value = _holdZoomBaseValue;
         if (Mouse.Captured == ReaderScrollViewer)
         {
@@ -928,26 +983,222 @@ public partial class ReaderWindow : Window
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleFullscreen();
+        CyclePresentationMode();
+    }
+
+    private void CyclePresentationMode()
+    {
+        if (!_isFullscreen)
+        {
+            EnterFullscreen();
+            SetControlsHidden(false);
+            return;
+        }
+
+        if (!_controlsHidden)
+        {
+            SetControlsHidden(true);
+            return;
+        }
+
+        ExitFullscreen();
+        SetControlsHidden(false);
     }
 
     private void ToggleFullscreen()
     {
         if (_isFullscreen)
         {
-            _isFullscreen = false;
-            WindowStyle = _previousWindowStyle;
-            WindowState = _previousWindowState;
-            FullscreenButton.Content = "全屏";
+            ExitFullscreen();
+            return;
         }
-        else
+
+        EnterFullscreen();
+    }
+
+    private void EnterFullscreen()
+    {
+        if (_isFullscreen)
         {
-            _isFullscreen = true;
-            _previousWindowStyle = WindowStyle;
-            _previousWindowState = WindowState;
-            WindowStyle = WindowStyle.None;
-            WindowState = WindowState.Maximized;
-            FullscreenButton.Content = "退出";
+            return;
+        }
+
+        _isFullscreen = true;
+        _previousWindowStyle = WindowStyle;
+        _previousWindowState = WindowState;
+        WindowStyle = WindowStyle.None;
+        WindowState = WindowState.Maximized;
+        UpdatePresentationButton();
+    }
+
+    private void ExitFullscreen()
+    {
+        if (!_isFullscreen)
+        {
+            return;
+        }
+
+        _isFullscreen = false;
+        WindowStyle = _previousWindowStyle;
+        WindowState = _previousWindowState;
+        UpdatePresentationButton();
+    }
+
+    private void UpdatePresentationButton()
+    {
+        if (FullscreenButton is null)
+        {
+            return;
+        }
+
+        FullscreenButton.Content = !_isFullscreen
+            ? "全屏"
+            : _controlsHidden
+                ? "窗口"
+                : "隐藏UI";
+    }
+
+    private void CatalogButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowPageCatalog();
+    }
+
+    private void ClosePageCatalog_Click(object sender, RoutedEventArgs e)
+    {
+        HidePageCatalog();
+    }
+
+    private void ShowPageCatalog()
+    {
+        ReleaseHoldZoom();
+        CloseReaderDropdowns();
+        PageCatalogOverlay.Visibility = Visibility.Visible;
+        EnsurePageCatalogItems();
+        StartPageCatalogThumbnailLoad();
+    }
+
+    private void HidePageCatalog()
+    {
+        PageCatalogOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void PageCatalogOverlay_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = false;
+    }
+
+    private void EnsurePageCatalogItems()
+    {
+        if (PageCatalogItems.Count == _book.Pages.Count)
+        {
+            return;
+        }
+
+        PageCatalogItems.Clear();
+        for (var i = 0; i < _book.Pages.Count; i++)
+        {
+            PageCatalogItems.Add(new PageCatalogItem(i, _book.Pages[i]));
+        }
+    }
+
+    private void StartPageCatalogThumbnailLoad()
+    {
+        _catalogLoadCancellation?.Cancel();
+        _catalogLoadCancellation?.Dispose();
+        _catalogLoadCancellation = new CancellationTokenSource();
+        var token = _catalogLoadCancellation.Token;
+        var items = PageCatalogItems.ToList();
+
+        _ = Task.Run(async () =>
+        {
+            foreach (var item in items)
+            {
+                token.ThrowIfCancellationRequested();
+                if (item.Thumbnail is not null)
+                {
+                    continue;
+                }
+
+                BitmapSource? thumbnail = null;
+                try
+                {
+                    thumbnail = ImageLoader.LoadBitmap(item.Path, 180);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
+                {
+                    AppLogger.Warn("reader-catalog", $"Thumbnail failed: page={item.PageIndex + 1}, path={item.Path}, error={ex.Message}");
+                }
+
+                if (thumbnail is not null)
+                {
+                    await Dispatcher.InvokeAsync(() => item.Thumbnail = thumbnail, DispatcherPriority.Background);
+                }
+            }
+        }, token);
+    }
+
+    private void PageCatalogItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        HidePageCatalog();
+        LoadPage(item.PageIndex);
+        e.Handled = true;
+    }
+
+    private async void SetCatalogPageAsCover_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        _book.CoverPageIndex = item.PageIndex;
+        var book = _book;
+        await Task.Run(() => _database.SaveMetadata(book));
+        _book.CoverImage = await Task.Run(() => ImageLoader.LoadBitmap(item.Path, 240));
+        _book.NotifyAll();
+        StatusCatalogFeedback($"已将第 {item.PageIndex + 1} 页设为封面。");
+    }
+
+    private void StatusCatalogFeedback(string message)
+    {
+        _boundaryHint = message;
+        UpdateNavigationState();
+    }
+
+    public sealed class PageCatalogItem : INotifyPropertyChanged
+    {
+        private BitmapSource? _thumbnail;
+
+        public PageCatalogItem(int pageIndex, string path)
+        {
+            PageIndex = pageIndex;
+            Path = path;
+        }
+
+        public int PageIndex { get; }
+        public string Path { get; }
+        public string PageText => $"第 {PageIndex + 1} 页";
+
+        public BitmapSource? Thumbnail
+        {
+            get => _thumbnail;
+            set
+            {
+                _thumbnail = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
