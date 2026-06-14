@@ -102,12 +102,18 @@ public partial class TagEditDialog : Window
 
     private string GetSelectedCategory()
     {
+        var text = TagCategoryBox.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
         if (TagCategoryBox.SelectedItem is ComboBoxItem item)
         {
             return item.Content as string ?? "自定义";
         }
-        var text = TagCategoryBox.Text?.Trim();
-        return string.IsNullOrWhiteSpace(text) ? "自定义" : text;
+
+        return "自定义";
     }
 
     private void SelectCategory(string category)

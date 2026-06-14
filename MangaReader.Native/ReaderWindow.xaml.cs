@@ -472,6 +472,10 @@ public partial class ReaderWindow : Window
             NormalizeDisplayedImageSizing();
             ApplyDoublePageGap();
             _book.LastReadPageIndex = safeIndex;
+            if (safeIndex > 0 && _book.ReadingStatus == "unread")
+            {
+                _book.ReadingStatus = "reading";
+            }
             var progressBook = _book;
             await Task.Run(() => _database.SaveProgress(progressBook));
             UpdateNavigationState();

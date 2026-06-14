@@ -103,6 +103,13 @@ public sealed class MangaBook : INotifyPropertyChanged
         set
         {
             _readCount = Math.Max(0, value);
+            if (_readCount > 0 && _readingStatus == "unread")
+            {
+                _readingStatus = "reading";
+                OnPropertyChanged(nameof(ReadingStatus));
+                OnPropertyChanged(nameof(ReadingStatusText));
+                OnPropertyChanged(nameof(StatusBadgeText));
+            }
             OnPropertyChanged();
             OnPropertyChanged(nameof(ReadCountText));
             OnPropertyChanged(nameof(ReadCountBadgeText));
@@ -116,7 +123,8 @@ public sealed class MangaBook : INotifyPropertyChanged
         get => _readingStatus;
         set
         {
-            _readingStatus = NormalizeReadingStatus(value);
+            var normalized = NormalizeReadingStatus(value);
+            _readingStatus = _readCount > 0 && normalized == "unread" ? "reading" : normalized;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ReadingStatusText));
             OnPropertyChanged(nameof(StatusBadgeText));
@@ -146,8 +154,6 @@ public sealed class MangaBook : INotifyPropertyChanged
     public string ReadingStatusText => ReadingStatus switch
     {
         "reading" => "在读",
-        "finished" => "已读",
-        "paused" => "搁置",
         _ => "未读"
     };
     public string StatusBadgeText => ReadingStatusText;
@@ -251,7 +257,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     {
         return status switch
         {
-            "reading" or "finished" or "paused" => status,
+            "reading" or "finished" or "paused" => "reading",
             _ => "unread"
         };
     }

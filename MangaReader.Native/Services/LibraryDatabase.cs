@@ -252,11 +252,13 @@ public sealed class LibraryDatabase
             """
             UPDATE books
             SET last_read_page_index = $lastReadPageIndex,
+                reading_status = $readingStatus,
                 updated_at = $updatedAt
             WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$id", book.Id);
         command.Parameters.AddWithValue("$lastReadPageIndex", book.LastReadPageIndex);
+        command.Parameters.AddWithValue("$readingStatus", book.ReadingStatus);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
     }
@@ -477,11 +479,13 @@ public sealed class LibraryDatabase
             """
             UPDATE books
             SET read_count = $readCount,
+                reading_status = $readingStatus,
                 updated_at = $updatedAt
             WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$id", book.Id);
         command.Parameters.AddWithValue("$readCount", book.ReadCount);
+        command.Parameters.AddWithValue("$readingStatus", book.ReadingStatus);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
         _lastMetadataBackupAt = DateTimeOffset.Now;

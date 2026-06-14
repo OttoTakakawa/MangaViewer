@@ -621,6 +621,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        var previousCoverPageIndex = _currentBook.CoverPageIndex;
         _currentBook.Title = title;
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
         _currentBook.ReadingStatus = GetSelectedReadingStatus();
@@ -651,9 +652,14 @@ public partial class MainWindow : Window
             return;
         }
         _currentBook.ReadCount = readCount;
+        NormalizeReadingStatusForReadCount(_currentBook);
 
         var book = _currentBook;
         await Task.Run(() => _database.SaveMetadata(book));
+        if (previousCoverPageIndex != book.CoverPageIndex)
+        {
+            await ReloadCoverAsync(book);
+        }
         _currentBook.NotifyAll();
         RefreshLibraryViews(tagManager: false, sort: true);
         RefreshHomeShelves();
@@ -684,7 +690,7 @@ public partial class MainWindow : Window
         _currentBook.CoverPageIndex = Math.Clamp(coverPage - 1, 0, Math.Max(_currentBook.PageCount - 1, 0));
         var book = _currentBook;
         await Task.Run(() => _database.SaveMetadata(book));
-        _currentBook.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
+        await ReloadCoverAsync(book);
         _currentBook.NotifyAll();
         StatusText.Text = $"封面已设置为第 {_currentBook.CoverPageIndex + 1} 页。";
     }
@@ -738,6 +744,7 @@ public partial class MainWindow : Window
         }
 
         _currentBook.ReadCount = Math.Max(0, _currentBook.ReadCount + delta);
+        NormalizeReadingStatusForReadCount(_currentBook);
         var book = _currentBook;
         await Task.Run(() => _database.SaveReadCount(book));
         _currentBook.NotifyAll();
@@ -746,6 +753,20 @@ public partial class MainWindow : Window
         RefreshBookFilter();
         RefreshHomeShelves();
         StatusText.Text = $"《{_currentBook.Title}》已标记为读过 {_currentBook.ReadCount} 次。";
+    }
+
+    private async Task ReloadCoverAsync(MangaBook book)
+    {
+        book.CoverImage = null;
+        book.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
+    }
+
+    private static void NormalizeReadingStatusForReadCount(MangaBook book)
+    {
+        if (book.ReadCount > 0)
+        {
+            book.ReadingStatus = "reading";
+        }
     }
 
     private async void HideBook_Click(object sender, RoutedEventArgs e)
@@ -2333,8 +2354,6 @@ public partial class MainWindow : Window
         {
             1 => "unread",
             2 => "reading",
-            3 => "finished",
-            4 => "paused",
             _ => ""
         };
     }
@@ -2351,7 +2370,7 @@ public partial class MainWindow : Window
             || TotalBookCountText is null
             || FavoriteCountText is null
             || ReadingNowCountText is null
-            || FinishedCountText is null
+            || ReadCountBookText is null
             || FilterSummaryText is null
             || ShelfEmptyState is null
             || ShelfEmptyHintText is null)
@@ -2362,7 +2381,7 @@ public partial class MainWindow : Window
         var libraryCount = 0;
         var favoriteCount = 0;
         var readingNowCount = 0;
-        var finishedCount = 0;
+        var readCount = 0;
         var visibleCount = Books.Count;
         foreach (var book in _allBooks)
         {
@@ -2380,9 +2399,9 @@ public partial class MainWindow : Window
             {
                 readingNowCount++;
             }
-            if (book.ReadingStatus == "finished")
+            if (book.ReadCount > 0)
             {
-                finishedCount++;
+                readCount++;
             }
         }
 
@@ -2392,7 +2411,7 @@ public partial class MainWindow : Window
             : $"/ 共 {libraryCount} 本";
         FavoriteCountText.Text = $"{favoriteCount} 本";
         ReadingNowCountText.Text = $"{readingNowCount} 本";
-        FinishedCountText.Text = $"{finishedCount} 本";
+        ReadCountBookText.Text = $"{readCount} 本";
         FilterSummaryText.Text = BuildFilterSummary(visibleCount, libraryCount);
 
         var isEmpty = visibleCount == 0;
@@ -2570,8 +2589,6 @@ public partial class MainWindow : Window
         return status switch
         {
             "reading" => "在读",
-            "finished" => "已读",
-            "paused" => "搁置",
             _ => "未读"
         };
     }
@@ -2594,14 +2611,14 @@ public partial class MainWindow : Window
             .ToList();
 
         ReplaceBooks(ContinueReadingBooks, homeBooks
-            .Where(book => book.ReadingStatus == "reading" || (book.LastReadPageIndex > 0 && book.ReadingStatus != "finished"))
+            .Where(book => book.ReadingStatus == "reading" || book.LastReadPageIndex > 0)
             .OrderByDescending(book => book.ReadingStatus == "reading")
             .ThenByDescending(book => book.LastReadPageIndex)
             .ThenByDescending(book => book.ReadCount)
             .Take(3));
 
         ReplaceBooks(RecentReadingBooks, homeBooks
-            .Where(book => book.LastReadPageIndex > 0 || book.ReadCount > 0 || book.ReadingStatus == "finished")
+            .Where(book => book.LastReadPageIndex > 0 || book.ReadCount > 0)
             .OrderByDescending(book => book.LastReadPageIndex)
             .ThenByDescending(book => book.ReadCount)
             .Take(4));

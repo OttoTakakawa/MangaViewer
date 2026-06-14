@@ -176,10 +176,16 @@
                                           Focusable="False"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                           ClickMode="Press"
-                                          IsHitTestVisible="False"
                                           HorizontalAlignment="Right"
                                           Width="42"
-                                          Opacity="0"/>
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
                             <Popup x:Name="PART_Popup"
                                    AllowsTransparency="True"
                                    IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
