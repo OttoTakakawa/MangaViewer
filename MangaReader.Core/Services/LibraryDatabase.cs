@@ -1,3 +1,4 @@
+using MangaReader.Core.Abstractions;
 using MangaReader.Core.Models;
 using Microsoft.Data.Sqlite;
 
@@ -35,7 +36,7 @@ public sealed class LibraryDatabase
     private readonly string _backupPath;
     private DateTimeOffset _lastMetadataBackupAt = DateTimeOffset.MinValue;
 
-    public LibraryDatabase(AppStorage storage)
+    public LibraryDatabase(IAppStorageProvider storage)
     {
         _databasePath = storage.DatabasePath;
         _backupPath = storage.BackupPath;

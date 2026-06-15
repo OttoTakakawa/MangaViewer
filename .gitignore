@@ -1,6 +1,7 @@
 bin/
 obj/
 _release/
+_release_macos/
 MangaReader_Data/
 MangaReader_DataLocation.txt
 node_modules/

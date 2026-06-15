@@ -19,9 +19,19 @@ public sealed class AppStorage : IAppStorageProvider
     public static string DataLocationPath => Path.Combine(AppContext.BaseDirectory, DataLocationFileName);
 
     public AppStorage()
+        : this(ResolveRoot(), isCustomRoot: !Path.GetFullPath(ResolveRoot()).Equals(Path.GetFullPath(DefaultRoot), StringComparison.OrdinalIgnoreCase))
     {
-        Root = ResolveRoot();
-        UsesCustomRoot = !Path.GetFullPath(Root).Equals(Path.GetFullPath(DefaultRoot), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public AppStorage(string root)
+        : this(root, isCustomRoot: true)
+    {
+    }
+
+    private AppStorage(string root, bool isCustomRoot)
+    {
+        Root = Path.GetFullPath(root);
+        UsesCustomRoot = isCustomRoot;
         DatabasePath = Path.Combine(Root, "app.db");
         CoverCachePath = Path.Combine(Root, "cache", "covers");
         LogsPath = Path.Combine(Root, "logs");

@@ -1,0 +1,116 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:MangaReader.Core.Models;assembly=MangaReader.Core"
+        x:Class="MangaReader.Avalonia.MainWindow"
+        Width="1180"
+        Height="760"
+        MinWidth="920"
+        MinHeight="620"
+        Title="MangaReader macOS MVP"
+        Background="#F6F7F9">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="20,14">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+        <StackPanel>
+          <TextBlock Text="MangaReader macOS" FontSize="20" FontWeight="Bold" Foreground="#111827"/>
+          <TextBlock x:Name="StatusText" Text="选择漫画根目录开始扫描。" Margin="0,4,0,0" Foreground="#6B7280"/>
+        </StackPanel>
+        <Button Grid.Column="1" Content="选择目录" Click="PickFolder_Click" Padding="16,8"/>
+        <Button Grid.Column="2" Content="重新扫描" Click="Rescan_Click" Padding="16,8"/>
+        <Button Grid.Column="3" Content="打开 GitHub" Click="OpenGitHub_Click" Padding="16,8"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="300,*">
+      <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0">
+        <DockPanel>
+          <TextBox x:Name="SearchBox"
+                   DockPanel.Dock="Top"
+                   Watermark="搜索书名 / 作者 / Tag"
+                   Margin="16"
+                   TextChanged="SearchBox_TextChanged"/>
+          <ListBox x:Name="BooksList"
+                   SelectionChanged="BooksList_SelectionChanged"
+                   Padding="10,0,10,12">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="models:MangaBook">
+                <Border Padding="10" Margin="0,0,0,8" CornerRadius="10" Background="#F8FAFC">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#111827" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Author}" Margin="0,3,0,0" Foreground="#6B7280" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding LibraryMetaText}" Margin="0,6,0,0" Foreground="#8D8177" FontSize="12"/>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <ScrollViewer Grid.Column="1">
+        <Grid Margin="32" ColumnDefinitions="260,*" ColumnSpacing="40">
+          <Border Width="260" Height="390" CornerRadius="14" BorderBrush="#E5E7EB" BorderThickness="1" Background="#FFFFFF">
+            <Grid>
+              <Image x:Name="CoverImage" Stretch="UniformToFill"/>
+              <TextBlock x:Name="CoverPlaceholder" Text="暂无封面" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#8D8177"/>
+            </Grid>
+          </Border>
+
+          <StackPanel Grid.Column="1" Spacing="22">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+              <StackPanel>
+                <TextBlock x:Name="TitleText" Text="未选择作品" FontSize="32" FontWeight="Bold" Foreground="#111827" TextWrapping="Wrap"/>
+                <TextBlock x:Name="AuthorText" Text="作者 -" Margin="0,8,0,0" Foreground="#6B7280" FontSize="15"/>
+                <TextBlock x:Name="MetaText" Text="0 页" Margin="0,6,0,0" Foreground="#8D8177" FontSize="13"/>
+              </StackPanel>
+              <Button Grid.Column="1" x:Name="FavoriteButton" Content="☆ 收藏" Click="Favorite_Click" Padding="16,8"/>
+              <Button Grid.Column="2" Content="开始阅读" Click="Read_Click" Padding="22,8" Background="#111827" Foreground="White"/>
+            </Grid>
+
+            <ItemsControl x:Name="TagChips">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:TagChip">
+                  <Border Margin="0,0,8,8" Padding="10,5" CornerRadius="14" Background="{Binding Color}">
+                    <TextBlock Text="{Binding Name}" FontSize="13" Foreground="#374151"/>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel>
+              <TextBlock Text="简介" FontWeight="SemiBold" FontSize="16" Foreground="#111827"/>
+              <TextBlock x:Name="SummaryText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#4B5563" LineHeight="22"/>
+            </StackPanel>
+
+            <StackPanel>
+              <TextBlock Text="作品信息" FontWeight="SemiBold" FontSize="16" Foreground="#111827"/>
+              <Grid Margin="0,12,0,0" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="96,*" RowSpacing="10" ColumnSpacing="16">
+                <TextBlock Grid.Row="0" Text="作者" Foreground="#8D8177"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="MetaAuthorText"/>
+                <TextBlock Grid.Row="1" Text="外文名" Foreground="#8D8177"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ForeignNameText"/>
+                <TextBlock Grid.Row="2" Text="页数" Foreground="#8D8177"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="PageCountText"/>
+                <TextBlock Grid.Row="3" Text="封面页" Foreground="#8D8177"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" x:Name="CoverPageText"/>
+                <TextBlock Grid.Row="4" Text="录入时间" Foreground="#8D8177"/>
+                <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ImportedAtText"/>
+              </Grid>
+            </StackPanel>
+
+            <StackPanel>
+              <TextBlock Text="文件" FontWeight="SemiBold" FontSize="16" Foreground="#111827"/>
+              <TextBlock x:Name="FolderPathText" Margin="0,10,0,0" Foreground="#6B7280" TextWrapping="Wrap"/>
+              <Button Content="打开所在文件夹" Click="OpenFolder_Click" Margin="0,12,0,0" HorizontalAlignment="Left" Padding="16,8"/>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</Window>

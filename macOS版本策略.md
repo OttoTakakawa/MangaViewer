@@ -436,3 +436,49 @@ dotnet build MangaReader.Native\MangaReader.Native.csproj -c Release -nologo
 - `MangaReader.Core`：0 警告，0 错误。
 - `MangaReader.Native`：0 警告，0 错误。
 - `MangaReader.Core` 中未发现 `System.Windows`、`System.Windows.Forms`、`BitmapSource`、`BitmapImage`、`MangaReader.Native` 残留引用。
+
+### 2026-06-15：P2/P4 macOS MVP 与发布链路
+
+已完成：
+
+- 新增 `MangaReader.Avalonia`，目标框架为 `net8.0`。
+- 使用 Avalonia 11.3.2 搭建跨平台桌面壳，不依赖 WPF/WinForms。
+- MVP 功能闭环：
+  - 选择漫画根目录；
+  - 使用 Core 的 `LibraryScanner` 扫描图片目录；
+  - 使用 Core 的 `LibraryDatabase` 持久化 SQLite 书库；
+  - 书库列表、搜索、详情页展示；
+  - 封面预览、Tag 胶囊、简介、作品信息、文件路径；
+  - 收藏状态保存；
+  - 阅读器窗口、上一页/下一页、A/D/方向键/空格快捷翻页；
+  - 点击“开始阅读”自动增加阅读次数并保存进度。
+- macOS 数据目录切到 `~/Library/Application Support/MangaReader`，避免向 `.app` 包内写入用户数据。
+- 新增 `pack-macos.ps1` 与 `pack-macos.sh`：
+  - 支持 `osx-arm64`；
+  - 支持 `osx-x64`；
+  - 生成 `.app` bundle；
+  - 生成 `MangaReader-osx-arm64.zip` 与 `MangaReader-osx-x64.zip`。
+- `.gitignore` 已忽略 `_release_macos/`。
+
+验证：
+
+```powershell
+dotnet build MangaReader.Core\MangaReader.Core.csproj -c Release -nologo
+dotnet build MangaReader.Native\MangaReader.Native.csproj -c Release -nologo
+dotnet build MangaReader.Avalonia\MangaReader.Avalonia.csproj -c Release -nologo
+powershell -ExecutionPolicy Bypass -File .\pack-macos.ps1
+```
+
+结果：
+
+- `MangaReader.Core`：0 警告，0 错误。
+- `MangaReader.Native`：0 警告，0 错误。
+- `MangaReader.Avalonia`：0 警告，0 错误。
+- 已产出 `_release_macos/MangaReader-osx-arm64.zip`，约 41.21 MB。
+- 已产出 `_release_macos/MangaReader-osx-x64.zip`，约 42.79 MB。
+
+限制：
+
+- 当前 macOS 包未做 Apple Developer ID 签名与 notarization，首次运行可能需要用户在系统安全设置中确认。
+- 当前阅读器为 MVP：已覆盖单页阅读和快捷翻页，尚未迁移 Windows 版的双页、缩放、LRU 页图缓存和邻页预解码细节。
+- 自动更新仍按策略降级为打开 GitHub Releases。
