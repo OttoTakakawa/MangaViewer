@@ -16,6 +16,8 @@ public sealed partial class MainWindow : Window
     private readonly LibraryDatabase _database;
     private readonly LibraryScanner _scanner = new();
     private readonly ObservableCollection<MangaBook> _books = [];
+    private readonly ObservableCollection<string> _tagRows = [];
+    private readonly ObservableCollection<string> _authorRows = [];
     private readonly List<MangaBook> _allBooks = [];
     private MangaBook? _selectedBook;
     private string? _currentRoot;
@@ -30,6 +32,9 @@ public sealed partial class MainWindow : Window
         _database.Initialize();
 
         BooksList.ItemsSource = _books;
+        TagManagerList.ItemsSource = _tagRows;
+        AuthorManagerList.ItemsSource = _authorRows;
+        ShowPage(LibraryPagePanel, "书库");
         LoadInitialLibrary();
     }
 
@@ -79,6 +84,36 @@ public sealed partial class MainWindow : Window
     private void SearchBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         ApplyFilter();
+    }
+
+    private void BookFilter_Changed(object? sender, RoutedEventArgs e)
+    {
+        ApplyFilter();
+    }
+
+    private void BookFilter_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        ApplyFilter();
+    }
+
+    private void NavHome_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPage(HomePagePanel, "主页");
+    }
+
+    private void NavLibrary_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPage(LibraryPagePanel, "书库");
+    }
+
+    private void NavTags_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPage(TagsPagePanel, "标签");
+    }
+
+    private void NavAuthors_Click(object? sender, RoutedEventArgs e)
+    {
+        ShowPage(AuthorsPagePanel, "作者");
     }
 
     private void BooksList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -150,6 +185,8 @@ public sealed partial class MainWindow : Window
 
         _allBooks.Clear();
         _allBooks.AddRange(books);
+        RefreshManagers();
+        RefreshHomeStats();
         ApplyFilter();
 
         StatusText.Text = $"已扫描 {_allBooks.Count} 本 · 数据目录：{_storage.Root}";
@@ -159,19 +196,70 @@ public sealed partial class MainWindow : Window
     private void ApplyFilter()
     {
         var query = SearchBox.Text?.Trim() ?? "";
-        var filtered = string.IsNullOrWhiteSpace(query)
+        IEnumerable<MangaBook> filtered = string.IsNullOrWhiteSpace(query)
             ? _allBooks
             : _allBooks.Where(book =>
                 Contains(book.Title, query)
                 || Contains(book.Author, query)
                 || Contains(book.Tags, query)
-                || Contains(book.Summary, query)).ToList();
+                || Contains(book.Summary, query));
+
+        if (FavoriteOnlyBox.IsChecked == true)
+        {
+            filtered = filtered.Where(book => book.IsFavorite);
+        }
+
+        filtered = SortBox.SelectedIndex switch
+        {
+            1 => filtered.OrderBy(book => book.Title, StringComparer.CurrentCultureIgnoreCase),
+            2 => filtered.OrderBy(book => book.Author, StringComparer.CurrentCultureIgnoreCase).ThenBy(book => book.Title, StringComparer.CurrentCultureIgnoreCase),
+            3 => filtered.OrderByDescending(book => book.PageCount),
+            _ => filtered.OrderByDescending(book => book.ImportedAt).ThenBy(book => book.Title, StringComparer.CurrentCultureIgnoreCase)
+        };
 
         _books.Clear();
         foreach (var book in filtered)
         {
             _books.Add(book);
         }
+    }
+
+    private void RefreshManagers()
+    {
+        _tagRows.Clear();
+        foreach (var tag in _allBooks
+                     .SelectMany(book => TagService.ParseTags(book.Tags))
+                     .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+                     .OrderByDescending(group => group.Count())
+                     .ThenBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase))
+        {
+            _tagRows.Add($"{tag.Key} · {tag.Count()} 本 · {TagService.GetCategory(tag.Key)}");
+        }
+
+        _authorRows.Clear();
+        foreach (var author in _allBooks
+                     .GroupBy(book => string.IsNullOrWhiteSpace(book.Author) ? "未知作者" : book.Author, StringComparer.OrdinalIgnoreCase)
+                     .OrderByDescending(group => group.Count())
+                     .ThenBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase))
+        {
+            _authorRows.Add($"{author.Key} · {author.Count()} 本");
+        }
+    }
+
+    private void RefreshHomeStats()
+    {
+        HomeBookCountText.Text = $"{_allBooks.Count} 本";
+        HomeFavoriteCountText.Text = $"{_allBooks.Count(book => book.IsFavorite)} 本";
+        HomeStorageText.Text = _storage.Root;
+    }
+
+    private void ShowPage(Control page, string title)
+    {
+        HomePagePanel.IsVisible = ReferenceEquals(page, HomePagePanel);
+        LibraryPagePanel.IsVisible = ReferenceEquals(page, LibraryPagePanel);
+        TagsPagePanel.IsVisible = ReferenceEquals(page, TagsPagePanel);
+        AuthorsPagePanel.IsVisible = ReferenceEquals(page, AuthorsPagePanel);
+        PageTitleText.Text = title;
     }
 
     private void RenderSelectedBook()

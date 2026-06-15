@@ -1,0 +1,60 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <Color x:Key="Color.AppBackground">#F6F7F9</Color>
+    <Color x:Key="Color.Surface">#FFFFFF</Color>
+    <Color x:Key="Color.SurfaceMuted">#F8FAFC</Color>
+    <Color x:Key="Color.SurfaceWarm">#F8F2EC</Color>
+    <Color x:Key="Color.TextPrimary">#111827</Color>
+    <Color x:Key="Color.TextWarm">#25211E</Color>
+    <Color x:Key="Color.TextMuted">#6B7280</Color>
+    <Color x:Key="Color.TextSubtle">#8D8177</Color>
+    <Color x:Key="Color.BorderSubtle">#E5E7EB</Color>
+    <Color x:Key="Color.BorderStrong">#D1D5DB</Color>
+    <Color x:Key="Color.Accent">#B45309</Color>
+    <Color x:Key="Color.Danger">#9F1239</Color>
+    <Color x:Key="Color.DangerSurface">#FFF1F2</Color>
+    <Color x:Key="Color.DangerBorder">#FECDD3</Color>
+    <Color x:Key="Color.ScrollTrack">#EEF2F7</Color>
+    <Color x:Key="Color.ScrollThumb">#CBD5E1</Color>
+    <Color x:Key="Color.ScrollThumbHover">#94A3B8</Color>
+
+    <SolidColorBrush x:Key="Brush.AppBackground" Color="{StaticResource Color.AppBackground}"/>
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceMuted" Color="{StaticResource Color.SurfaceMuted}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceWarm" Color="{StaticResource Color.SurfaceWarm}"/>
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}"/>
+    <SolidColorBrush x:Key="Brush.TextWarm" Color="{StaticResource Color.TextWarm}"/>
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}"/>
+    <SolidColorBrush x:Key="Brush.TextSubtle" Color="{StaticResource Color.TextSubtle}"/>
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="{StaticResource Color.BorderSubtle}"/>
+    <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}"/>
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}"/>
+    <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
+    <SolidColorBrush x:Key="Brush.DangerSurface" Color="{StaticResource Color.DangerSurface}"/>
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="{StaticResource Color.DangerBorder}"/>
+  </Styles.Resources>
+
+  <Style Selector="Button">
+    <Setter Property="MinHeight" Value="36"/>
+    <Setter Property="Padding" Value="14,8"/>
+    <Setter Property="CornerRadius" Value="9"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="MinHeight" Value="44"/>
+    <Setter Property="CornerRadius" Value="11"/>
+    <Setter Property="Padding" Value="14,0"/>
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="MinHeight" Value="44"/>
+    <Setter Property="CornerRadius" Value="11"/>
+    <Setter Property="Padding" Value="12,0"/>
+  </Style>
+
+  <Style Selector="ScrollBar">
+    <Setter Property="Width" Value="18"/>
+  </Style>
+</Styles>

@@ -526,3 +526,40 @@ powershell -ExecutionPolicy Bypass -File .\pack-macos.ps1
 外部阻塞：
 
 - Apple Developer ID 签名与 notarization 需要 macOS 环境、Apple Developer 账号、Developer ID Application 证书、App-specific password 或 App Store Connect API Key。当前 Windows 环境只能把脚本链路补齐，不能实际完成 Apple 公证。
+
+### 2026-06-16：PC 样式一致性对齐
+
+决策调整：
+
+- macOS/Avalonia 壳不追求 macOS 原生视觉。
+- 目标改为与 PC/WPF 版样式一致：同一主题 token、同一侧边栏规格、同一书库信息架构、同一阅读器控制层级。
+
+已完成：
+
+- 新增 `MangaReader.Avalonia/Styles/MangaTheme.axaml`，同步 PC 版 `MangaTheme.xaml` 的颜色、Brush、控件高度、圆角和滚动条触发区基础规格。
+- Avalonia 主窗口标题从 `MangaReader macOS MVP` 改为 `MangaReader`，去掉平台割裂感。
+- Avalonia 主壳改为 PC 版同构结构：
+  - 左侧固定 `132px` 侧边栏；
+  - `主页 / 书库 / 标签 / 作者` 导航；
+  - 底部 `指定数据 / 检查更新` 操作；
+  - 书库页保留搜索、收藏筛选、排序；
+  - 主页增加书库数量、收藏数量、数据目录信息；
+  - 标签页和作者页使用与 PC 版一致的管理入口结构。
+- Avalonia 书库详情区继续沿用 PC 版“作品详情页”层级：封面、主标题、作者行、页数/状态、收藏、开始阅读、标签胶囊、简介、作品信息、文件区。
+
+验证：
+
+```powershell
+dotnet build MangaReader.Core\MangaReader.Core.csproj -c Release -nologo
+dotnet build MangaReader.Native\MangaReader.Native.csproj -c Release -nologo
+dotnet build MangaReader.Avalonia\MangaReader.Avalonia.csproj -c Release -nologo
+powershell -ExecutionPolicy Bypass -File .\pack-macos.ps1
+```
+
+结果：
+
+- `MangaReader.Core`：0 警告，0 错误。
+- `MangaReader.Native`：0 警告，0 错误。
+- `MangaReader.Avalonia`：0 警告，0 错误。
+- 已重新产出 `_release_macos/MangaReader-osx-arm64.zip`，约 41.22 MB。
+- 已重新产出 `_release_macos/MangaReader-osx-x64.zip`，约 42.80 MB。

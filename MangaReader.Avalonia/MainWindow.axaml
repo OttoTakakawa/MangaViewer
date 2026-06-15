@@ -2,43 +2,97 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:MangaReader.Core.Models;assembly=MangaReader.Core"
         x:Class="MangaReader.Avalonia.MainWindow"
-        Width="1180"
-        Height="760"
-        MinWidth="920"
-        MinHeight="620"
-        Title="MangaReader macOS MVP"
-        Background="#F6F7F9">
-  <Grid RowDefinitions="Auto,*">
-    <Border Grid.Row="0" Background="White" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1" Padding="20,14">
-      <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+        Width="1280"
+        Height="820"
+        MinWidth="1080"
+        MinHeight="680"
+        Title="MangaReader"
+        Background="{StaticResource Brush.AppBackground}">
+  <Grid ColumnDefinitions="132,*">
+    <Border Grid.Column="0" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,0,1,0" Padding="14">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="18">
         <StackPanel>
-          <TextBlock Text="MangaReader macOS" FontSize="20" FontWeight="Bold" Foreground="#111827"/>
-          <TextBlock x:Name="StatusText" Text="选择漫画根目录开始扫描。" Margin="0,4,0,0" Foreground="#6B7280"/>
+          <TextBlock Text="Manga" FontSize="20" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+          <TextBlock Text="Reader" FontSize="12" Foreground="{StaticResource Brush.TextSubtle}"/>
         </StackPanel>
-        <Button Grid.Column="1" Content="选择目录" Click="PickFolder_Click" Padding="16,8"/>
-        <Button Grid.Column="2" Content="重新扫描" Click="Rescan_Click" Padding="16,8"/>
-        <Button Grid.Column="3" Content="打开 GitHub" Click="OpenGitHub_Click" Padding="16,8"/>
+        <StackPanel Grid.Row="1" Spacing="8">
+          <Button x:Name="HomeNavButton" Content="主页" Click="NavHome_Click" Height="32" HorizontalContentAlignment="Left"/>
+          <Button x:Name="LibraryNavButton" Content="书库" Click="NavLibrary_Click" Height="32" HorizontalContentAlignment="Left"/>
+          <Button x:Name="TagsNavButton" Content="标签" Click="NavTags_Click" Height="32" HorizontalContentAlignment="Left"/>
+          <Button x:Name="AuthorsNavButton" Content="作者" Click="NavAuthors_Click" Height="32" HorizontalContentAlignment="Left"/>
+        </StackPanel>
+        <StackPanel Grid.Row="2" Spacing="8">
+          <Button Content="指定数据" Click="PickFolder_Click" Height="32" FontSize="12"/>
+          <Button Content="检查更新" Click="OpenGitHub_Click" Height="32" FontSize="12"/>
+        </StackPanel>
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="300,*">
-      <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0">
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+      <Border Grid.Row="0" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,0,0,1" Padding="22,14">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+          <StackPanel>
+            <TextBlock x:Name="PageTitleText" Text="书库" FontSize="22" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+            <TextBlock x:Name="StatusText" Text="选择漫画根目录开始扫描。" Margin="0,4,0,0" Foreground="{StaticResource Brush.TextMuted}"/>
+          </StackPanel>
+          <Button Grid.Column="1" Content="导入漫画" Click="PickFolder_Click" Padding="16,8" Background="{StaticResource Brush.TextPrimary}" Foreground="{StaticResource Brush.Surface}"/>
+          <Button Grid.Column="2" Content="重新扫描" Click="Rescan_Click" Padding="16,8"/>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="1" x:Name="HomePagePanel" IsVisible="False" Margin="22">
+        <Grid RowDefinitions="Auto,*" RowSpacing="16">
+          <TextBlock Text="主页" FontSize="28" FontWeight="Black" Foreground="{StaticResource Brush.TextWarm}"/>
+          <UniformGrid Grid.Row="1" Columns="3" Rows="1">
+            <Border Margin="0,0,12,0" Padding="20" CornerRadius="10" Background="{StaticResource Brush.Surface}">
+              <StackPanel>
+                <TextBlock Text="书库作品" Foreground="{StaticResource Brush.TextMuted}"/>
+                <TextBlock x:Name="HomeBookCountText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+              </StackPanel>
+            </Border>
+            <Border Margin="0,0,12,0" Padding="20" CornerRadius="10" Background="{StaticResource Brush.Surface}">
+              <StackPanel>
+                <TextBlock Text="收藏作品" Foreground="{StaticResource Brush.TextMuted}"/>
+                <TextBlock x:Name="HomeFavoriteCountText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+              </StackPanel>
+            </Border>
+            <Border Padding="20" CornerRadius="10" Background="{StaticResource Brush.Surface}">
+              <StackPanel>
+                <TextBlock Text="数据目录" Foreground="{StaticResource Brush.TextMuted}"/>
+                <TextBlock x:Name="HomeStorageText" Text="-" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextPrimary}"/>
+              </StackPanel>
+            </Border>
+          </UniformGrid>
+        </Grid>
+      </Grid>
+
+      <Grid Grid.Row="1" x:Name="LibraryPagePanel" ColumnDefinitions="340,*">
+        <Border Grid.Column="0" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,0,1,0">
         <DockPanel>
-          <TextBox x:Name="SearchBox"
-                   DockPanel.Dock="Top"
-                   Watermark="搜索书名 / 作者 / Tag"
-                   Margin="16"
-                   TextChanged="SearchBox_TextChanged"/>
+          <StackPanel DockPanel.Dock="Top" Margin="16" Spacing="10">
+            <TextBox x:Name="SearchBox"
+                     Watermark="搜索标题、作者、标签"
+                     TextChanged="SearchBox_TextChanged"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <ComboBox x:Name="SortBox" SelectedIndex="0" SelectionChanged="BookFilter_Changed">
+                <ComboBoxItem Content="最近录入"/>
+                <ComboBoxItem Content="标题"/>
+                <ComboBoxItem Content="作者"/>
+                <ComboBoxItem Content="页数"/>
+              </ComboBox>
+              <CheckBox Grid.Column="1" x:Name="FavoriteOnlyBox" Content="收藏" VerticalAlignment="Center" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
+            </Grid>
+          </StackPanel>
           <ListBox x:Name="BooksList"
                    SelectionChanged="BooksList_SelectionChanged"
                    Padding="10,0,10,12">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="models:MangaBook">
-                <Border Padding="10" Margin="0,0,0,8" CornerRadius="10" Background="#F8FAFC">
+                <Border Padding="10" Margin="0,0,0,8" CornerRadius="10" Background="{StaticResource Brush.SurfaceMuted}">
                   <StackPanel>
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#111827" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Author}" Margin="0,3,0,0" Foreground="#6B7280" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding LibraryMetaText}" Margin="0,6,0,0" Foreground="#8D8177" FontSize="12"/>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Author}" Margin="0,3,0,0" Foreground="{StaticResource Brush.TextMuted}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding LibraryMetaText}" Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSubtle}" FontSize="12"/>
                   </StackPanel>
                 </Border>
               </DataTemplate>
@@ -49,22 +103,22 @@
 
       <ScrollViewer Grid.Column="1">
         <Grid Margin="32" ColumnDefinitions="260,*" ColumnSpacing="40">
-          <Border Width="260" Height="390" CornerRadius="14" BorderBrush="#E5E7EB" BorderThickness="1" Background="#FFFFFF">
+          <Border Width="260" Height="390" CornerRadius="14" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Background="{StaticResource Brush.Surface}">
             <Grid>
               <Image x:Name="CoverImage" Stretch="UniformToFill"/>
-              <TextBlock x:Name="CoverPlaceholder" Text="暂无封面" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#8D8177"/>
+              <TextBlock x:Name="CoverPlaceholder" Text="暂无封面" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextSubtle}"/>
             </Grid>
           </Border>
 
           <StackPanel Grid.Column="1" Spacing="22">
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
               <StackPanel>
-                <TextBlock x:Name="TitleText" Text="未选择作品" FontSize="32" FontWeight="Bold" Foreground="#111827" TextWrapping="Wrap"/>
-                <TextBlock x:Name="AuthorText" Text="作者 -" Margin="0,8,0,0" Foreground="#6B7280" FontSize="15"/>
-                <TextBlock x:Name="MetaText" Text="0 页" Margin="0,6,0,0" Foreground="#8D8177" FontSize="13"/>
+                <TextBlock x:Name="TitleText" Text="未选择作品" FontSize="32" FontWeight="Bold" Foreground="{StaticResource Brush.TextPrimary}" TextWrapping="Wrap"/>
+                <TextBlock x:Name="AuthorText" Text="作者 -" Margin="0,8,0,0" Foreground="{StaticResource Brush.TextMuted}" FontSize="15"/>
+                <TextBlock x:Name="MetaText" Text="0 页" Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSubtle}" FontSize="13"/>
               </StackPanel>
               <Button Grid.Column="1" x:Name="FavoriteButton" Content="☆ 收藏" Click="Favorite_Click" Padding="16,8"/>
-              <Button Grid.Column="2" Content="开始阅读" Click="Read_Click" Padding="22,8" Background="#111827" Foreground="White"/>
+              <Button Grid.Column="2" Content="开始阅读" Click="Read_Click" Padding="22,8" Background="{StaticResource Brush.TextPrimary}" Foreground="{StaticResource Brush.Surface}"/>
             </Grid>
 
             <ItemsControl x:Name="TagChips">
@@ -83,12 +137,12 @@
             </ItemsControl>
 
             <StackPanel>
-              <TextBlock Text="简介" FontWeight="SemiBold" FontSize="16" Foreground="#111827"/>
-              <TextBlock x:Name="SummaryText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#4B5563" LineHeight="22"/>
+              <TextBlock Text="简介" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.TextPrimary}"/>
+              <TextBlock x:Name="SummaryText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextMuted}" LineHeight="22"/>
             </StackPanel>
 
             <StackPanel>
-              <TextBlock Text="作品信息" FontWeight="SemiBold" FontSize="16" Foreground="#111827"/>
+              <TextBlock Text="作品信息" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.TextPrimary}"/>
               <Grid Margin="0,12,0,0" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="96,*" RowSpacing="10" ColumnSpacing="16">
                 <TextBlock Grid.Row="0" Text="作者" Foreground="#8D8177"/>
                 <TextBlock Grid.Row="0" Grid.Column="1" x:Name="MetaAuthorText"/>
@@ -104,13 +158,24 @@
             </StackPanel>
 
             <StackPanel>
-              <TextBlock Text="文件" FontWeight="SemiBold" FontSize="16" Foreground="#111827"/>
-              <TextBlock x:Name="FolderPathText" Margin="0,10,0,0" Foreground="#6B7280" TextWrapping="Wrap"/>
+              <TextBlock Text="文件" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.TextPrimary}"/>
+              <TextBlock x:Name="FolderPathText" Margin="0,10,0,0" Foreground="{StaticResource Brush.TextMuted}" TextWrapping="Wrap"/>
               <Button Content="打开所在文件夹" Click="OpenFolder_Click" Margin="0,12,0,0" HorizontalAlignment="Left" Padding="16,8"/>
             </StackPanel>
           </StackPanel>
         </Grid>
       </ScrollViewer>
+    </Grid>
+
+      <Grid Grid.Row="1" x:Name="TagsPagePanel" IsVisible="False" Margin="22" RowDefinitions="Auto,*" RowSpacing="16">
+        <TextBlock Text="标签" FontSize="28" FontWeight="Black" Foreground="{StaticResource Brush.TextWarm}"/>
+        <ListBox Grid.Row="1" x:Name="TagManagerList"/>
+      </Grid>
+
+      <Grid Grid.Row="1" x:Name="AuthorsPagePanel" IsVisible="False" Margin="22" RowDefinitions="Auto,*" RowSpacing="16">
+        <TextBlock Text="作者" FontSize="28" FontWeight="Black" Foreground="{StaticResource Brush.TextWarm}"/>
+        <ListBox Grid.Row="1" x:Name="AuthorManagerList"/>
+      </Grid>
     </Grid>
   </Grid>
 </Window>

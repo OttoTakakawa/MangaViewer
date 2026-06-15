@@ -3,5 +3,6 @@
              x:Class="MangaReader.Avalonia.App">
   <Application.Styles>
     <FluentTheme/>
+    <StyleInclude Source="avares://MangaReader.Avalonia/Styles/MangaTheme.axaml"/>
   </Application.Styles>
 </Application>
