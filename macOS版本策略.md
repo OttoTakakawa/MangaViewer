@@ -410,3 +410,29 @@ dotnet publish MangaReader.Avalonia -c Release -r osx-arm64 --self-contained tru
 5. macOS 首版先追求可用与稳定，不追求与 Windows 版 100% 功能同步。
 6. 自动更新在首版降级为 GitHub Releases 手动更新。
 
+## 执行记录
+
+### 2026-06-15：P1 Core 抽离第一切片
+
+已完成：
+
+- 新增 `MangaReader.Core`，目标框架为 `net8.0`。
+- 迁入第一批跨平台模型：`MangaBook`、`AuthorItem`、`BatchImportCandidate`、`RangeObservableCollection`、`TagChip`。
+- 迁入第一批跨平台服务：`LibraryDatabase`、`AppStorage`、`LibraryScanner`、`BookId`、`NaturalPathComparer`、`TagService`、`TagCatalog`。
+- `MangaReader.Core.Models.MangaBook` 已移除 `BitmapSource? CoverImage`，Core 不再依赖 WPF 图像类型。
+- 新增 `ImageFileService`，只保留图片扩展名识别与文件大小统计，图片解码继续留给平台壳。
+- 新增 `IAppStorageProvider`、`IImageThumbnailService<TImage>`、`IFileDialogService`、`IExternalLaunchService`，为后续 Avalonia 壳接入平台能力预留边界。
+- `MangaReader.Native` 已添加 `ProjectReference` 指向 `MangaReader.Core`，但暂不替换现有 WPF 运行路径，避免一次性迁移影响 Windows 稳定性。
+
+验证：
+
+```powershell
+dotnet build MangaReader.Core\MangaReader.Core.csproj -c Release -nologo
+dotnet build MangaReader.Native\MangaReader.Native.csproj -c Release -nologo
+```
+
+结果：
+
+- `MangaReader.Core`：0 警告，0 错误。
+- `MangaReader.Native`：0 警告，0 错误。
+- `MangaReader.Core` 中未发现 `System.Windows`、`System.Windows.Forms`、`BitmapSource`、`BitmapImage`、`MangaReader.Native` 残留引用。
