@@ -19,8 +19,11 @@ public partial class ReaderWindow : Window
     private static readonly TimeSpan PageLoadCoalesceDelay = TimeSpan.FromMilliseconds(24);
     private static readonly TimeSpan ProgressSaveDelay = TimeSpan.FromMilliseconds(650);
     private static readonly TimeSpan FitModeApplyDelay = TimeSpan.FromMilliseconds(80);
+    private static readonly TimeSpan AdjacentPreloadDelay = TimeSpan.FromMilliseconds(90);
     private const double FixedPageSlotHeight = 1600;
     private const double PortraitPageSlotAspect = 0.707;
+    private const int MaxReaderPageCacheEntries = 5;
+    private const int MemoryPressureReaderPageCacheEntries = 2;
 
     private static SolidColorBrush FrozenBrush(string hex)
     {
@@ -68,6 +71,7 @@ public partial class ReaderWindow : Window
     private int? _queuedPageIndex;
     private int? _activePageLoadIndex;
     private CancellationTokenSource? _pageLoadCancellation;
+    private CancellationTokenSource? _pagePreloadCancellation;
     private int _backgroundMode;
     private bool _isLoadingViewerPreferences;
     private bool _isNextBookPromptOpen;
@@ -79,6 +83,9 @@ public partial class ReaderWindow : Window
     private MangaBook? _pendingNextBook;
     private CancellationTokenSource? _catalogLoadCancellation;
     private System.Windows.Point? _holdZoomLastPointerInViewport;
+    private readonly object _pageCacheLock = new();
+    private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _pageCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly LinkedList<PageCacheEntry> _pageCacheLru = new();
 
     public ObservableCollection<PageCatalogItem> PageCatalogItems { get; } = [];
 
@@ -139,9 +146,13 @@ public partial class ReaderWindow : Window
         _pageLoadCancellation?.Cancel();
         _pageLoadCancellation?.Dispose();
         _pageLoadCancellation = null;
+        _pagePreloadCancellation?.Cancel();
+        _pagePreloadCancellation?.Dispose();
+        _pagePreloadCancellation = null;
         _catalogLoadCancellation?.Cancel();
         _catalogLoadCancellation?.Dispose();
         _catalogLoadCancellation = null;
+        ClearReaderPageCache();
         var book = _book;
         var wheelMode = WheelModeBox.SelectedIndex.ToString();
         _ = Task.Run(() =>
@@ -571,6 +582,9 @@ public partial class ReaderWindow : Window
         _pageLoadCancellation?.Dispose();
         var loadCancellation = new CancellationTokenSource();
         _pageLoadCancellation = loadCancellation;
+        _pagePreloadCancellation?.Cancel();
+        _pagePreloadCancellation?.Dispose();
+        _pagePreloadCancellation = null;
         var cancellationToken = loadCancellation.Token;
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _boundaryHint = "";
@@ -584,28 +598,11 @@ public partial class ReaderWindow : Window
         {
             var singleDecodeWidth = GetDecodePixelWidth(false);
             var doubleDecodeWidth = GetDecodePixelWidth(true);
+            var cacheKey = CreateReaderPageCacheKey(safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
             var page = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                // 双页模式下两页必须使用同一解码基准，否则适应高度会被不同解码尺寸污染。
-                var firstDecodeWidth = doublePageMode ? doubleDecodeWidth : singleDecodeWidth;
-                var first = ImageLoader.LoadBitmap(firstPath, firstDecodeWidth);
-                cancellationToken.ThrowIfCancellationRequested();
-                var useDouble = doublePageMode && safeIndex + 1 < _book.Pages.Count && !IsLandscape(first);
-                if (doublePageMode && !useDouble && firstDecodeWidth != singleDecodeWidth)
-                {
-                    first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-
-                BitmapSource? second = null;
-                if (useDouble)
-                {
-                    second = ImageLoader.LoadBitmap(_book.Pages[safeIndex + 1], doubleDecodeWidth);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-
-                return new LoadedPage(first, second, useDouble);
+                return GetOrDecodeReaderPage(cacheKey, safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth, cancellationToken);
             }, cancellationToken);
 
             if (requestId != _pageLoadRequestId || cancellationToken.IsCancellationRequested)
@@ -644,6 +641,7 @@ public partial class ReaderWindow : Window
             HideReaderMessage();
             ApplyFitModeForRequest(requestId);
             ScheduleProgressSave();
+            ScheduleAdjacentPagePreload(safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
         }
         catch (OperationCanceledException)
         {
@@ -702,6 +700,195 @@ public partial class ReaderWindow : Window
 
     private static bool IsLandscape(BitmapSource image) => image.PixelWidth > image.PixelHeight * 1.15;
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
+    private sealed record PageCacheEntry(string Key, LoadedPage Page);
+
+    private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
+    {
+        var mode = doublePageMode ? "double" : "single";
+        return $"{pageIndex}:{mode}:{singleDecodeWidth}:{doubleDecodeWidth}";
+    }
+
+    private LoadedPage GetOrDecodeReaderPage(
+        string cacheKey,
+        int pageIndex,
+        bool doublePageMode,
+        int singleDecodeWidth,
+        int doubleDecodeWidth,
+        CancellationToken cancellationToken)
+    {
+        if (TryGetReaderPageCache(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        var page = DecodeReaderPage(pageIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth, cancellationToken);
+        AddReaderPageCache(cacheKey, page);
+        return page;
+    }
+
+    private LoadedPage DecodeReaderPage(
+        int pageIndex,
+        bool doublePageMode,
+        int singleDecodeWidth,
+        int doubleDecodeWidth,
+        CancellationToken cancellationToken)
+    {
+        var firstPath = _book.Pages[pageIndex];
+        // 双页模式下两页必须使用同一解码基准，否则适应高度会被不同解码尺寸污染。
+        var firstDecodeWidth = doublePageMode ? doubleDecodeWidth : singleDecodeWidth;
+        var first = ImageLoader.LoadBitmap(firstPath, firstDecodeWidth);
+        cancellationToken.ThrowIfCancellationRequested();
+        var useDouble = doublePageMode && pageIndex + 1 < _book.Pages.Count && !IsLandscape(first);
+        if (doublePageMode && !useDouble && firstDecodeWidth != singleDecodeWidth)
+        {
+            first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        BitmapSource? second = null;
+        if (useDouble)
+        {
+            second = ImageLoader.LoadBitmap(_book.Pages[pageIndex + 1], doubleDecodeWidth);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        return new LoadedPage(first, second, useDouble);
+    }
+
+    private bool TryGetReaderPageCache(string key, out LoadedPage page)
+    {
+        lock (_pageCacheLock)
+        {
+            if (_pageCache.TryGetValue(key, out var node))
+            {
+                _pageCacheLru.Remove(node);
+                _pageCacheLru.AddFirst(node);
+                page = node.Value.Page;
+                return true;
+            }
+        }
+
+        page = null!;
+        return false;
+    }
+
+    private void AddReaderPageCache(string key, LoadedPage page)
+    {
+        lock (_pageCacheLock)
+        {
+            if (_pageCache.TryGetValue(key, out var existing))
+            {
+                existing.Value = new PageCacheEntry(key, page);
+                _pageCacheLru.Remove(existing);
+                _pageCacheLru.AddFirst(existing);
+            }
+            else
+            {
+                var node = new LinkedListNode<PageCacheEntry>(new PageCacheEntry(key, page));
+                _pageCacheLru.AddFirst(node);
+                _pageCache[key] = node;
+            }
+
+            TrimReaderPageCache(IsMemoryPressureHigh() ? MemoryPressureReaderPageCacheEntries : MaxReaderPageCacheEntries);
+        }
+    }
+
+    private void TrimReaderPageCache(int maxEntries)
+    {
+        while (_pageCache.Count > maxEntries && _pageCacheLru.Last is not null)
+        {
+            var last = _pageCacheLru.Last;
+            _pageCacheLru.RemoveLast();
+            _pageCache.Remove(last.Value.Key);
+        }
+    }
+
+    private void ClearReaderPageCache()
+    {
+        lock (_pageCacheLock)
+        {
+            _pageCache.Clear();
+            _pageCacheLru.Clear();
+        }
+    }
+
+    private static bool IsMemoryPressureHigh()
+    {
+        var memoryInfo = GC.GetGCMemoryInfo();
+        return memoryInfo.HighMemoryLoadThresholdBytes > 0
+            && memoryInfo.MemoryLoadBytes > memoryInfo.HighMemoryLoadThresholdBytes * 0.82;
+    }
+
+    private void ScheduleAdjacentPagePreload(int currentPageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
+    {
+        if (_isClosing || IsMemoryPressureHigh())
+        {
+            lock (_pageCacheLock)
+            {
+                TrimReaderPageCache(MemoryPressureReaderPageCacheEntries);
+            }
+            return;
+        }
+
+        _pagePreloadCancellation?.Cancel();
+        _pagePreloadCancellation?.Dispose();
+        var preloadCancellation = new CancellationTokenSource();
+        _pagePreloadCancellation = preloadCancellation;
+        var token = preloadCancellation.Token;
+        var candidates = GetAdjacentPreloadCandidates(currentPageIndex, doublePageMode).ToArray();
+        if (candidates.Length == 0)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(AdjacentPreloadDelay, token).ConfigureAwait(false);
+                foreach (var candidate in candidates)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (_isClosing || _isPageDecodeActive || _queuedPageIndex is not null || IsMemoryPressureHigh())
+                    {
+                        return;
+                    }
+
+                    var cacheKey = CreateReaderPageCacheKey(candidate, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
+                    if (TryGetReaderPageCache(cacheKey, out _))
+                    {
+                        continue;
+                    }
+
+                    var page = DecodeReaderPage(candidate, doublePageMode, singleDecodeWidth, doubleDecodeWidth, token);
+                    AddReaderPageCache(cacheKey, page);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or InvalidOperationException)
+            {
+                AppLogger.Warn("reader-preload", $"{_book.Title} adjacent preload skipped: {ex.Message}");
+            }
+        }, token);
+    }
+
+    private IEnumerable<int> GetAdjacentPreloadCandidates(int currentPageIndex, bool doublePageMode)
+    {
+        var step = doublePageMode ? 2 : 1;
+        var next = currentPageIndex + step;
+        if (next < _book.Pages.Count)
+        {
+            yield return next;
+        }
+
+        var previous = currentPageIndex - step;
+        if (previous >= 0)
+        {
+            yield return previous;
+        }
+    }
 
     private void NormalizeDisplayedImageSizing()
     {

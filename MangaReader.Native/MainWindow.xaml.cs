@@ -26,9 +26,12 @@ public partial class MainWindow : Window
             new PropertyMetadata(false));
 
     private const double WheelScrollMultiplier = 1.45;
+    private const double NormalLogPanelHeight = 160;
+    private const double ExpandedLogPanelHeight = 420;
     private const int MaxLiveLogLines = 300;
+    private const int MaxLiveLogLineLength = 900;
     private const string TagDragDataFormat = "MangaReader.TagName";
-    private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
+    private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
 
     private static SolidColorBrush FrozenBrush(string hex)
@@ -81,6 +84,7 @@ public partial class MainWindow : Window
     private bool _tagGroupFilterOptionsDirty = true;
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
+    private bool _isLogPanelExpanded;
     private bool _isCheckingForUpdates;
     private string _currentNavigationKey = "home";
     private string _cachedSearchQuery = "";
@@ -836,6 +840,16 @@ public partial class MainWindow : Window
         }
 
         SetEditMode(!_isEditMode);
+    }
+
+    private void OpenMoreActionsMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.ContextMenu is not null)
+        {
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            btn.ContextMenu.IsOpen = true;
+        }
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
@@ -1726,7 +1740,47 @@ public partial class MainWindow : Window
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
         HideBookButtonEdit.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
-        ToggleFavoriteButton.Content = book.IsFavorite ? "已收藏" : "未收藏";
+        ToggleFavoriteButton.Content = book.IsFavorite ? "★ 已收藏" : "☆ 收藏";
+        if (MoreActionsHideMenuItem is not null)
+        {
+            MoreActionsHideMenuItem.Header = book.IsHidden ? "恢复显示" : "隐藏作品";
+        }
+
+        // Hero 区
+        var displayTitle = string.IsNullOrWhiteSpace(book.Title) ? "未命名作品" : book.Title;
+        BookTitleText.Text = displayTitle;
+        BookTitleText.ToolTip = displayTitle;
+        BookAuthorLineText.Text = "作者 " + (string.IsNullOrWhiteSpace(book.Author) ? "未知作者" : book.Author);
+        // Meta 行只展示页数；标签由下方胶囊承担，避免视觉重复。
+        BookMetaLineText.Text = $"{book.PageCount} 页";
+
+        // 标签胶囊
+        SyncBookTagChips(book);
+        var tagNames = (book.TagItems ?? (System.Collections.Generic.IEnumerable<TagChip>)System.Array.Empty<TagChip>())
+            .Select(t => t.Name)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .ToList();
+        BookTagChips.ItemsSource = tagNames;
+        BookTagChips.Visibility = tagNames.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // 阅读状态行
+        ReadingStatusInlineText.Text = $"{book.ReadingStatusText} · {book.ReadCountText}";
+
+        // 作品信息卡
+        ApplyMetaValue(MetaAuthorValueText, book.Author);
+        ApplyMetaValue(MetaForeignNameValueText, book.ForeignName);
+        ApplyMetaValue(MetaPageCountValueText, book.PageCount.ToString(), forceFilled: true);
+        ApplyMetaValue(MetaCoverPageValueText, (book.CoverPageIndex + 1).ToString(), forceFilled: true);
+        ApplyMetaValue(MetaProducedAtValueText, book.ProducedAt);
+        ApplyMetaValue(MetaImportedAtValueText, book.ImportedAt);
+    }
+
+    private void ApplyMetaValue(System.Windows.Controls.TextBlock target, string value, bool forceFilled = false)
+    {
+        if (target is null) return;
+        var isEmpty = !forceFilled && string.IsNullOrWhiteSpace(value);
+        target.Text = isEmpty ? "未填写" : value;
+        target.Style = (System.Windows.Style)FindResource(isEmpty ? "DetailMetaEmptyValueText" : "DetailMetaValueText");
     }
 
     private void SetDetailVisible(bool visible)
@@ -1923,6 +1977,17 @@ public partial class MainWindow : Window
         UpdateLogPanelVisibility();
     }
 
+    private void ToggleLogPanelSize_Click(object sender, RoutedEventArgs e)
+    {
+        _isLogPanelExpanded = !_isLogPanelExpanded;
+        if (!_isLogPanelVisible)
+        {
+            _isLogPanelVisible = true;
+        }
+
+        UpdateLogPanelVisibility();
+    }
+
     private void AppLogger_LineWritten(string line)
     {
         Dispatcher.InvokeAsync(() => AppendLogOutput(line), DispatcherPriority.Background);
@@ -1952,7 +2017,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _liveLogLines.Enqueue(line);
+        _liveLogLines.Enqueue(TrimLiveLogLine(line));
         while (_liveLogLines.Count > MaxLiveLogLines)
         {
             _liveLogLines.Dequeue();
@@ -1963,6 +2028,16 @@ public partial class MainWindow : Window
         {
             LogOutputScrollViewer.ScrollToEnd();
         }
+    }
+
+    private static string TrimLiveLogLine(string line)
+    {
+        if (line.Length <= MaxLiveLogLineLength)
+        {
+            return line;
+        }
+
+        return line[..MaxLiveLogLineLength] + " ...";
     }
 
     private void ClearLogOutput_Click(object sender, RoutedEventArgs e)
@@ -2015,11 +2090,17 @@ public partial class MainWindow : Window
         if (LogPanel is not null)
         {
             LogPanel.Visibility = _isLogPanelVisible ? Visibility.Visible : Visibility.Collapsed;
+            LogPanel.Height = _isLogPanelExpanded ? ExpandedLogPanelHeight : NormalLogPanelHeight;
         }
 
         if (LogPanelToggleButton is not null)
         {
             LogPanelToggleButton.Content = _isLogPanelVisible ? "收起日志" : "展开日志";
+        }
+
+        if (LogPanelExpandButton is not null)
+        {
+            LogPanelExpandButton.Content = _isLogPanelExpanded ? "还原" : "扩大";
         }
 
         if (_isLogPanelVisible && LogOutputScrollViewer is not null)

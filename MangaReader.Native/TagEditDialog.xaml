@@ -11,233 +11,6 @@
         AllowsTransparency="True"
         Background="Transparent">
     <Window.Resources>
-        <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="96"/>
-            <Setter Property="Padding" Value="20,0"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-
-        <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="96"/>
-            <Setter Property="Padding" Value="20,0"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-
-        <Style x:Key="DialogCloseButton" TargetType="Button" BasedOn="{StaticResource DialogGhostButton}">
-            <Setter Property="Width" Value="38"/>
-            <Setter Property="MinWidth" Value="38"/>
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="20"/>
-        </Style>
-
-        <Style x:Key="DialogLinkButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#3B82F6"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <TextBlock x:Name="Link" Text="{TemplateBinding Content}"
-                                   Foreground="{TemplateBinding Foreground}"
-                                   FontSize="{TemplateBinding FontSize}"
-                                   FontWeight="{TemplateBinding FontWeight}"/>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Link" Property="TextDecorations" Value="Underline"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="DialogTextBox" TargetType="TextBox">
-            <Setter Property="Height" Value="46"/>
-            <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border CornerRadius="{StaticResource RadiusControl}"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="ItemRoot" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#E5E7EB"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#D1D5DB"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="DialogComboBox" TargetType="ComboBox">
-            <Setter Property="Height" Value="46"/>
-            <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <ToggleButton x:Name="ToggleButton"
-                                          Focusable="False"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press">
-                                <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border CornerRadius="{StaticResource RadiusControl}"
-                                                Background="{TemplateBinding Background}"
-                                                BorderBrush="{StaticResource Brush.BorderSubtle}"
-                                                BorderThickness="1">
-                                            <Grid>
-                                                <ContentPresenter Margin="16,0,42,0"
-                                                                  VerticalAlignment="Center"
-                                                                  HorizontalAlignment="Left"
-                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
-                                                <TextBlock Text="⌄" Foreground="#9CA3AF" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2"/>
-                                            </Grid>
-                                        </Border>
-                                    </ControlTemplate>
-                                </ToggleButton.Template>
-                            </ToggleButton>
-                            <Popup x:Name="PART_Popup"
-                                   AllowsTransparency="True"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   Placement="Bottom"
-                                   PopupAnimation="Fade">
-                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                        Margin="0,8,0,0"
-                                        CornerRadius="{StaticResource RadiusComboPopup}"
-                                        Background="{StaticResource Brush.Surface}"
-                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
-                                        BorderThickness="1"
-                                        Padding="6">
-                                    <Border.Effect>
-                                        <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.12"/>
-                                    </Border.Effect>
-                                    <ScrollViewer>
-                                        <ItemsPresenter/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="DialogEditableComboBox" TargetType="ComboBox">
-            <Setter Property="Height" Value="46"/>
-            <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="IsEditable" Value="True"/>
-            <Setter Property="IsTextSearchEnabled" Value="True"/>
-            <Setter Property="StaysOpenOnEdit" Value="True"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <Border CornerRadius="{StaticResource RadiusControl}"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{StaticResource Brush.BorderSubtle}"
-                                    BorderThickness="1">
-                                <Grid>
-                                    <TextBox x:Name="PART_EditableTextBox"
-                                             Margin="16,0,42,0"
-                                             VerticalAlignment="Center"
-                                             Background="Transparent"
-                                             Foreground="{StaticResource Brush.TextPrimary}"
-                                             CaretBrush="{StaticResource Brush.TextPrimary}"
-                                             BorderThickness="0"
-                                             FontSize="14"
-                                             Focusable="True"
-                                             IsReadOnly="{Binding IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}"
-                                             Padding="0"/>
-                                    <TextBlock Text="⌄" Foreground="#9CA3AF" FontSize="18" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,2" IsHitTestVisible="False"/>
-                                </Grid>
-                            </Border>
-                            <ToggleButton x:Name="ToggleButton"
-                                          Focusable="False"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press"
-                                          HorizontalAlignment="Right"
-                                          Width="42"
-                                          Background="Transparent"
-                                          BorderThickness="0">
-                                <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border Background="Transparent"/>
-                                    </ControlTemplate>
-                                </ToggleButton.Template>
-                            </ToggleButton>
-                            <Popup x:Name="PART_Popup"
-                                   AllowsTransparency="True"
-                                   IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                   Placement="Bottom"
-                                   PopupAnimation="Fade">
-                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                        Margin="0,8,0,0"
-                                        CornerRadius="{StaticResource RadiusComboPopup}"
-                                        Background="{StaticResource Brush.Surface}"
-                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
-                                        BorderThickness="1"
-                                        Padding="6">
-                                    <Border.Effect>
-                                        <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="4" Opacity="0.12"/>
-                                    </Border.Effect>
-                                    <ScrollViewer MaxHeight="200">
-                                        <ItemsPresenter/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <DataTemplate x:Key="PreviewBookTemplate" DataType="{x:Type models:MangaBook}">
             <Border Margin="0,0,8,0" Padding="10,6" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.SurfaceMuted}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1">
                 <TextBlock Text="{Binding Title}" FontSize="12" Foreground="#374151" MaxWidth="160" TextTrimming="CharacterEllipsis"/>
@@ -246,12 +19,7 @@
     </Window.Resources>
 
     <Grid Margin="22">
-        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
-                Background="#01000000">
-            <Border.Effect>
-                <DropShadowEffect Color="#000000" BlurRadius="42" ShadowDepth="10" Opacity="0.18"/>
-            </Border.Effect>
-        </Border>
+        <Border Style="{StaticResource AppDialogShadowBorder}"/>
         <Border CornerRadius="{StaticResource RadiusDialog}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
@@ -264,14 +32,14 @@
             </Grid.RowDefinitions>
 
             <DockPanel>
-                <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Style="{StaticResource DialogCloseButton}"/>
-                <TextBlock Text="编辑标签" FontSize="30" FontWeight="Black" Foreground="#111827"/>
+                <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Style="{StaticResource AppDialogCloseButton}"/>
+                <TextBlock Text="编辑标签" Style="{StaticResource AppDialogTitleText}"/>
             </DockPanel>
 
             <WrapPanel Grid.Row="1" Margin="0,8,0,0">
                 <TextBlock x:Name="UpdatedAtText" Foreground="#9CA3AF" FontSize="12" Margin="0,0,12,0"/>
                 <TextBlock x:Name="UsageCountText" Foreground="#9CA3AF" FontSize="12" Margin="0,0,12,0"/>
-                <Button Content="查看关联的漫画 →" Click="More_Click" Style="{StaticResource DialogLinkButton}"/>
+                <Button Content="查看关联的漫画 →" Click="More_Click" Style="{StaticResource AppDialogLinkButton}"/>
             </WrapPanel>
 
             <Grid Grid.Row="2" Margin="0,24,0,0">
@@ -281,8 +49,8 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <StackPanel>
-                    <TextBlock Text="标签名称" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                    <TextBox x:Name="TagNameBox" Margin="0,8,0,0" Style="{StaticResource DialogTextBox}"/>
+                    <TextBlock Text="标签名称" Style="{StaticResource AppDialogLabelText}"/>
+                    <TextBox x:Name="TagNameBox" Margin="0,8,0,0" Style="{StaticResource AppDialogTextBox}"/>
                 </StackPanel>
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
@@ -291,12 +59,12 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="标签分组（可输入自定义）" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource DialogEditableComboBox}"/>
+                        <TextBlock Text="标签分组（可输入自定义）" Style="{StaticResource AppDialogLabelText}"/>
+                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource AppDialogEditableComboBox}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="规则" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                        <ComboBox x:Name="TagTypeBox" Margin="0,8,0,0" Style="{StaticResource DialogComboBox}">
+                        <TextBlock Text="规则" Style="{StaticResource AppDialogLabelText}"/>
+                        <ComboBox x:Name="TagTypeBox" Margin="0,8,0,0" Style="{StaticResource AppDialogComboBox}">
                             <ComboBoxItem Content="互斥"/>
                             <ComboBoxItem Content="不互斥"/>
                         </ComboBox>
@@ -305,7 +73,7 @@
             </Grid>
 
             <StackPanel Grid.Row="3" Margin="0,22,0,0">
-                <TextBlock Text="标签颜色" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="标签颜色" Style="{StaticResource AppDialogLabelText}"/>
                 <WrapPanel Margin="0,10,0,0">
                     <ItemsControl x:Name="PresetColorPicker">
                         <ItemsControl.ItemsPanel>
@@ -351,7 +119,7 @@
             </StackPanel>
 
             <StackPanel Grid.Row="4" Margin="0,16,0,0">
-                <TextBlock Text="已关联漫画预览" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="已关联漫画预览" Style="{StaticResource AppDialogLabelText}"/>
                 <ItemsControl x:Name="PreviewBooksList" Margin="0,8,0,0" ItemTemplate="{StaticResource PreviewBookTemplate}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -363,8 +131,8 @@
             </StackPanel>
 
             <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,8">
-                <Button Content="取消" Width="96" Height="40" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource DialogGhostButton}"/>
-                <Button Content="保存" Width="96" Height="40" Click="Confirm_Click" Style="{StaticResource DialogButton}"/>
+                <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource AppDialogGhostButton}"/>
+                <Button Content="保存" Width="104" Click="Confirm_Click" Style="{StaticResource AppDialogButton}"/>
             </StackPanel>
         </Grid>
         </Border>

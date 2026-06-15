@@ -10,26 +10,6 @@
         AllowsTransparency="True"
         Background="Transparent">
     <Window.Resources>
-        <DropShadowEffect x:Key="DialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
-
-        <Style x:Key="DialogButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="104"/>
-            <Setter Property="Padding" Value="18,0"/>
-        </Style>
-
-        <Style x:Key="DialogGhostButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="104"/>
-            <Setter Property="Padding" Value="18,0"/>
-        </Style>
-
-        <Style x:Key="DialogDangerButton" TargetType="Button" BasedOn="{StaticResource AppDangerButton}">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="MinWidth" Value="104"/>
-            <Setter Property="Padding" Value="18,0"/>
-        </Style>
-
         <Style x:Key="BackupListItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
@@ -65,9 +45,7 @@
     </Window.Resources>
 
     <Grid Margin="22">
-        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
-                Background="#01000000"
-                Effect="{StaticResource DialogShadow}"/>
+        <Border Style="{StaticResource AppDialogShadowBorder}"/>
         <Border CornerRadius="{StaticResource RadiusDialog}"
                 Background="{StaticResource Brush.Surface}"
                 BorderBrush="{StaticResource Brush.BorderSubtle}"
@@ -83,7 +61,7 @@
                 </Grid.RowDefinitions>
 
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Width="40" Height="40" Style="{StaticResource DialogGhostButton}"/>
+                    <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Style="{StaticResource AppDialogCloseButton}"/>
                     <StackPanel>
                         <TextBlock Text="数据安全" FontSize="30" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
                         <TextBlock Text="管理数据库备份与恢复。漫画图片不会复制，真正需要保护的是 app.db。"
@@ -164,14 +142,14 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <DockPanel>
-                        <Button DockPanel.Dock="Left" Content="立即备份" Click="CreateBackup_Click" Style="{StaticResource DialogButton}" Margin="0,0,8,0"/>
-                        <Button DockPanel.Dock="Right" Content="恢复选中" Click="RestoreSelected_Click" Style="{StaticResource DialogDangerButton}"/>
+                        <Button DockPanel.Dock="Left" Content="立即备份" Click="CreateBackup_Click" Style="{StaticResource AppDialogButton}" Margin="0,0,8,0"/>
+                        <Button DockPanel.Dock="Right" Content="恢复选中" Click="RestoreSelected_Click" Style="{StaticResource AppDialogDangerButton}"/>
                     </DockPanel>
                     <WrapPanel Grid.Row="1" Margin="0,10,0,0" HorizontalAlignment="Right">
-                        <Button Content="打开备份目录" Click="OpenBackupFolder_Click" Style="{StaticResource DialogGhostButton}" Margin="0,0,8,0"/>
-                        <Button Content="打开数据目录" Click="OpenDataFolder_Click" Style="{StaticResource DialogGhostButton}" Margin="0,0,8,0"/>
-                        <Button Content="选择其他 DB" Click="ChooseExternalDatabase_Click" Style="{StaticResource DialogGhostButton}" Margin="0,0,8,0"/>
-                        <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource DialogGhostButton}"/>
+                        <Button Content="打开备份目录" Click="OpenBackupFolder_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0"/>
+                        <Button Content="打开数据目录" Click="OpenDataFolder_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0"/>
+                        <Button Content="选择其他 DB" Click="ChooseExternalDatabase_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0"/>
+                        <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource AppDialogGhostButton}"/>
                     </WrapPanel>
                 </Grid>
             </Grid>

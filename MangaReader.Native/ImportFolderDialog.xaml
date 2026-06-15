@@ -13,14 +13,8 @@
         DragEnter="Window_DragEnter"
         DragOver="Window_DragOver"
         Drop="Window_Drop">
-    <Window.Resources>
-        <DropShadowEffect x:Key="DialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
-    </Window.Resources>
-
     <Grid Margin="22">
-        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
-                Background="#01000000"
-                Effect="{StaticResource DialogShadow}"/>
+        <Border Style="{StaticResource AppDialogShadowBorder}"/>
         <Border CornerRadius="{StaticResource RadiusDialog}"
                 Background="{StaticResource Brush.AppBackground}"
                 BorderBrush="{StaticResource Brush.Surface}"

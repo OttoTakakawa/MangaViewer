@@ -10,14 +10,8 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent">
-    <Window.Resources>
-        <DropShadowEffect x:Key="DialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
-    </Window.Resources>
-
     <Grid Margin="22">
-        <Border CornerRadius="{StaticResource RadiusDialogShadow}"
-                Background="#01000000"
-                Effect="{StaticResource DialogShadow}"/>
+        <Border Style="{StaticResource AppDialogShadowBorder}"/>
         <Border CornerRadius="{StaticResource RadiusDialog}"
                 Background="{StaticResource Brush.AppBackground}"
                 BorderBrush="{StaticResource Brush.Surface}"
@@ -96,8 +90,10 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Row="0"
                                                        Grid.Column="0"
+                                                       Grid.ColumnSpan="3"
                                                        Text="{Binding FolderName}"
                                                        ToolTip="{Binding FolderName}"
+                                                       Margin="14,0,14,0"
                                                        Style="{StaticResource AppDialogLabelText}"
                                                        TextWrapping="NoWrap"
                                                        TextTrimming="CharacterEllipsis"/>
@@ -106,6 +102,8 @@
                                                      Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
                                                      ToolTip="{Binding Title}"
                                                      Margin="0,8,0,0"
+                                                     Height="44"
+                                                     VerticalContentAlignment="Center"
                                                      MaxLines="1"
                                                      TextWrapping="NoWrap"
                                                      HorizontalScrollBarVisibility="Hidden"
@@ -113,17 +111,19 @@
                                             <Border Grid.Row="1"
                                                     Grid.Column="2"
                                                     Margin="0,8,0,0"
-                                                    MinHeight="52"
+                                                    Height="44"
                                                     CornerRadius="{StaticResource RadiusControl}"
                                                     Background="{StaticResource Brush.Surface}"
                                                     BorderBrush="{StaticResource Brush.BorderSubtle}"
                                                     BorderThickness="1"
-                                                    Padding="12"
+                                                    Padding="12,0"
                                                     VerticalAlignment="Stretch">
                                                 <TextBlock Text="{Binding SummaryText}"
                                                            TextAlignment="Right"
+                                                           VerticalAlignment="Center"
                                                            Foreground="{StaticResource Brush.TextPrimary}"
-                                                           TextWrapping="Wrap"/>
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding SummaryText}"/>
                                             </Border>
                                         </Grid>
                                     </Border>
