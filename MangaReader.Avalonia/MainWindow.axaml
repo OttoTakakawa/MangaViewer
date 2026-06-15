@@ -28,7 +28,7 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
       <Border Grid.Row="0" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,0,0,1" Padding="22,14">
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
           <StackPanel>
@@ -73,7 +73,7 @@
             <TextBox x:Name="SearchBox"
                      Watermark="搜索标题、作者、标签"
                      TextChanged="SearchBox_TextChanged"/>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
               <ComboBox x:Name="SortBox" SelectedIndex="0" SelectionChanged="BookFilter_Changed">
                 <ComboBoxItem Content="最近录入"/>
                 <ComboBoxItem Content="标题"/>
@@ -81,6 +81,7 @@
                 <ComboBoxItem Content="页数"/>
               </ComboBox>
               <CheckBox Grid.Column="1" x:Name="FavoriteOnlyBox" Content="收藏" VerticalAlignment="Center" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
+              <CheckBox Grid.Column="2" x:Name="ShowHiddenBox" Content="隐藏" VerticalAlignment="Center" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
             </Grid>
           </StackPanel>
           <ListBox x:Name="BooksList"
@@ -111,15 +112,23 @@
           </Border>
 
           <StackPanel Grid.Column="1" Spacing="22">
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
               <StackPanel>
                 <TextBlock x:Name="TitleText" Text="未选择作品" FontSize="32" FontWeight="Bold" Foreground="{StaticResource Brush.TextPrimary}" TextWrapping="Wrap"/>
                 <TextBlock x:Name="AuthorText" Text="作者 -" Margin="0,8,0,0" Foreground="{StaticResource Brush.TextMuted}" FontSize="15"/>
                 <TextBlock x:Name="MetaText" Text="0 页" Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSubtle}" FontSize="13"/>
               </StackPanel>
               <Button Grid.Column="1" x:Name="FavoriteButton" Content="☆ 收藏" Click="Favorite_Click" Padding="16,8"/>
-              <Button Grid.Column="2" Content="开始阅读" Click="Read_Click" Padding="22,8" Background="{StaticResource Brush.TextPrimary}" Foreground="{StaticResource Brush.Surface}"/>
+              <Button Grid.Column="2" Content="编辑" Click="Edit_Click" Padding="16,8"/>
+              <Button Grid.Column="3" Content="开始阅读" Click="Read_Click" Padding="22,8" Background="{StaticResource Brush.TextPrimary}" Foreground="{StaticResource Brush.Surface}"/>
             </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Content="打开所在文件夹" Click="OpenFolder_Click" Padding="14,8"/>
+              <Button Content="重新定位" Click="Relocate_Click" Padding="14,8"/>
+              <Button x:Name="HideButton" Content="隐藏作品" Click="ToggleHidden_Click" Padding="14,8"/>
+              <Button Content="删除库记录" Click="DeleteBook_Click" Padding="14,8" Background="{StaticResource Brush.DangerSurface}" Foreground="{StaticResource Brush.Danger}"/>
+            </StackPanel>
 
             <ItemsControl x:Name="TagChips">
               <ItemsControl.ItemsPanel>
@@ -141,6 +150,49 @@
               <TextBlock x:Name="SummaryText" Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextMuted}" LineHeight="22"/>
             </StackPanel>
 
+            <Border x:Name="EditFormPanel" IsVisible="False" Padding="20" CornerRadius="10" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1">
+              <StackPanel Spacing="14">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                  <TextBlock Text="编辑作品信息" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" VerticalAlignment="Center"/>
+                  <Button Grid.Column="1" Content="取消" Click="CancelEdit_Click" Padding="16,8"/>
+                  <Button Grid.Column="2" Content="保存" Click="SaveEdit_Click" Padding="16,8" Background="{StaticResource Brush.TextPrimary}" Foreground="{StaticResource Brush.Surface}"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+                  <StackPanel Grid.Row="0">
+                    <TextBlock Text="书名" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <TextBox x:Name="EditTitleBox" Margin="0,6,0,0"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="0" Grid.Column="2">
+                    <TextBlock Text="作者" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <TextBox x:Name="EditAuthorBox" Margin="0,6,0,0"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="1">
+                    <TextBlock Text="外文名" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <TextBox x:Name="EditForeignNameBox" Margin="0,6,0,0"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Grid.Column="2">
+                    <TextBlock Text="出品时间" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <TextBox x:Name="EditProducedAtBox" Margin="0,6,0,0"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="2">
+                    <TextBlock Text="Tag" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <TextBox x:Name="EditTagsBox" Margin="0,6,0,0"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Grid.Column="2">
+                    <TextBlock Text="封面页 / 阅读次数" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <Grid ColumnDefinitions="*,10,*" Margin="0,6,0,0">
+                      <NumericUpDown x:Name="EditCoverPageBox" Minimum="1" Increment="1"/>
+                      <NumericUpDown Grid.Column="2" x:Name="EditReadCountBox" Minimum="0" Increment="1"/>
+                    </Grid>
+                  </StackPanel>
+                  <StackPanel Grid.Row="3" Grid.ColumnSpan="3">
+                    <TextBlock Text="简介" Foreground="{StaticResource Brush.TextMuted}"/>
+                    <TextBox x:Name="EditSummaryBox" Margin="0,6,0,0" MinHeight="96" AcceptsReturn="True" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </Border>
+
             <StackPanel>
               <TextBlock Text="作品信息" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.TextPrimary}"/>
               <Grid Margin="0,12,0,0" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="96,*" RowSpacing="10" ColumnSpacing="16">
@@ -160,7 +212,6 @@
             <StackPanel>
               <TextBlock Text="文件" FontWeight="SemiBold" FontSize="16" Foreground="{StaticResource Brush.TextPrimary}"/>
               <TextBlock x:Name="FolderPathText" Margin="0,10,0,0" Foreground="{StaticResource Brush.TextMuted}" TextWrapping="Wrap"/>
-              <Button Content="打开所在文件夹" Click="OpenFolder_Click" Margin="0,12,0,0" HorizontalAlignment="Left" Padding="16,8"/>
             </StackPanel>
           </StackPanel>
         </Grid>
@@ -176,6 +227,16 @@
         <TextBlock Text="作者" FontSize="28" FontWeight="Black" Foreground="{StaticResource Brush.TextWarm}"/>
         <ListBox Grid.Row="1" x:Name="AuthorManagerList"/>
       </Grid>
+
+      <Border Grid.Row="2" x:Name="LogPanel" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="0,1,0,0" Padding="16,10">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
+          <TextBlock Text="日志" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}"/>
+          <Button Grid.Column="1" x:Name="ToggleLogButton" Content="扩大" Click="ToggleLog_Click" Height="32" Padding="14,0"/>
+          <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" x:Name="LogScroll" Height="160">
+            <TextBlock x:Name="LogText" TextWrapping="Wrap" Foreground="{StaticResource Brush.TextMuted}" FontSize="12"/>
+          </ScrollViewer>
+        </Grid>
+      </Border>
     </Grid>
   </Grid>
 </Window>

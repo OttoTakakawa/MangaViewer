@@ -563,3 +563,28 @@ powershell -ExecutionPolicy Bypass -File .\pack-macos.ps1
 - `MangaReader.Avalonia`：0 警告，0 错误。
 - 已重新产出 `_release_macos/MangaReader-osx-arm64.zip`，约 41.22 MB。
 - 已重新产出 `_release_macos/MangaReader-osx-x64.zip`，约 42.80 MB。
+
+### 2026-06-16：PC 等价操作补齐
+
+继续收口：
+
+- Avalonia 详情页补齐 PC 版常用管理动作：
+  - 收藏 / 取消收藏；
+  - 编辑 / 取消 / 保存；
+  - 打开所在文件夹；
+  - 重新定位目录；
+  - 隐藏 / 恢复作品；
+  - 删除库记录；
+  - 封面页与阅读次数编辑。
+- 书库筛选补齐隐藏作品开关，默认不显示隐藏作品。
+- 日志面板补齐 PC 版约束：
+  - 默认高度 `160px`；
+  - 扩大高度 `420px`；
+  - 最多保留 `300` 行；
+  - 单行最多 `900` 字符。
+- 主页统计会跟随收藏、删除、扫描和编辑操作刷新。
+
+边界：
+
+- 删除操作只删除 SQLite 库记录，不删除用户磁盘文件。
+- macOS/Avalonia 仍然使用独立前端实现，但视觉规格、页面层级、关键动作和约束继续向 PC/WPF 版对齐。
