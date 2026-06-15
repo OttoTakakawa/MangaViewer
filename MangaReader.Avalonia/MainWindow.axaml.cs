@@ -112,7 +112,7 @@ public sealed partial class MainWindow : Window
         _database.SaveProgress(_selectedBook);
         _database.SaveReadCount(_selectedBook);
 
-        var reader = new ReaderWindow(_selectedBook)
+        var reader = new ReaderWindow(_selectedBook, _database)
         {
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };

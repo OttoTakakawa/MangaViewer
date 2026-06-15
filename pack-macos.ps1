@@ -1,6 +1,11 @@
 param(
     [string[]]$RuntimeIdentifiers = @("osx-arm64", "osx-x64"),
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    [string]$SignIdentity = "",
+    [switch]$Notarize,
+    [string]$AppleId = "",
+    [string]$AppleTeamId = "",
+    [string]$AppleAppPassword = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,11 +67,37 @@ foreach ($rid in $RuntimeIdentifiers) {
 "@
     Set-Content -Path (Join-Path $contentsDir "Info.plist") -Value $infoPlist -Encoding UTF8
 
+    if (-not [string]::IsNullOrWhiteSpace($SignIdentity)) {
+        & codesign --deep --force --options runtime --sign $SignIdentity $appDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "codesign failed for $appDir"
+        }
+    }
+
     $zipPath = Join-Path $outputRoot "MangaReader-$rid.zip"
     if (Test-Path $zipPath) {
         Remove-Item $zipPath -Force
     }
     Compress-Archive -Path $appDir -DestinationPath $zipPath -Force
+
+    if ($Notarize) {
+        if ([string]::IsNullOrWhiteSpace($AppleId) -or [string]::IsNullOrWhiteSpace($AppleTeamId) -or [string]::IsNullOrWhiteSpace($AppleAppPassword)) {
+            throw "Notarize requires -AppleId, -AppleTeamId and -AppleAppPassword."
+        }
+
+        & xcrun notarytool submit $zipPath --apple-id $AppleId --team-id $AppleTeamId --password $AppleAppPassword --wait
+        if ($LASTEXITCODE -ne 0) {
+            throw "notarytool failed for $zipPath"
+        }
+
+        & xcrun stapler staple $appDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "stapler failed for $appDir"
+        }
+
+        Remove-Item $zipPath -Force
+        Compress-Archive -Path $appDir -DestinationPath $zipPath -Force
+    }
 }
 
 Write-Host "macOS release complete: $outputRoot"

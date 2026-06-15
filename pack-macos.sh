@@ -5,6 +5,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT="$ROOT/MangaReader.Avalonia/MangaReader.Avalonia.csproj"
 OUTPUT_ROOT="$ROOT/_release_macos"
 CONFIGURATION="${CONFIGURATION:-Release}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+NOTARIZE="${NOTARIZE:-0}"
+APPLE_ID="${APPLE_ID:-}"
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-}"
+APPLE_APP_PASSWORD="${APPLE_APP_PASSWORD:-}"
 if [ "$#" -gt 0 ]; then
   RIDS=("$@")
 else
@@ -63,7 +68,28 @@ for RID in "${RIDS[@]}"; do
 PLIST
 
   chmod +x "$MACOS_DIR/MangaReader.Avalonia" || true
+
+  if [ -n "$SIGN_IDENTITY" ]; then
+    codesign --deep --force --options runtime --sign "$SIGN_IDENTITY" "$APP_DIR"
+  fi
+
   (cd "$OUTPUT_ROOT" && zip -qry "MangaReader-$RID.zip" "MangaReader-$RID.app")
+
+  if [ "$NOTARIZE" = "1" ]; then
+    if [ -z "$APPLE_ID" ] || [ -z "$APPLE_TEAM_ID" ] || [ -z "$APPLE_APP_PASSWORD" ]; then
+      echo "NOTARIZE=1 requires APPLE_ID, APPLE_TEAM_ID and APPLE_APP_PASSWORD." >&2
+      exit 1
+    fi
+
+    xcrun notarytool submit "$OUTPUT_ROOT/MangaReader-$RID.zip" \
+      --apple-id "$APPLE_ID" \
+      --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_APP_PASSWORD" \
+      --wait
+    xcrun stapler staple "$APP_DIR"
+    rm -f "$OUTPUT_ROOT/MangaReader-$RID.zip"
+    (cd "$OUTPUT_ROOT" && zip -qry "MangaReader-$RID.zip" "MangaReader-$RID.app")
+  fi
 done
 
 echo "macOS release complete: $OUTPUT_ROOT"

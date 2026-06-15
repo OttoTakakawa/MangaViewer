@@ -480,5 +480,49 @@ powershell -ExecutionPolicy Bypass -File .\pack-macos.ps1
 限制：
 
 - 当前 macOS 包未做 Apple Developer ID 签名与 notarization，首次运行可能需要用户在系统安全设置中确认。
-- 当前阅读器为 MVP：已覆盖单页阅读和快捷翻页，尚未迁移 Windows 版的双页、缩放、LRU 页图缓存和邻页预解码细节。
 - 自动更新仍按策略降级为打开 GitHub Releases。
+
+### 2026-06-16：阅读器能力补齐与签名链路预留
+
+已完成：
+
+- Avalonia 阅读器新增单页/双页切换。
+- 新增适宽、适高、原始尺寸三种显示模式。
+- 新增缩放滑条，支持 0.1x 到 3x。
+- 新增快捷键：
+  - `A` / 左方向：上一页；
+  - `D` / 右方向 / 空格：下一页；
+  - `Q`：单页/双页切换；
+  - `W`：适高；
+  - `E`：适宽；
+  - `Esc`：关闭阅读器。
+- 新增 5 项 LRU 页图缓存。
+- 新增 90ms 延迟邻页预加载。
+- 阅读器翻页后保存 `LastReadPageIndex`。
+- `pack-macos.ps1` 与 `pack-macos.sh` 已支持可选签名与公证参数：
+  - `SignIdentity` / `SIGN_IDENTITY`；
+  - `Notarize` / `NOTARIZE=1`；
+  - `AppleId` / `APPLE_ID`；
+  - `AppleTeamId` / `APPLE_TEAM_ID`；
+  - `AppleAppPassword` / `APPLE_APP_PASSWORD`。
+
+验证：
+
+```powershell
+dotnet build MangaReader.Core\MangaReader.Core.csproj -c Release -nologo
+dotnet build MangaReader.Native\MangaReader.Native.csproj -c Release -nologo
+dotnet build MangaReader.Avalonia\MangaReader.Avalonia.csproj -c Release -nologo
+powershell -ExecutionPolicy Bypass -File .\pack-macos.ps1
+```
+
+结果：
+
+- `MangaReader.Core`：0 警告，0 错误。
+- `MangaReader.Native`：0 警告，0 错误。
+- `MangaReader.Avalonia`：0 警告，0 错误。
+- 已重新产出 `_release_macos/MangaReader-osx-arm64.zip`，约 41.21 MB。
+- 已重新产出 `_release_macos/MangaReader-osx-x64.zip`，约 42.79 MB。
+
+外部阻塞：
+
+- Apple Developer ID 签名与 notarization 需要 macOS 环境、Apple Developer 账号、Developer ID Application 证书、App-specific password 或 App Store Connect API Key。当前 Windows 环境只能把脚本链路补齐，不能实际完成 Apple 公证。
