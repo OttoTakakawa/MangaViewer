@@ -6,15 +6,15 @@
         MinWidth="760"
         MinHeight="560"
         Title="阅读器"
-        Background="#111827"
+        Background="{StaticResource Brush.TextPrimary}"
         KeyDown="ReaderWindow_KeyDown">
   <Grid RowDefinitions="Auto,*">
-    <Border Grid.Row="0" Background="#0B1220" Padding="14" BorderBrush="#1F2937" BorderThickness="0,0,0,1">
+    <Border Grid.Row="0" Background="{StaticResource Brush.TextPrimary}" Padding="14" BorderBrush="{StaticResource Brush.BorderStrong}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="10">
         <Button Content="返回" Click="Close_Click" Padding="14,7"/>
         <Button Grid.Column="1" Content="上一页" Click="Previous_Click" Padding="14,7"/>
-        <TextBlock Grid.Column="2" x:Name="TitleText" VerticalAlignment="Center" Foreground="#F9FAFB" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-        <TextBlock Grid.Column="3" x:Name="PageText" VerticalAlignment="Center" Foreground="#D1D5DB"/>
+        <TextBlock Grid.Column="2" x:Name="TitleText" VerticalAlignment="Center" Foreground="{StaticResource Brush.Surface}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Grid.Column="3" x:Name="PageText" VerticalAlignment="Center" Foreground="{StaticResource Brush.BorderStrong}"/>
         <ComboBox Grid.Column="4" x:Name="ReadingModeBox" Width="86" SelectedIndex="0" SelectionChanged="ReaderOption_Changed">
           <ComboBoxItem Content="单页"/>
           <ComboBoxItem Content="双页"/>
@@ -29,13 +29,13 @@
         <Button Grid.Column="8" Content="打开文件夹" Click="OpenFolder_Click" Padding="14,7"/>
       </Grid>
     </Border>
-    <ScrollViewer Grid.Row="1" x:Name="ReaderScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" SizeChanged="ReaderScrollViewer_SizeChanged">
+    <ScrollViewer Grid.Row="1" x:Name="ReaderScrollViewer" Background="{StaticResource Brush.TextPrimary}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" SizeChanged="ReaderScrollViewer_SizeChanged">
       <Grid MinHeight="520" Margin="24">
         <StackPanel x:Name="PageHost" Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center">
           <Image x:Name="PageImageLeft" Stretch="Uniform"/>
           <Image x:Name="PageImageRight" Stretch="Uniform"/>
         </StackPanel>
-        <TextBlock x:Name="PlaceholderText" Text="没有可显示的页面" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#D1D5DB"/>
+        <TextBlock x:Name="PlaceholderText" Text="没有可显示的页面" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource Brush.BorderStrong}"/>
       </Grid>
     </ScrollViewer>
   </Grid>
