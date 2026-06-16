@@ -8,6 +8,11 @@ namespace MangaReader.Native.Models;
 
 public sealed class MangaBook : INotifyPropertyChanged
 {
+    private const int MaxCardTagRows = 2;
+    private const int MaxCardTagRowUnits = 30;
+    private const int MaxCardTagTextUnits = 52;
+    private const int CardTagChromeUnits = 4;
+
     private int _lastReadPageIndex;
     private int _readCount;
     private BitmapSource? _coverImage;
@@ -84,6 +89,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     }
     public List<string> Pages { get; } = [];
     public ObservableCollection<TagChip> TagItems { get; } = [];
+    public ObservableCollection<TagChip> CardTagItems { get; } = [];
 
     public int LastReadPageIndex
     {
@@ -238,7 +244,10 @@ public sealed class MangaBook : INotifyPropertyChanged
     private void RefreshTagItems()
     {
         TagItems.Clear();
-        foreach (var tag in TagService.ParseTags(_tags))
+        CardTagItems.Clear();
+
+        var tags = TagService.ParseTags(_tags).ToList();
+        foreach (var tag in tags)
         {
             TagItems.Add(new TagChip
             {
@@ -246,6 +255,123 @@ public sealed class MangaBook : INotifyPropertyChanged
                 Color = TagColor(tag)
             });
         }
+
+        RefreshCardTagItems(tags);
+        OnPropertyChanged(nameof(CardTagItems));
+    }
+
+    private void RefreshCardTagItems(IReadOnlyList<string> tags)
+    {
+        if (tags.Count == 0)
+        {
+            return;
+        }
+
+        var rows = new int[MaxCardTagRows];
+        var visible = new List<(TagChip Chip, int Row, int Units)>();
+
+        foreach (var tag in tags)
+        {
+            if (!TryPlaceCardTag(tag, rows, out var row, out var units))
+            {
+                continue;
+            }
+
+            visible.Add((new TagChip
+            {
+                Name = tag,
+                Color = TagColor(tag)
+            }, row, units));
+        }
+
+        var hiddenCount = tags.Count - visible.Count;
+        if (hiddenCount > 0)
+        {
+            while (visible.Count > 0 && !CanPlaceCardSummary(rows))
+            {
+                RemoveCardTagPlacement(rows, visible[^1].Row, visible[^1].Units);
+                visible.RemoveAt(visible.Count - 1);
+                hiddenCount++;
+            }
+        }
+
+        foreach (var item in visible)
+        {
+            CardTagItems.Add(item.Chip);
+        }
+
+        if (hiddenCount > 0)
+        {
+            CardTagItems.Add(new TagChip
+            {
+                Name = $"+{hiddenCount}",
+                Color = "#E5E7EB"
+            });
+        }
+    }
+
+    private static bool TryPlaceCardTag(string tag, int[] rows, out int row, out int units)
+    {
+        row = -1;
+        var textUnits = CountCardTagTextUnits(tag);
+        units = textUnits + CardTagChromeUnits;
+
+        if (textUnits > MaxCardTagTextUnits)
+        {
+            return false;
+        }
+
+        if (units <= MaxCardTagRowUnits)
+        {
+            for (var i = 0; i < rows.Length; i++)
+            {
+                if (rows[i] + units <= MaxCardTagRowUnits)
+                {
+                    rows[i] += units;
+                    row = i;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (rows.Any(value => value > 0))
+        {
+            return false;
+        }
+
+        rows[0] = MaxCardTagRowUnits;
+        rows[1] = Math.Min(MaxCardTagRowUnits, units - MaxCardTagRowUnits);
+        return true;
+    }
+
+    private static bool CanPlaceCardSummary(int[] rows)
+    {
+        const int summaryUnits = 6;
+        return rows.Any(rowUnits => rowUnits + summaryUnits <= MaxCardTagRowUnits);
+    }
+
+    private static void RemoveCardTagPlacement(int[] rows, int row, int units)
+    {
+        if (row < 0)
+        {
+            Array.Clear(rows);
+            return;
+        }
+
+        rows[row] = Math.Max(0, rows[row] - units);
+    }
+
+    private static int CountCardTagTextUnits(string text)
+    {
+        var units = 0;
+        foreach (var c in text)
+        {
+            units += c <= 0x007F ? 1 : 2;
+        }
+
+        return units;
     }
 
     private static string TagColor(string tag)

@@ -17,6 +17,8 @@ public partial class TagEditDialog : Window
     ];
 
     public ObservableCollection<string> CustomColors { get; } = new();
+    private readonly IReadOnlyDictionary<string, string> _categoryColors;
+    private bool _suppressCategoryColorSync;
     private string _selectedColor;
 
     public string TagName => TagNameBox.Text.Trim();
@@ -25,15 +27,21 @@ public partial class TagEditDialog : Window
     public string SelectedColor => _selectedColor;
     public bool OpenMoreRequested { get; private set; }
 
-    public TagEditDialog(TagChip tag, IReadOnlyList<MangaBook> relatedBooks, IEnumerable<string>? existingCategories = null)
+    public TagEditDialog(
+        TagChip tag,
+        IReadOnlyList<MangaBook> relatedBooks,
+        IEnumerable<string>? existingCategories = null,
+        IReadOnlyDictionary<string, string>? categoryColors = null)
     {
         InitializeComponent();
+        _categoryColors = categoryColors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         TagNameBox.Text = tag.Name;
         UpdatedAtText.Text = tag.UpdatedAtText;
         UsageCountText.Text = $"已关联 {tag.UsageCount} 本漫画";
         var previews = relatedBooks.Take(3).ToList();
         PreviewBooksList.ItemsSource = previews;
         EmptyPreviewText.Visibility = previews.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _suppressCategoryColorSync = true;
         PopulateCategories(existingCategories);
         SelectCategory(tag.Category);
         TagTypeBox.SelectedIndex = tag.IsExclusive ? 0 : 1;
@@ -46,6 +54,8 @@ public partial class TagEditDialog : Window
 
         _selectedColor = tag.Color;
         SelectColor(_selectedColor);
+        _suppressCategoryColorSync = false;
+        TagCategoryBox.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent, new TextChangedEventHandler(TagCategoryBox_TextChanged));
 
         Loaded += (_, _) =>
         {
@@ -66,6 +76,30 @@ public partial class TagEditDialog : Window
             {
                 CustomColors.Add(color);
             }
+            SelectColor(color);
+        }
+    }
+
+    private void TagCategoryBox_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateColorFromCategory();
+    }
+
+    private void TagCategoryBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateColorFromCategory();
+    }
+
+    private void UpdateColorFromCategory()
+    {
+        if (_suppressCategoryColorSync)
+        {
+            return;
+        }
+
+        var category = GetSelectedCategory();
+        if (_categoryColors.TryGetValue(category, out var color) && !string.IsNullOrWhiteSpace(color))
+        {
             SelectColor(color);
         }
     }

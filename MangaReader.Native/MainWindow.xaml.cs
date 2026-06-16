@@ -100,6 +100,8 @@ public partial class MainWindow : Window
     public RangeObservableCollection<TagChip> VisibleTags { get; } = [];
     public RangeObservableCollection<TagChip> ActiveTagFilters { get; } = [];
     public RangeObservableCollection<TagChip> TagManagerItems { get; } = [];
+    public RangeObservableCollection<TagChip> EditSelectedTagItems { get; } = [];
+    public RangeObservableCollection<TagChip> EditTagOptions { get; } = [];
     public RangeObservableCollection<AuthorItem> AuthorManagerItems { get; } = [];
     public RangeObservableCollection<string> AuthorFilters { get; } = [];
 
@@ -645,6 +647,7 @@ public partial class MainWindow : Window
         _currentBook.Summary = SummaryBox.Text.Trim();
         _currentBook.Tags = NormalizeTagsRespectingRules(TagService.ParseTags(TagsBox.Text.Trim()));
         TagsBox.Text = _currentBook.Tags;
+        RefreshEditTagEditor(_currentBook.Tags);
         if (int.TryParse(CoverPageBox.Text.Trim(), out var coverPage))
         {
             _currentBook.CoverPageIndex = Math.Clamp(coverPage - 1, 0, Math.Max(_currentBook.PageCount - 1, 0));
@@ -666,6 +669,7 @@ public partial class MainWindow : Window
         _currentBook.NotifyAll();
         RefreshLibraryViews(tagManager: false, sort: true);
         RefreshHomeShelves();
+        FillMetadataEditors(book);
         SetEditMode(false);
         StatusText.Text = "书籍信息已保存。";
     }
@@ -1267,6 +1271,7 @@ public partial class MainWindow : Window
         {
             AddTagToBookRespectingRules(_currentBook, tag);
             TagsBox.Text = _currentBook.Tags;
+            RefreshEditTagEditor(_currentBook.Tags);
             var book = _currentBook;
             await Task.Run(() => _database.SaveMetadata(book));
             _currentBook.NotifyAll();
@@ -1520,18 +1525,61 @@ public partial class MainWindow : Window
         {
             return;
         }
+        if (IsTagSummaryChip(chip))
+        {
+            return;
+        }
 
         _tagDragStartPoint = e.GetPosition(this);
         if (e.ClickCount >= 2)
         {
-            ToggleTagFilter(chip);
+            ApplyTagFilter(chip);
             e.Handled = true;
+            return;
+        }
+
+        StatusText.Text = $"双击 Tag 筛选：{chip.Name}";
+    }
+
+    private void TagChip_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.ScaleTo(element, 1.04, MotionService.Fast);
+        }
+    }
+
+    private void TagChip_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.ScaleTo(element, 1.0, MotionService.Fast);
+        }
+    }
+
+    private void TagChip_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.PressBounce(element);
+        }
+    }
+
+    private void TagChip_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement element)
+        {
+            MotionService.ScaleTo(element, element.IsMouseOver ? 1.04 : 1.0, MotionService.Fast);
         }
     }
 
     private void TagChip_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: TagChip chip } || chip.IsSelected)
+        {
+            return;
+        }
+        if (IsTagSummaryChip(chip))
         {
             return;
         }
@@ -1548,6 +1596,89 @@ public partial class MainWindow : Window
         data.SetData(TagDragDataFormat, chip.Name);
         data.SetData(typeof(string), chip.Name);
         DragDrop.DoDragDrop((DependencyObject)sender, data, System.Windows.DragDropEffects.Copy);
+    }
+
+    private void EditTagOption_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isEditMode || sender is not FrameworkElement { DataContext: TagChip chip })
+        {
+            return;
+        }
+        if (e.ClickCount >= 2)
+        {
+            ApplyTagFilter(chip);
+            e.Handled = true;
+            return;
+        }
+
+        var tags = TagService.ParseTags(TagsBox.Text).ToList();
+        if (tags.Any(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        if (IsExclusiveTag(chip.Name))
+        {
+            var category = TagCategory(chip.Name);
+            tags = tags
+                .Where(tag => !IsExclusiveTag(tag) || !string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        tags.Add(chip.Name);
+        TagsBox.Text = NormalizeTagsRespectingRules(tags);
+        RefreshEditTagEditor(TagsBox.Text);
+    }
+
+    private void EditTagRemove_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isEditMode || sender is not FrameworkElement { DataContext: TagChip chip })
+        {
+            return;
+        }
+        if (e.ClickCount >= 2)
+        {
+            ApplyTagFilter(chip);
+            e.Handled = true;
+            return;
+        }
+
+        var tags = TagService.ParseTags(TagsBox.Text)
+            .Where(tag => !string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        TagsBox.Text = TagService.FormatTags(tags);
+        RefreshEditTagEditor(TagsBox.Text);
+    }
+
+    private void EditCreateTag_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isEditMode)
+        {
+            return;
+        }
+
+        if (!TryResolveTagForCreate("", out var tag, out var category, out var isExclusive, out var color))
+        {
+            return;
+        }
+
+        UpsertManagedTag(tag, category, isExclusive, color);
+        var tags = TagService.ParseTags(TagsBox.Text).ToList();
+        if (!tags.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (isExclusive)
+            {
+                tags = tags
+                    .Where(name => !IsExclusiveTag(name) || !string.Equals(TagCategory(name), category, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            tags.Add(tag);
+        }
+
+        TagsBox.Text = NormalizeTagsRespectingRules(tags);
+        RefreshEditTagEditor(TagsBox.Text);
+        RefreshLibraryViews(authors: false, sort: false);
+        StatusText.Text = $"已加入待保存 Tag：{tag}";
     }
 
     private async void BooksList_Drop(object sender, System.Windows.DragEventArgs e)
@@ -1581,6 +1712,7 @@ public partial class MainWindow : Window
         if (ReferenceEquals(book, _currentBook))
         {
             TagsBox.Text = book.Tags;
+            RefreshEditTagEditor(book.Tags);
         }
         RefreshLibraryViews(authors: false, sort: false);
         StatusText.Text = $"已给《{book.Title}》添加 Tag：{tag}";
@@ -1714,6 +1846,24 @@ public partial class MainWindow : Window
         StatusText.Text = $"已创建候选标签：{tag}。它会出现在书库 Tag 池，可拖拽到漫画或添加到当前漫画。";
     }
 
+    private void RefreshEditTagEditor(string tagsText)
+    {
+        var selectedNames = TagService.ParseTags(tagsText).ToList();
+        var selectedSet = new HashSet<string>(selectedNames, StringComparer.OrdinalIgnoreCase);
+        var selectedChips = selectedNames
+            .Select(name => CreateTagChip(name))
+            .ToList();
+        var optionChips = EnumerateKnownTags()
+            .Where(name => !selectedSet.Contains(name))
+            .OrderBy(name => TagCategoryOrder(TagCategory(name)))
+            .ThenBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(name => CreateTagChip(name))
+            .ToList();
+
+        EditSelectedTagItems.ReplaceRange(selectedChips);
+        EditTagOptions.ReplaceRange(optionChips);
+    }
+
     private void FillMetadataEditors(MangaBook book)
     {
         DetailPanel.DataContext = book;
@@ -1723,6 +1873,7 @@ public partial class MainWindow : Window
         ProducedAtBox.Text = book.ProducedAt;
         ImportedAtBox.Text = book.ImportedAt;
         TagsBox.Text = book.Tags;
+        RefreshEditTagEditor(book.Tags);
         CoverPageBox.Text = (book.CoverPageIndex + 1).ToString();
         ReadCountBox.Text = book.ReadCount.ToString();
         SetSelectedReadingStatus(book.ReadingStatus);
@@ -1756,12 +1907,11 @@ public partial class MainWindow : Window
 
         // 标签胶囊
         SyncBookTagChips(book);
-        var tagNames = (book.TagItems ?? (System.Collections.Generic.IEnumerable<TagChip>)System.Array.Empty<TagChip>())
-            .Select(t => t.Name)
-            .Where(n => !string.IsNullOrWhiteSpace(n))
+        var tagChips = (book.TagItems ?? (System.Collections.Generic.IEnumerable<TagChip>)System.Array.Empty<TagChip>())
+            .Where(tag => !string.IsNullOrWhiteSpace(tag.Name))
             .ToList();
-        BookTagChips.ItemsSource = tagNames;
-        BookTagChips.Visibility = tagNames.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BookTagChips.ItemsSource = tagChips;
+        BookTagChips.Visibility = tagChips.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         // 阅读状态行
         ReadingStatusInlineText.Text = $"{book.ReadingStatusText} · {book.ReadCountText}";
@@ -2251,6 +2401,11 @@ public partial class MainWindow : Window
 
     private void ToggleTagFilter(TagChip chip)
     {
+        if (IsTagSummaryChip(chip))
+        {
+            return;
+        }
+
         if (_activeTagFilters.Contains(chip.Name))
         {
             _activeTagFilters.Remove(chip.Name);
@@ -2270,10 +2425,42 @@ public partial class MainWindow : Window
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
     }
 
+    private void ApplyTagFilter(TagChip chip)
+    {
+        if (IsTagSummaryChip(chip))
+        {
+            return;
+        }
+
+        ShowLibraryView("library");
+        if (!_activeTagFilters.Contains(chip.Name))
+        {
+            if (IsExclusiveTag(chip.Name))
+            {
+                RemoveActiveTagsInExclusiveGroup(TagCategory(chip.Name));
+            }
+            _activeTagFilters.Add(chip.Name);
+        }
+
+        RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true, ensureLibraryView: true);
+        StatusText.Text = $"已按 Tag 筛选：{chip.Name}";
+    }
+
+    private static bool IsTagSummaryChip(TagChip chip)
+    {
+        return chip.Name.StartsWith("+", StringComparison.Ordinal);
+    }
+
     private void ActiveTagChip_Click(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TagChip chip })
         {
+            return;
+        }
+        if (e.ClickCount >= 2)
+        {
+            ApplyTagFilter(chip);
+            e.Handled = true;
             return;
         }
 
@@ -3197,7 +3384,8 @@ public partial class MainWindow : Window
     {
         var resolvedCategory = category ?? TagCategory(tag);
         var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
-        var resolvedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
+        var requestedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
+        var resolvedColor = ResolveCategoryColor(resolvedCategory, tag) ?? requestedColor;
         _tagGroupFilterOptionsDirty = true;
         _suppressedTags.Remove(tag);
         _managedTags.Add(tag);
@@ -3209,6 +3397,36 @@ public partial class MainWindow : Window
             _managedTagColors[tag] = resolvedColor;
         }
         _ = Task.Run(() => _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive, resolvedColor));
+    }
+
+    private Dictionary<string, string> BuildTagCategoryColorMap(string? excludingTag = null)
+    {
+        var colors = DefaultTagPresets
+            .GroupBy(tag => tag.Category, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().Color, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var tag in _managedTags.OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            if (!string.IsNullOrWhiteSpace(excludingTag) && string.Equals(tag, excludingTag, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var category = TagCategory(tag);
+            if (!colors.ContainsKey(category)
+                && _managedTagColors.TryGetValue(tag, out var color)
+                && !string.IsNullOrWhiteSpace(color))
+            {
+                colors[category] = color;
+            }
+        }
+
+        return colors;
+    }
+
+    private string? ResolveCategoryColor(string category, string? excludingTag = null)
+    {
+        return BuildTagCategoryColorMap(excludingTag).TryGetValue(category, out var color) ? color : null;
     }
 
     private bool TryResolveTagForCreate(string initialValue, out string tag, out string category, out bool isExclusive, out string color)
@@ -3227,7 +3445,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories()) { Owner = this };
+        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories(), BuildTagCategoryColorMap()) { Owner = this };
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
         {
             StatusText.Text = "没有创建标签。";
@@ -3237,7 +3455,7 @@ public partial class MainWindow : Window
         tag = dialog.TagName;
         category = dialog.TagCategory;
         isExclusive = dialog.IsExclusive;
-        color = dialog.SelectedColor;
+        color = ResolveCategoryColor(category) ?? dialog.SelectedColor;
         return true;
     }
 
@@ -3286,7 +3504,8 @@ public partial class MainWindow : Window
         {
             return managedColor;
         }
-        return TagService.GetColor(tag);
+
+        return ResolveCategoryColor(TagCategory(tag), tag) ?? TagService.GetColor(tag);
     }
 
     private TagChip CreateTagChip(string tag, bool isSelected = false)
@@ -3744,7 +3963,7 @@ public partial class MainWindow : Window
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
-        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories()) { Owner = this };
+        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(chip.Name)) { Owner = this };
         var result = dialog.ShowDialog();
         if (dialog.OpenMoreRequested)
         {
@@ -3759,7 +3978,7 @@ public partial class MainWindow : Window
         var newName = dialog.TagName;
         var newCategory = dialog.TagCategory;
         var newIsExclusive = dialog.IsExclusive;
-        var newColor = dialog.SelectedColor;
+        var newColor = ResolveCategoryColor(newCategory, chip.Name) ?? dialog.SelectedColor;
         if (string.IsNullOrWhiteSpace(newName))
         {
             StatusText.Text = "标签名不能为空。";
