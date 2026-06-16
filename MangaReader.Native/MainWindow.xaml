@@ -77,6 +77,22 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="CardTagChipBorder" TargetType="Border">
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderBrush" Value="#D4DCE7"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,0"/>
+            <Setter Property="Margin" Value="0,0,5,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#64748B"/>
+                    <Setter Property="Opacity" Value="0.88"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="AppTagChipText" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -734,7 +750,7 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <ItemsControl ItemsSource="{Binding CardTagItems}" Margin="0,8,0,0" MaxHeight="48" ClipToBounds="True">
+                        <ItemsControl ItemsSource="{Binding CardTagItems}" Margin="0,8,0,0" MaxHeight="44" ClipToBounds="True">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel/>
@@ -742,9 +758,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource AppTagChipBorder}"
-                                            Margin="0,0,5,5"
-                                            Padding="7,3"
+                                    <Border Style="{StaticResource CardTagChipBorder}"
                                             MaxWidth="170"
                                             Background="{Binding Color}"
                                             MouseEnter="TagChip_MouseEnter"
@@ -754,13 +768,13 @@
                                             MouseMove="TagChip_MouseMove"
                                             MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
                                         <TextBlock Text="{Binding Name}"
-                                                   MaxWidth="146"
-                                                   MaxHeight="24"
+                                                   MaxWidth="148"
                                                    Style="{StaticResource AppTagChipText}"
                                                    FontSize="10"
                                                    LineHeight="12"
                                                    LineStackingStrategy="BlockLineHeight"
-                                                   TextWrapping="Wrap"
+                                                   TextWrapping="NoWrap"
+                                                   TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding Name}"/>
                                     </Border>
                                 </DataTemplate>

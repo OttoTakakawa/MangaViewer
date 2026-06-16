@@ -596,13 +596,11 @@ public partial class ReaderWindow : Window
 
         try
         {
-            var singleDecodeWidth = GetDecodePixelWidth(false);
-            var doubleDecodeWidth = GetDecodePixelWidth(true);
-            var cacheKey = CreateReaderPageCacheKey(safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
+            var cacheKey = CreateReaderPageCacheKey(safeIndex, doublePageMode);
             var page = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return GetOrDecodeReaderPage(cacheKey, safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth, cancellationToken);
+                return GetOrDecodeReaderPage(cacheKey, safeIndex, doublePageMode, cancellationToken);
             }, cancellationToken);
 
             if (requestId != _pageLoadRequestId || cancellationToken.IsCancellationRequested)
@@ -641,7 +639,7 @@ public partial class ReaderWindow : Window
             HideReaderMessage();
             ApplyFitModeForRequest(requestId);
             ScheduleProgressSave();
-            ScheduleAdjacentPagePreload(safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
+            ScheduleAdjacentPagePreload(safeIndex, doublePageMode);
         }
         catch (OperationCanceledException)
         {
@@ -702,18 +700,16 @@ public partial class ReaderWindow : Window
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
     private sealed record PageCacheEntry(string Key, LoadedPage Page);
 
-    private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
+    private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode)
     {
         var mode = doublePageMode ? "double" : "single";
-        return $"{pageIndex}:{mode}:{singleDecodeWidth}:{doubleDecodeWidth}";
+        return $"{pageIndex}:{mode}:original";
     }
 
     private LoadedPage GetOrDecodeReaderPage(
         string cacheKey,
         int pageIndex,
         bool doublePageMode,
-        int singleDecodeWidth,
-        int doubleDecodeWidth,
         CancellationToken cancellationToken)
     {
         if (TryGetReaderPageCache(cacheKey, out var cached))
@@ -721,7 +717,7 @@ public partial class ReaderWindow : Window
             return cached;
         }
 
-        var page = DecodeReaderPage(pageIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth, cancellationToken);
+        var page = DecodeReaderPage(pageIndex, doublePageMode, cancellationToken);
         AddReaderPageCache(cacheKey, page);
         return page;
     }
@@ -729,26 +725,17 @@ public partial class ReaderWindow : Window
     private LoadedPage DecodeReaderPage(
         int pageIndex,
         bool doublePageMode,
-        int singleDecodeWidth,
-        int doubleDecodeWidth,
         CancellationToken cancellationToken)
     {
         var firstPath = _book.Pages[pageIndex];
-        // 双页模式下两页必须使用同一解码基准，否则适应高度会被不同解码尺寸污染。
-        var firstDecodeWidth = doublePageMode ? doubleDecodeWidth : singleDecodeWidth;
-        var first = ImageLoader.LoadBitmap(firstPath, firstDecodeWidth);
+        var first = ImageLoader.LoadBitmap(firstPath, ignoreColorProfile: false);
         cancellationToken.ThrowIfCancellationRequested();
         var useDouble = doublePageMode && pageIndex + 1 < _book.Pages.Count && !IsLandscape(first);
-        if (doublePageMode && !useDouble && firstDecodeWidth != singleDecodeWidth)
-        {
-            first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth);
-            cancellationToken.ThrowIfCancellationRequested();
-        }
 
         BitmapSource? second = null;
         if (useDouble)
         {
-            second = ImageLoader.LoadBitmap(_book.Pages[pageIndex + 1], doubleDecodeWidth);
+            second = ImageLoader.LoadBitmap(_book.Pages[pageIndex + 1], ignoreColorProfile: false);
             cancellationToken.ThrowIfCancellationRequested();
         }
 
@@ -819,7 +806,7 @@ public partial class ReaderWindow : Window
             && memoryInfo.MemoryLoadBytes > memoryInfo.HighMemoryLoadThresholdBytes * 0.82;
     }
 
-    private void ScheduleAdjacentPagePreload(int currentPageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
+    private void ScheduleAdjacentPagePreload(int currentPageIndex, bool doublePageMode)
     {
         if (_isClosing || IsMemoryPressureHigh())
         {
@@ -854,13 +841,13 @@ public partial class ReaderWindow : Window
                         return;
                     }
 
-                    var cacheKey = CreateReaderPageCacheKey(candidate, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
+                    var cacheKey = CreateReaderPageCacheKey(candidate, doublePageMode);
                     if (TryGetReaderPageCache(cacheKey, out _))
                     {
                         continue;
                     }
 
-                    var page = DecodeReaderPage(candidate, doublePageMode, singleDecodeWidth, doubleDecodeWidth, token);
+                    var page = DecodeReaderPage(candidate, doublePageMode, token);
                     AddReaderPageCache(cacheKey, page);
                 }
             }
@@ -966,16 +953,6 @@ public partial class ReaderWindow : Window
     private double GetDisplayedPixelHeight()
     {
         return _pageSlotHeight;
-    }
-
-    private int GetDecodePixelWidth(bool isDoublePage)
-    {
-        var viewport = GetReaderViewportWidth();
-        if (viewport <= 0) viewport = 960;
-        var zoom = ZoomSlider?.Value ?? 1.0;
-        var perPage = isDoublePage ? viewport / 2.0 : viewport;
-        var decoded = perPage * zoom * 1.2;
-        return (int)Math.Clamp(decoded, 800, 2600);
     }
 
     private double GetReaderViewportWidth()

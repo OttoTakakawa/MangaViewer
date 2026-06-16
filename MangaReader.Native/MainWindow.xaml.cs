@@ -3401,8 +3401,8 @@ public partial class MainWindow : Window
     {
         var tags = TagService.ParseTags(book.Tags).ToList();
         var current = book.TagItems.ToList();
-        var matches = current.Count == tags.Count;
-        if (matches)
+        var tagItemsMatch = current.Count == tags.Count;
+        if (tagItemsMatch)
         {
             for (var i = 0; i < tags.Count; i++)
             {
@@ -3412,27 +3412,73 @@ public partial class MainWindow : Window
                     || !string.Equals(item.Category, TagCategory(tag), StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(item.Color, TagColor(tag), StringComparison.OrdinalIgnoreCase))
                 {
-                    matches = false;
+                    tagItemsMatch = false;
                     break;
                 }
             }
         }
 
-        if (matches)
+        var cardTagItemsMatch = BookCardTagChipsMatch(book);
+        if (tagItemsMatch && cardTagItemsMatch)
         {
             return;
         }
 
-        book.TagItems.Clear();
-        foreach (var tag in tags)
+        if (!tagItemsMatch)
         {
-            book.TagItems.Add(new TagChip
+            book.TagItems.Clear();
+            foreach (var tag in tags)
             {
-                Name = tag,
-                Category = TagCategory(tag),
-                Color = TagColor(tag)
+                book.TagItems.Add(new TagChip
+                {
+                    Name = tag,
+                    Category = TagCategory(tag),
+                    Color = TagColor(tag)
+                });
+            }
+        }
+
+        if (!cardTagItemsMatch)
+        {
+            SyncBookCardTagChips(book);
+        }
+    }
+
+    private bool BookCardTagChipsMatch(MangaBook book)
+    {
+        foreach (var item in book.CardTagItems)
+        {
+            var expectedCategory = IsCardTagSummary(item.Name) ? item.Category : TagCategory(item.Name);
+            var expectedColor = IsCardTagSummary(item.Name) ? "#E5E7EB" : TagColor(item.Name);
+            if (!string.Equals(item.Category, expectedCategory, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(item.Color, expectedColor, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void SyncBookCardTagChips(MangaBook book)
+    {
+        var current = book.CardTagItems.ToList();
+        book.CardTagItems.Clear();
+        foreach (var item in current)
+        {
+            var isSummary = IsCardTagSummary(item.Name);
+            book.CardTagItems.Add(new TagChip
+            {
+                Name = item.Name,
+                Category = isSummary ? item.Category : TagCategory(item.Name),
+                Color = isSummary ? "#E5E7EB" : TagColor(item.Name)
             });
         }
+    }
+
+    private static bool IsCardTagSummary(string value)
+    {
+        return value.StartsWith("+", StringComparison.Ordinal);
     }
 
     private IEnumerable<string> EnumerateKnownTags()

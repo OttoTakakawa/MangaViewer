@@ -10,7 +10,7 @@ public sealed class MangaBook : INotifyPropertyChanged
 {
     private const int MaxCardTagRows = 2;
     private const int MaxCardTagRowUnits = 30;
-    private const int MaxCardTagTextUnits = 52;
+    private const int MaxCardTagTextUnits = 26;
     private const int CardTagChromeUnits = 4;
 
     private int _lastReadPageIndex;

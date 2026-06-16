@@ -30,12 +30,12 @@ public static class ImageLoader
         return total;
     }
 
-    public static BitmapImage LoadBitmap(string path, int decodePixelWidth = 0)
+    public static BitmapImage LoadBitmap(string path, int decodePixelWidth = 0, bool ignoreColorProfile = true)
     {
         var image = new BitmapImage();
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
-        image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+        image.CreateOptions = ignoreColorProfile ? BitmapCreateOptions.IgnoreColorProfile : BitmapCreateOptions.None;
         if (decodePixelWidth > 0)
         {
             image.DecodePixelWidth = decodePixelWidth;
