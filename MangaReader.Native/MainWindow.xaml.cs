@@ -552,6 +552,12 @@ public partial class MainWindow : Window
 
     private void BooksList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
+        if (IsTagChipEventSource(e.OriginalSource))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (BooksList.SelectedItem is not MangaBook book || book.IsMissing || book.Pages.Count == 0)
         {
             StatusText.Text = "这本漫画路径失效或没有可阅读图片。";
@@ -2433,6 +2439,9 @@ public partial class MainWindow : Window
         }
 
         ShowLibraryView("library");
+        BooksList.SelectedItem = null;
+        _currentBook = null;
+        SetDetailVisible(false);
         if (!_activeTagFilters.Contains(chip.Name))
         {
             if (IsExclusiveTag(chip.Name))
@@ -2449,6 +2458,22 @@ public partial class MainWindow : Window
     private static bool IsTagSummaryChip(TagChip chip)
     {
         return chip.Name.StartsWith("+", StringComparison.Ordinal);
+    }
+
+    private static bool IsTagChipEventSource(object source)
+    {
+        var current = source as DependencyObject;
+        while (current is not null)
+        {
+            if (current is FrameworkElement { DataContext: TagChip })
+            {
+                return true;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private void ActiveTagChip_Click(object sender, MouseButtonEventArgs e)
