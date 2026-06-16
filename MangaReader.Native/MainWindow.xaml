@@ -1413,6 +1413,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource MetricCard}">
                                 <StackPanel>
@@ -1433,6 +1434,13 @@
                                     <TextBlock Text="候选标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                                     <TextBlock x:Name="TagManagerStandaloneCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
                                     <TextBlock Text="未关联时只能作为待分配标签" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="3" Style="{StaticResource MetricCard}" Margin="0">
+                                <StackPanel>
+                                    <TextBlock Text="标签组" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerGroupCountText" Text="0 组" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="按分组统一颜色" Margin="0,6,0,0" Foreground="#6E645C"/>
                                 </StackPanel>
                             </Border>
                 </Grid>
@@ -1615,8 +1623,9 @@
                                     <Border Margin="0,0,0,6" Padding="14,10" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" HorizontalAlignment="Stretch">
                                         <DockPanel LastChildFill="True">
                                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                <Button Content="筛选" Click="FilterByAuthor_Click" Style="{StaticResource AppGhostButton}" Margin="0,0,8,0"/>
-                                                <Button Content="改名" Click="RenameAuthor_Click" Style="{StaticResource AppGhostButton}"/>
+                                                <Button Content="按照此作者筛选" Click="FilterByAuthor_Click" Style="{StaticResource AppGhostButton}" Margin="0,0,8,0"/>
+                                                <Button Content="修改作者信息" Click="RenameAuthor_Click" Style="{StaticResource AppGhostButton}" Margin="0,0,8,0"/>
+                                                <Button Content="删除" Click="DeleteAuthor_Click" Style="{StaticResource AppDangerButton}"/>
                                             </StackPanel>
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#25211E"/>
@@ -1795,8 +1804,11 @@
                                 <StackPanel x:Name="ReadOnlyInfoPanel">
                                     <TextBlock x:Name="BookTitleText"
                                                Style="{StaticResource DetailHeroTitleText}"/>
-                                    <TextBlock x:Name="BookAuthorLineText"
-                                               Style="{StaticResource DetailHeroAuthorText}"/>
+                                    <Button x:Name="BookAuthorFilterButton"
+                                            Click="DetailAuthorFilter_Click"
+                                            Style="{StaticResource DetailHeroSecondaryButton}"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,8,0,0"/>
                                     <TextBlock x:Name="BookMetaLineText"
                                                Style="{StaticResource DetailHeroMetaText}"/>
 
@@ -1825,6 +1837,14 @@
                                         <Button Content="开始阅读"
                                                 Click="OpenCurrentBook_Click"
                                                 Style="{StaticResource DetailHeroPrimaryButton}"
+                                                Margin="0,0,12,0"/>
+                                        <Button Content="-1"
+                                                Click="DecreaseReadCount_Click"
+                                                Style="{StaticResource DetailHeroSecondaryButton}"
+                                                Margin="0,0,8,0"/>
+                                        <Button Content="+1"
+                                                Click="IncreaseReadCount_Click"
+                                                Style="{StaticResource DetailHeroSecondaryButton}"
                                                 Margin="0,0,12,0"/>
                                         <Button Content="打开所在文件夹"
                                                 Click="OpenFolder_Click"
@@ -1923,18 +1943,27 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Text="作者" Style="{StaticResource LabelText}"/>
-                                                <Border MinHeight="40"
-                                                        Padding="13,5"
-                                                        CornerRadius="{StaticResource RadiusField}"
-                                                        Background="{StaticResource Brush.Surface}"
-                                                        BorderBrush="{StaticResource Brush.BorderStrong}"
-                                                        BorderThickness="1">
-                                                    <TextBlock x:Name="AuthorBox"
-                                                               Foreground="{StaticResource Brush.TextMuted}"
-                                                               VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-                                                </Border>
+                                                <TextBox x:Name="AuthorBox"
+                                                         TextChanged="EditAuthorSearchBox_TextChanged"
+                                                         ToolTip="只能选择作者管理中已有作者"/>
+                                                <ItemsControl ItemsSource="{Binding EditAuthorOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              Margin="0,8,0,0">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type models:AuthorItem}">
+                                                            <Border Style="{StaticResource AppTagChipBorder}"
+                                                                    Background="#E5E7EB"
+                                                                    MouseLeftButtonDown="EditAuthorOption_Click"
+                                                                    ToolTip="点击选择作者">
+                                                                <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="外文名" Style="{StaticResource LabelText}"/>
@@ -1994,13 +2023,12 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <DockPanel>
-                                                    <Button DockPanel.Dock="Right"
-                                                            Content="+ 新建"
-                                                            Click="EditCreateTag_Click"
-                                                            Style="{StaticResource TinyButton}"
-                                                            Margin="8,0,0,0"/>
                                                     <TextBlock Text="Tag" Style="{StaticResource LabelText}"/>
                                                 </DockPanel>
+                                                <TextBox x:Name="EditTagSearchBox"
+                                                         Margin="0,0,0,8"
+                                                         TextChanged="EditTagSearchBox_TextChanged"
+                                                         ToolTip="输入关键词搜索已有 Tag"/>
                                                 <TextBox x:Name="TagsBox" Visibility="Collapsed"/>
                                                 <Border MinHeight="76"
                                                         MaxHeight="132"
@@ -2068,17 +2096,6 @@
                                                  TextWrapping="Wrap"
                                                  AcceptsReturn="True"
                                                  VerticalScrollBarVisibility="Auto"/>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
-                                        <Button Content="开始阅读"
-                                                Click="OpenCurrentBook_Click"
-                                                Style="{StaticResource DetailHeroSecondaryButton}"
-                                                Margin="0,0,10,0"/>
-                                        <Button x:Name="SetCoverButton"
-                                                Content="设置为封面页"
-                                                Click="SetCover_Click"
-                                                Style="{StaticResource DetailHeroSecondaryButton}"/>
                                     </StackPanel>
 
                                     <StackPanel Margin="0,28,0,0">

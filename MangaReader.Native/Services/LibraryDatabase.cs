@@ -656,6 +656,17 @@ public sealed class LibraryDatabase
         _lastMetadataBackupAt = DateTimeOffset.Now;
     }
 
+    public void DeleteManagedAuthor(string author)
+    {
+        BackupDatabase("before-managed-author-delete", force: true);
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM managed_authors WHERE name = $name;";
+        command.Parameters.AddWithValue("$name", author);
+        command.ExecuteNonQuery();
+        _lastMetadataBackupAt = DateTimeOffset.Now;
+    }
+
     public void SaveManagedTag(string tag, string category = "自定义", bool isExclusive = false, string color = "")
     {
         BackupDatabase("before-managed-tag-save", force: ShouldCreateMetadataBackup());

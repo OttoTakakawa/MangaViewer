@@ -102,6 +102,7 @@ public partial class MainWindow : Window
     public RangeObservableCollection<TagChip> TagManagerItems { get; } = [];
     public RangeObservableCollection<TagChip> EditSelectedTagItems { get; } = [];
     public RangeObservableCollection<TagChip> EditTagOptions { get; } = [];
+    public RangeObservableCollection<AuthorItem> EditAuthorOptions { get; } = [];
     public RangeObservableCollection<AuthorItem> AuthorManagerItems { get; } = [];
     public RangeObservableCollection<string> AuthorFilters { get; } = [];
 
@@ -643,6 +644,16 @@ public partial class MainWindow : Window
 
         var previousCoverPageIndex = _currentBook.CoverPageIndex;
         _currentBook.Title = title;
+        var nextAuthor = AuthorBox.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(nextAuthor)
+            && !EnumerateKnownAuthors().Any(author => string.Equals(author, nextAuthor, StringComparison.OrdinalIgnoreCase)))
+        {
+            StatusText.Text = $"作者只能从作者管理中选择：{nextAuthor}";
+            RefreshEditAuthorOptions(nextAuthor);
+            return;
+        }
+
+        _currentBook.Author = nextAuthor;
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
         _currentBook.ReadingStatus = GetSelectedReadingStatus();
         if (!TryNormalizeDate(ProducedAtBox.Text, out var producedAt))
@@ -724,6 +735,7 @@ public partial class MainWindow : Window
         var book = _currentBook;
         await Task.Run(() => _database.SaveMetadata(book));
         _currentBook.NotifyAll();
+        FillMetadataEditors(book);
         ScheduleBookViewRefresh(refreshShelfOverview: false);
         StatusText.Text = $"已切换《{_currentBook.Title}》的卡片样式：样式 {_currentBook.BookStyleIndex + 1}。";
     }
@@ -1545,6 +1557,13 @@ public partial class MainWindow : Window
         }
 
         _tagDragStartPoint = e.GetPosition(this);
+        if (IsInsideBooksList(sender as DependencyObject))
+        {
+            ApplyTagFilter(chip);
+            e.Handled = true;
+            return;
+        }
+
         if (e.ClickCount >= 2)
         {
             ApplyTagFilter(chip);
@@ -1573,6 +1592,15 @@ public partial class MainWindow : Window
 
     private void TagChip_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (sender is FrameworkElement { DataContext: TagChip chip } elementInCard
+            && IsInsideBooksList(elementInCard))
+        {
+            MotionService.PressBounce(elementInCard);
+            ApplyTagFilter(chip);
+            e.Handled = true;
+            return;
+        }
+
         if (sender is UIElement element)
         {
             MotionService.PressBounce(element);
@@ -1662,6 +1690,38 @@ public partial class MainWindow : Window
             .ToList();
         TagsBox.Text = TagService.FormatTags(tags);
         RefreshEditTagEditor(TagsBox.Text);
+    }
+
+    private void EditTagSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!_isEditMode)
+        {
+            return;
+        }
+
+        RefreshEditTagEditor(TagsBox.Text);
+    }
+
+    private void EditAuthorSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!_isEditMode)
+        {
+            return;
+        }
+
+        RefreshEditAuthorOptions(AuthorBox.Text);
+    }
+
+    private void EditAuthorOption_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isEditMode || sender is not FrameworkElement { DataContext: AuthorItem item })
+        {
+            return;
+        }
+
+        AuthorBox.Text = item.Name;
+        RefreshEditAuthorOptions(item.Name);
+        e.Handled = true;
     }
 
     private void EditCreateTag_Click(object sender, RoutedEventArgs e)
@@ -1864,18 +1924,44 @@ public partial class MainWindow : Window
     {
         var selectedNames = TagService.ParseTags(tagsText).ToList();
         var selectedSet = new HashSet<string>(selectedNames, StringComparer.OrdinalIgnoreCase);
+        var query = EditTagSearchBox?.Text.Trim() ?? "";
         var selectedChips = selectedNames
             .Select(name => CreateTagChip(name))
             .ToList();
-        var optionChips = EnumerateKnownTags()
-            .Where(name => !selectedSet.Contains(name))
-            .OrderBy(name => TagCategoryOrder(TagCategory(name)))
-            .ThenBy(name => name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(name => CreateTagChip(name))
-            .ToList();
+        var optionChips = string.IsNullOrWhiteSpace(query)
+            ? []
+            : EnumerateKnownTags()
+                .Where(name => !selectedSet.Contains(name))
+                .Where(name => name.Contains(query, StringComparison.CurrentCultureIgnoreCase)
+                    || TagCategory(name).Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .OrderBy(name => name.StartsWith(query, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
+                .ThenBy(name => TagCategoryOrder(TagCategory(name)))
+                .ThenBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+                .Take(18)
+                .Select(name => CreateTagChip(name))
+                .ToList();
 
         EditSelectedTagItems.ReplaceRange(selectedChips);
         EditTagOptions.ReplaceRange(optionChips);
+    }
+
+    private void RefreshEditAuthorOptions(string query)
+    {
+        var trimmed = query.Trim();
+        var current = _currentBook?.Author ?? "";
+        var options = string.IsNullOrWhiteSpace(trimmed)
+            ? []
+            : EnumerateKnownAuthors()
+                .Where(author => !string.Equals(author, current, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(author, trimmed, StringComparison.OrdinalIgnoreCase))
+                .Where(author => author.Contains(trimmed, StringComparison.CurrentCultureIgnoreCase))
+                .OrderBy(author => author.StartsWith(trimmed, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
+                .ThenBy(author => author, StringComparer.CurrentCultureIgnoreCase)
+                .Take(12)
+                .Select(author => new AuthorItem { Name = author, BookCount = CountBooksByAuthor(author) })
+                .ToList();
+
+        EditAuthorOptions.ReplaceRange(options);
     }
 
     private void FillMetadataEditors(MangaBook book)
@@ -1883,6 +1969,7 @@ public partial class MainWindow : Window
         DetailPanel.DataContext = book;
         TitleBox.Text = book.Title;
         AuthorBox.Text = book.Author;
+        RefreshEditAuthorOptions(book.Author);
         ForeignNameBox.Text = book.ForeignName;
         ProducedAtBox.Text = book.ProducedAt;
         ImportedAtBox.Text = book.ImportedAt;
@@ -1900,7 +1987,7 @@ public partial class MainWindow : Window
         ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(book.ImportedAt);
         ReadOnlyTagsText.Text = EmptyAsPlaceholder(book.Tags);
         ReadOnlyCoverPageText.Text = (book.CoverPageIndex + 1).ToString();
-        DetailCoverPageText.Text = $"第 {book.CoverPageIndex + 1} 页";
+        DetailCoverPageText.Text = $"第 {book.CoverPageIndex + 1} 页 · 卡片样式 {book.BookStyleIndex + 1}";
         ReadOnlyReadCountText.Text = book.ReadCountText;
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
@@ -1915,7 +2002,8 @@ public partial class MainWindow : Window
         var displayTitle = string.IsNullOrWhiteSpace(book.Title) ? "未命名作品" : book.Title;
         BookTitleText.Text = displayTitle;
         BookTitleText.ToolTip = displayTitle;
-        BookAuthorLineText.Text = "作者 " + (string.IsNullOrWhiteSpace(book.Author) ? "未知作者" : book.Author);
+        BookAuthorFilterButton.Content = string.IsNullOrWhiteSpace(book.Author) ? "作者 未指定" : $"作者 {book.Author}";
+        BookAuthorFilterButton.IsEnabled = !string.IsNullOrWhiteSpace(book.Author);
         // Meta 行只展示页数；标签由下方胶囊承担，避免视觉重复。
         BookMetaLineText.Text = $"{book.PageCount} 页";
 
@@ -1993,13 +2081,18 @@ public partial class MainWindow : Window
         ReadOnlyInfoPanel.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         EditFormPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         SaveMetadataButton.IsEnabled = enabled;
-        SetCoverButton.IsEnabled = enabled;
         ImportedTodayButton.IsEnabled = enabled;
 
-        foreach (var box in new[] { TitleBox, ForeignNameBox, ProducedAtBox, ImportedAtBox, TagsBox, CoverPageBox, ReadCountBox, SummaryBox })
+        foreach (var box in new[] { TitleBox, AuthorBox, ForeignNameBox, ProducedAtBox, ImportedAtBox, TagsBox, CoverPageBox, ReadCountBox, SummaryBox, EditTagSearchBox })
         {
             box.IsReadOnly = !enabled;
             box.Opacity = enabled ? 1.0 : 0.78;
+        }
+
+        if (!enabled)
+        {
+            EditTagOptions.Clear();
+            EditAuthorOptions.Clear();
         }
     }
 
@@ -2486,6 +2579,11 @@ public partial class MainWindow : Window
         }
 
         return false;
+    }
+
+    private static bool IsInsideBooksList(DependencyObject? source)
+    {
+        return source is not null && FindAncestor<System.Windows.Controls.ListBoxItem>(source) is not null;
     }
 
     private void ActiveTagChip_Click(object sender, MouseButtonEventArgs e)
@@ -3426,16 +3524,49 @@ public partial class MainWindow : Window
             ? requestedColor
             : ResolveCategoryColor(resolvedCategory, tag) ?? TagService.GetColor(tag);
         _tagGroupFilterOptionsDirty = true;
-        _suppressedTags.Remove(tag);
-        _managedTags.Add(tag);
-        _managedTagCategories[tag] = resolvedCategory;
-        _managedTagIsExclusive[tag] = resolvedExclusive;
-        _managedTagUpdatedAt[tag] = DateTimeOffset.Now.ToString("O");
-        if (!string.IsNullOrWhiteSpace(resolvedColor))
+        ApplyCategoryColorLocally(resolvedCategory, resolvedColor, tag, resolvedExclusive);
+        _ = Task.Run(() => SaveCategoryColor(resolvedCategory, resolvedColor, tag, resolvedExclusive));
+    }
+
+    private List<string> EnumerateTagsInCategory(string category, string? requiredTag = null)
+    {
+        return EnumerateKnownTags()
+            .Append(requiredTag ?? "")
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Where(tag => string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrWhiteSpace(requiredTag) && string.Equals(tag, requiredTag, StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void ApplyCategoryColorLocally(string category, string color, string? primaryTag = null, bool? primaryIsExclusive = null)
+    {
+        var updatedAt = DateTimeOffset.Now.ToString("O");
+        foreach (var tag in EnumerateTagsInCategory(category, primaryTag))
         {
-            _managedTagColors[tag] = resolvedColor;
+            _suppressedTags.Remove(tag);
+            _managedTags.Add(tag);
+            _managedTagCategories[tag] = category;
+            _managedTagIsExclusive[tag] = primaryTag is not null && string.Equals(tag, primaryTag, StringComparison.OrdinalIgnoreCase)
+                ? primaryIsExclusive ?? IsExclusiveTag(tag)
+                : IsExclusiveTag(tag);
+            _managedTagUpdatedAt[tag] = updatedAt;
+            if (!string.IsNullOrWhiteSpace(color))
+            {
+                _managedTagColors[tag] = color;
+            }
         }
-        _ = Task.Run(() => _database.SaveManagedTag(tag, resolvedCategory, resolvedExclusive, resolvedColor));
+    }
+
+    private void SaveCategoryColor(string category, string color, string? primaryTag = null, bool? primaryIsExclusive = null)
+    {
+        foreach (var tag in EnumerateTagsInCategory(category, primaryTag))
+        {
+            var isExclusive = primaryTag is not null && string.Equals(tag, primaryTag, StringComparison.OrdinalIgnoreCase)
+                ? primaryIsExclusive ?? IsExclusiveTag(tag)
+                : IsExclusiveTag(tag);
+            _database.SaveManagedTag(tag, category, isExclusive, color);
+        }
     }
 
     private Dictionary<string, string> BuildTagCategoryColorMap(string? excludingTag = null)
@@ -3452,8 +3583,7 @@ public partial class MainWindow : Window
             }
 
             var category = TagCategory(tag);
-            if (!colors.ContainsKey(category)
-                && _managedTagColors.TryGetValue(tag, out var color)
+            if (_managedTagColors.TryGetValue(tag, out var color)
                 && !string.IsNullOrWhiteSpace(color))
             {
                 colors[category] = color;
@@ -3539,12 +3669,7 @@ public partial class MainWindow : Window
 
     private string TagColor(string tag)
     {
-        if (_managedTagColors.TryGetValue(tag, out var managedColor) && !string.IsNullOrWhiteSpace(managedColor))
-        {
-            return managedColor;
-        }
-
-        return ResolveCategoryColor(TagCategory(tag), tag) ?? TagService.GetColor(tag);
+        return ResolveCategoryColor(TagCategory(tag)) ?? TagService.GetColor(tag);
     }
 
     private TagChip CreateTagChip(string tag, bool isSelected = false)
@@ -3558,7 +3683,7 @@ public partial class MainWindow : Window
             {
                 Name = preset.Name,
                 Category = category,
-                Color = preset.Color,
+                Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
                 UsageCount = usageCount,
@@ -3713,6 +3838,10 @@ public partial class MainWindow : Window
         {
             TagManagerStandaloneCountText.Text = $"{knownTags.Count(tag => GetTagUsageCount(tag) == 0)} 个";
         }
+        if (TagManagerGroupCountText is not null)
+        {
+            TagManagerGroupCountText.Text = $"{knownTags.Select(TagCategory).Distinct(StringComparer.OrdinalIgnoreCase).Count()} 组";
+        }
         if (TagManagerEmptyState is not null)
         {
             TagManagerEmptyState.Visibility = sorted.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -3762,6 +3891,11 @@ public partial class MainWindow : Window
             .Where(author => !string.IsNullOrWhiteSpace(author))
             .Concat(_managedAuthors)
             .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private int CountBooksByAuthor(string author)
+    {
+        return _allBooks.Count(book => string.Equals(book.Author, author, StringComparison.OrdinalIgnoreCase));
     }
 
     private List<MangaBook> GetTagBooks(string tag)
@@ -3969,6 +4103,59 @@ public partial class MainWindow : Window
         StatusText.Text = $@"已在书库按作者查看：{item.Name}";
     }
 
+    private void DetailAuthorFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null || string.IsNullOrWhiteSpace(_currentBook.Author))
+        {
+            return;
+        }
+
+        ShowLibraryView("author");
+        SetAuthorFilter(_currentBook.Author);
+        SetDetailVisible(false);
+        StatusText.Text = $@"已在书库按作者查看：{_currentBook.Author}";
+    }
+
+    private async void DeleteAuthor_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: AuthorItem item })
+        {
+            return;
+        }
+
+        var booksToUpdate = _allBooks
+            .Where(book => string.Equals(book.Author, item.Name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var result = System.Windows.MessageBox.Show(
+            $"确定删除作者“{item.Name}”吗？\n\n会清空 {booksToUpdate.Count} 本漫画的作者字段，并从作者管理中移除该作者。",
+            "删除作者",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var updates = booksToUpdate.Select(book => (book.Id, "")).ToList();
+        await Task.Run(() =>
+        {
+            _database.SaveBookAuthorsBatch(updates, "delete-author");
+            _database.DeleteManagedAuthor(item.Name);
+        });
+
+        foreach (var book in booksToUpdate)
+        {
+            book.Author = "";
+            book.NotifyAll();
+        }
+        _managedAuthors.Remove(item.Name);
+
+        RefreshLibraryViews(sort: true);
+        RefreshAuthorFilters();
+        RefreshAuthorManagementItems(AuthorSearchBox?.Text?.Trim());
+        StatusText.Text = $"已删除作者：{item.Name}，清空 {booksToUpdate.Count} 本漫画的作者字段。";
+    }
+
     private void TagManagerFilter_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TagChip chip })
@@ -4101,6 +4288,7 @@ public partial class MainWindow : Window
                 }
                 _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
             }
+            SaveCategoryColor(newCategory, newColor, newName, newIsExclusive);
         });
 
         if (doRename)
@@ -4119,10 +4307,7 @@ public partial class MainWindow : Window
         _managedTagIsExclusive[newName] = newIsExclusive;
         _managedTagUpdatedAt[newName] = DateTimeOffset.Now.ToString("O");
         _tagGroupFilterOptionsDirty = true;
-        if (!string.IsNullOrWhiteSpace(newColor))
-        {
-            _managedTagColors[newName] = newColor;
-        }
+        ApplyCategoryColorLocally(newCategory, newColor, newName, newIsExclusive);
 
         foreach (var (book, tags) in affectedBooks)
         {
