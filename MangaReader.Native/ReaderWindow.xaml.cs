@@ -23,6 +23,7 @@ public partial class ReaderWindow : Window
     private const double FixedPageSlotHeight = 1600;
     private const double PortraitPageSlotAspect = 0.707;
     private const int MaxReaderPageCacheEntries = 5;
+    private const int MaxQualityReaderPageCacheEntries = 3;
     private const int MemoryPressureReaderPageCacheEntries = 2;
 
     private static SolidColorBrush FrozenBrush(string hex)
@@ -46,6 +47,7 @@ public partial class ReaderWindow : Window
     private static readonly SolidColorBrush BgDark = FrozenBrush("#050608");
     private const double DefaultDoublePageGap = 8;
     private const string DoublePageGapPreferenceKey = "reader.doublepage.gap";
+    private const string ReaderQualityModePreferenceKey = "reader.qualitymode";
     private readonly DispatcherTimer _controlsRevealTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private readonly DispatcherTimer _doublePageGapSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private readonly DispatcherTimer _pageLoadCoalesceTimer = new() { Interval = PageLoadCoalesceDelay };
@@ -59,6 +61,7 @@ public partial class ReaderWindow : Window
     private readonly Action<MangaBook>? _openBookRequest;
     private int _displayedPageCount = 1;
     private FitMode _fitMode = FitMode.Height;
+    private ReaderQualityMode _qualityMode = ReaderQualityMode.Quality;
     private string _boundaryHint = "";
     private bool _controlsHidden;
     private bool _isHoldZoomActive;
@@ -95,6 +98,12 @@ public partial class ReaderWindow : Window
         Height
     }
 
+    private enum ReaderQualityMode
+    {
+        Quality,
+        Performance
+    }
+
     public ReaderWindow(
         MangaBook book,
         LibraryDatabase database,
@@ -126,6 +135,7 @@ public partial class ReaderWindow : Window
         LoadViewerPreferences();
         ApplyReaderBackground();
         UpdateFitButtons();
+        UpdateQualityModeButton();
     }
 
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
@@ -426,6 +436,20 @@ public partial class ReaderWindow : Window
         }
     }
 
+    private void ToggleQualityModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _qualityMode = _qualityMode == ReaderQualityMode.Quality
+            ? ReaderQualityMode.Performance
+            : ReaderQualityMode.Quality;
+        UpdateQualityModeButton();
+        ClearReaderPageCache();
+        _ = Task.Run(() => _database.SaveShortcut(ReaderQualityModePreferenceKey, _qualityMode.ToString()));
+        if (IsLoaded)
+        {
+            RequestPageLoad(_requestedPageIndex, immediate: true, forceReload: true);
+        }
+    }
+
     private void ReaderWindow_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (HandleFixedShortcut(e.Key))
@@ -596,11 +620,13 @@ public partial class ReaderWindow : Window
 
         try
         {
-            var cacheKey = CreateReaderPageCacheKey(safeIndex, doublePageMode);
+            var singleDecodeWidth = GetReaderDecodePixelWidth(false);
+            var doubleDecodeWidth = GetReaderDecodePixelWidth(true);
+            var cacheKey = CreateReaderPageCacheKey(safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
             var page = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return GetOrDecodeReaderPage(cacheKey, safeIndex, doublePageMode, cancellationToken);
+                return GetOrDecodeReaderPage(cacheKey, safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth, cancellationToken);
             }, cancellationToken);
 
             if (requestId != _pageLoadRequestId || cancellationToken.IsCancellationRequested)
@@ -639,7 +665,7 @@ public partial class ReaderWindow : Window
             HideReaderMessage();
             ApplyFitModeForRequest(requestId);
             ScheduleProgressSave();
-            ScheduleAdjacentPagePreload(safeIndex, doublePageMode);
+            ScheduleAdjacentPagePreload(safeIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
         }
         catch (OperationCanceledException)
         {
@@ -700,16 +726,23 @@ public partial class ReaderWindow : Window
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
     private sealed record PageCacheEntry(string Key, LoadedPage Page);
 
-    private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode)
+    private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
     {
         var mode = doublePageMode ? "double" : "single";
-        return $"{pageIndex}:{mode}:original";
+        if (_qualityMode == ReaderQualityMode.Quality)
+        {
+            return $"{pageIndex}:{mode}:quality";
+        }
+
+        return $"{pageIndex}:{mode}:performance:{singleDecodeWidth}:{doubleDecodeWidth}";
     }
 
     private LoadedPage GetOrDecodeReaderPage(
         string cacheKey,
         int pageIndex,
         bool doublePageMode,
+        int singleDecodeWidth,
+        int doubleDecodeWidth,
         CancellationToken cancellationToken)
     {
         if (TryGetReaderPageCache(cacheKey, out var cached))
@@ -717,7 +750,7 @@ public partial class ReaderWindow : Window
             return cached;
         }
 
-        var page = DecodeReaderPage(pageIndex, doublePageMode, cancellationToken);
+        var page = DecodeReaderPage(pageIndex, doublePageMode, singleDecodeWidth, doubleDecodeWidth, cancellationToken);
         AddReaderPageCache(cacheKey, page);
         return page;
     }
@@ -725,17 +758,25 @@ public partial class ReaderWindow : Window
     private LoadedPage DecodeReaderPage(
         int pageIndex,
         bool doublePageMode,
+        int singleDecodeWidth,
+        int doubleDecodeWidth,
         CancellationToken cancellationToken)
     {
         var firstPath = _book.Pages[pageIndex];
-        var first = ImageLoader.LoadBitmap(firstPath, ignoreColorProfile: false);
+        var firstDecodeWidth = doublePageMode ? doubleDecodeWidth : singleDecodeWidth;
+        var first = ImageLoader.LoadBitmap(firstPath, firstDecodeWidth, ignoreColorProfile: false);
         cancellationToken.ThrowIfCancellationRequested();
         var useDouble = doublePageMode && pageIndex + 1 < _book.Pages.Count && !IsLandscape(first);
+        if (doublePageMode && !useDouble && firstDecodeWidth != singleDecodeWidth)
+        {
+            first = ImageLoader.LoadBitmap(firstPath, singleDecodeWidth, ignoreColorProfile: false);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
 
         BitmapSource? second = null;
         if (useDouble)
         {
-            second = ImageLoader.LoadBitmap(_book.Pages[pageIndex + 1], ignoreColorProfile: false);
+            second = ImageLoader.LoadBitmap(_book.Pages[pageIndex + 1], doubleDecodeWidth, ignoreColorProfile: false);
             cancellationToken.ThrowIfCancellationRequested();
         }
 
@@ -776,8 +817,20 @@ public partial class ReaderWindow : Window
                 _pageCache[key] = node;
             }
 
-            TrimReaderPageCache(IsMemoryPressureHigh() ? MemoryPressureReaderPageCacheEntries : MaxReaderPageCacheEntries);
+            TrimReaderPageCache(GetReaderPageCacheLimit());
         }
+    }
+
+    private int GetReaderPageCacheLimit()
+    {
+        if (IsMemoryPressureHigh())
+        {
+            return MemoryPressureReaderPageCacheEntries;
+        }
+
+        return _qualityMode == ReaderQualityMode.Quality
+            ? MaxQualityReaderPageCacheEntries
+            : MaxReaderPageCacheEntries;
     }
 
     private void TrimReaderPageCache(int maxEntries)
@@ -806,7 +859,7 @@ public partial class ReaderWindow : Window
             && memoryInfo.MemoryLoadBytes > memoryInfo.HighMemoryLoadThresholdBytes * 0.82;
     }
 
-    private void ScheduleAdjacentPagePreload(int currentPageIndex, bool doublePageMode)
+    private void ScheduleAdjacentPagePreload(int currentPageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
     {
         if (_isClosing || IsMemoryPressureHigh())
         {
@@ -841,13 +894,13 @@ public partial class ReaderWindow : Window
                         return;
                     }
 
-                    var cacheKey = CreateReaderPageCacheKey(candidate, doublePageMode);
+                    var cacheKey = CreateReaderPageCacheKey(candidate, doublePageMode, singleDecodeWidth, doubleDecodeWidth);
                     if (TryGetReaderPageCache(cacheKey, out _))
                     {
                         continue;
                     }
 
-                    var page = DecodeReaderPage(candidate, doublePageMode, token);
+                    var page = DecodeReaderPage(candidate, doublePageMode, singleDecodeWidth, doubleDecodeWidth, token);
                     AddReaderPageCache(cacheKey, page);
                 }
             }
@@ -879,16 +932,67 @@ public partial class ReaderWindow : Window
 
     private void NormalizeDisplayedImageSizing()
     {
+        if (_qualityMode == ReaderQualityMode.Quality)
+        {
+            NormalizeQualityImageSizing();
+            return;
+        }
+
+        NormalizePerformanceImageSizing();
+    }
+
+    private void NormalizeQualityImageSizing()
+    {
+        if (ReaderImageRight.Visibility == Visibility.Visible
+            && ReaderImage.Source is BitmapSource left
+            && ReaderImageRight.Source is BitmapSource right)
+        {
+            ReaderImage.Width = left.PixelWidth;
+            ReaderImage.Height = left.PixelHeight;
+            ReaderImage.Stretch = Stretch.Fill;
+            ReaderImageRight.Width = right.PixelWidth;
+            ReaderImageRight.Height = right.PixelHeight;
+            ReaderImageRight.Stretch = Stretch.Fill;
+            _pageSlotWidth = left.PixelWidth + right.PixelWidth;
+            _pageSlotHeight = Math.Max(left.PixelHeight, right.PixelHeight);
+            return;
+        }
+
+        if (ReaderImage.Source is BitmapSource single)
+        {
+            ReaderImage.Width = single.PixelWidth;
+            ReaderImage.Height = single.PixelHeight;
+            ReaderImage.Stretch = Stretch.Fill;
+            _pageSlotWidth = single.PixelWidth;
+            _pageSlotHeight = single.PixelHeight;
+        }
+        else
+        {
+            _pageSlotWidth = 0;
+            _pageSlotHeight = 0;
+            ReaderImage.Width = double.NaN;
+            ReaderImage.Height = double.NaN;
+            ReaderImage.Stretch = Stretch.None;
+        }
+
+        ReaderImageRight.Height = double.NaN;
+        ReaderImageRight.Width = double.NaN;
+        ReaderImageRight.Stretch = Stretch.None;
+    }
+
+    private void NormalizePerformanceImageSizing()
+    {
         var slotHeight = FixedPageSlotHeight;
         if (ReaderImageRight.Visibility == Visibility.Visible
             && ReaderImage.Source is BitmapSource left
             && ReaderImageRight.Source is BitmapSource right)
         {
             _pageSlotHeight = slotHeight;
-            _pageSlotWidth = slotHeight * PortraitPageSlotAspect;
-            ReaderImage.Width = _pageSlotWidth;
+            var slotWidth = slotHeight * PortraitPageSlotAspect;
+            _pageSlotWidth = slotWidth * 2;
+            ReaderImage.Width = slotWidth;
             ReaderImage.Height = _pageSlotHeight;
-            ReaderImageRight.Width = _pageSlotWidth;
+            ReaderImageRight.Width = slotWidth;
             ReaderImageRight.Height = _pageSlotHeight;
             ReaderImage.Stretch = Stretch.Uniform;
             ReaderImageRight.Stretch = Stretch.Uniform;
@@ -947,12 +1051,31 @@ public partial class ReaderWindow : Window
             return 0;
         }
 
-        return ReaderImageRight.Visibility == Visibility.Visible ? _pageSlotWidth * 2 : _pageSlotWidth;
+        return _pageSlotWidth;
     }
 
     private double GetDisplayedPixelHeight()
     {
         return _pageSlotHeight;
+    }
+
+    private int GetReaderDecodePixelWidth(bool isDoublePage)
+    {
+        if (_qualityMode == ReaderQualityMode.Quality)
+        {
+            return 0;
+        }
+
+        var viewport = GetReaderViewportWidth();
+        if (viewport <= 0)
+        {
+            viewport = 960;
+        }
+
+        var zoom = ZoomSlider?.Value ?? 1.0;
+        var perPage = isDoublePage ? viewport / 2.0 : viewport;
+        var decoded = perPage * zoom * 1.2;
+        return (int)Math.Clamp(decoded, 800, 3200);
     }
 
     private double GetReaderViewportWidth()
@@ -1293,6 +1416,16 @@ public partial class ReaderWindow : Window
             {
                 DoublePageGapSlider.Value = DefaultDoublePageGap;
             }
+
+            if (shortcuts.TryGetValue(ReaderQualityModePreferenceKey, out var qualityMode)
+                && Enum.TryParse<ReaderQualityMode>(qualityMode, ignoreCase: true, out var parsedQualityMode))
+            {
+                _qualityMode = parsedQualityMode;
+            }
+            else
+            {
+                _qualityMode = ReaderQualityMode.Quality;
+            }
         }
         finally
         {
@@ -1300,6 +1433,20 @@ public partial class ReaderWindow : Window
         }
 
         ApplyDoublePageGap();
+        UpdateQualityModeButton();
+    }
+
+    private void UpdateQualityModeButton()
+    {
+        if (QualityModeButton is null)
+        {
+            return;
+        }
+
+        QualityModeButton.Content = _qualityMode == ReaderQualityMode.Quality ? "质量" : "性能";
+        QualityModeButton.ToolTip = _qualityMode == ReaderQualityMode.Quality
+            ? "当前为质量模式：原图解码，按原始像素布局"
+            : "当前为性能模式：按视口降采样，降低内存压力";
     }
 
     private void RestartDoublePageGapSaveTimer()
