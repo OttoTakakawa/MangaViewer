@@ -60,7 +60,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Text="标签分组（可输入自定义）" Style="{StaticResource AppDialogLabelText}"/>
-                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource AppDialogEditableComboBox}"/>
+                        <ComboBox x:Name="TagCategoryBox" Margin="0,8,0,0" Style="{StaticResource AppDialogEditableComboBox}" SelectionChanged="TagCategoryBox_Changed"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="规则" Style="{StaticResource AppDialogLabelText}"/>
