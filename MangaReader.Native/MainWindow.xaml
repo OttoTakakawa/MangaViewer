@@ -1505,7 +1505,10 @@
                                                     </Border>
                                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="#25211E"/>
                                                 </StackPanel>
-                                                <WrapPanel Margin="0,8,0,0">
+                                                <WrapPanel Margin="0,8,0,0"
+                                                           Cursor="Hand"
+                                                           ToolTip="点击查看关联漫画"
+                                                           MouseLeftButtonDown="TagUsage_MouseLeftButtonDown">
                                                     <TextBlock Text="已关联 " Foreground="#6B7280"/>
                                                     <TextBlock Text="{Binding UsageCount}" Foreground="#6B7280"/>
                                                     <TextBlock Text=" 本漫画" Foreground="#6B7280"/>
@@ -1693,6 +1696,14 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border x:Name="DetailDismissOverlay"
+                Grid.Column="1"
+                Grid.ColumnSpan="2"
+                Panel.ZIndex="9"
+                Visibility="Collapsed"
+                Background="#01000000"
+                MouseDown="DetailDismissOverlay_MouseDown"/>
 
         <Border x:Name="DetailShell"
                 Grid.Column="1"

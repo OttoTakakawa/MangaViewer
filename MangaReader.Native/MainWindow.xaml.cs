@@ -617,6 +617,14 @@ public partial class MainWindow : Window
         SetDetailVisible(false);
     }
 
+    private void DetailDismissOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        BooksList.SelectedItem = null;
+        _currentBook = null;
+        SetDetailVisible(false);
+        e.Handled = true;
+    }
+
     private async void SaveMetadata_Click(object sender, RoutedEventArgs e)
     {
         if (_currentBook is null) return;
@@ -1948,6 +1956,10 @@ public partial class MainWindow : Window
 
         DetailColumn.Width = new GridLength(0);
         DetailPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (DetailDismissOverlay is not null)
+        {
+            DetailDismissOverlay.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         if (visible)
         {
@@ -3410,7 +3422,9 @@ public partial class MainWindow : Window
         var resolvedCategory = category ?? TagCategory(tag);
         var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
         var requestedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
-        var resolvedColor = ResolveCategoryColor(resolvedCategory, tag) ?? requestedColor;
+        var resolvedColor = !string.IsNullOrWhiteSpace(requestedColor)
+            ? requestedColor
+            : ResolveCategoryColor(resolvedCategory, tag) ?? TagService.GetColor(tag);
         _tagGroupFilterOptionsDirty = true;
         _suppressedTags.Remove(tag);
         _managedTags.Add(tag);
@@ -3480,7 +3494,7 @@ public partial class MainWindow : Window
         tag = dialog.TagName;
         category = dialog.TagCategory;
         isExclusive = dialog.IsExclusive;
-        color = ResolveCategoryColor(category) ?? dialog.SelectedColor;
+        color = dialog.SelectedColor;
         return true;
     }
 
@@ -3973,6 +3987,12 @@ public partial class MainWindow : Window
             : $"已在书库按 Tag 查看：{chip.Name}";
     }
 
+    private void TagUsage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        TagManagerFilter_Click(sender, new RoutedEventArgs());
+        e.Handled = true;
+    }
+
     private void OpenTagManagerForTag(string tagName)
     {
         ShowTagsView();
@@ -4003,7 +4023,7 @@ public partial class MainWindow : Window
         var newName = dialog.TagName;
         var newCategory = dialog.TagCategory;
         var newIsExclusive = dialog.IsExclusive;
-        var newColor = ResolveCategoryColor(newCategory, chip.Name) ?? dialog.SelectedColor;
+        var newColor = dialog.SelectedColor;
         if (string.IsNullOrWhiteSpace(newName))
         {
             StatusText.Text = "标签名不能为空。";

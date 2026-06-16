@@ -55,7 +55,6 @@ public partial class TagEditDialog : Window
         _selectedColor = tag.Color;
         SelectColor(_selectedColor);
         _suppressCategoryColorSync = false;
-        TagCategoryBox.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent, new TextChangedEventHandler(TagCategoryBox_TextChanged));
 
         Loaded += (_, _) =>
         {
@@ -82,12 +81,10 @@ public partial class TagEditDialog : Window
 
     private void TagCategoryBox_Changed(object sender, SelectionChangedEventArgs e)
     {
-        UpdateColorFromCategory();
     }
 
     private void TagCategoryBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        UpdateColorFromCategory();
     }
 
     private void UpdateColorFromCategory()
