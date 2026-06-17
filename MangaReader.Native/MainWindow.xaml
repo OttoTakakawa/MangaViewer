@@ -14,6 +14,52 @@
         <DropShadowEffect x:Key="PanelShadow" Color="#111827" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
 
         <Style TargetType="Button" BasedOn="{StaticResource AppButton}"/>
+        <Style x:Key="HomeWideBookCard" TargetType="Border">
+            <Setter Property="Height" Value="208"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
+            <Setter Property="Background" Value="#26201B"/>
+            <Setter Property="BorderBrush" Value="#22FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#F6E7D6"/>
+                    <Setter Property="Effect" Value="{StaticResource PanelShadow}"/>
+                    <Setter Property="Opacity" Value="0.96"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="HomeCompactBookCard" TargetType="Border">
+            <Setter Property="Width" Value="286"/>
+            <Setter Property="Height" Value="104"/>
+            <Setter Property="Margin" Value="0,0,14,0"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
+            <Setter Property="Background" Value="#FDFBF8"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FFFFFF"/>
+                    <Setter Property="BorderBrush" Value="#D8C7B8"/>
+                    <Setter Property="Effect" Value="{StaticResource PanelShadow}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="HomeBookActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Background" Value="#F6E7D6"/>
+            <Setter Property="Foreground" Value="#1D1714"/>
+            <Setter Property="BorderBrush" Value="#D8C7B8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
         <Style x:Key="FilterActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="18,10"/>
@@ -785,7 +831,8 @@
             </Border>
         </DataTemplate>
         <DataTemplate x:Key="HomeWideBookTemplate">
-            <Border Width="360" Height="208" Margin="0,0,12,0" CornerRadius="{StaticResource RadiusPanel}" Background="#26201B" BorderBrush="#22FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click" ClipToBounds="True"
+            <Border Style="{StaticResource HomeWideBookCard}"
+                    MouseLeftButtonDown="HomeBook_Click"
                     Loaded="BookCoverHost_Loaded"
                     Unloaded="BookCoverHost_Unloaded">
                 <Grid>
@@ -825,9 +872,12 @@
                             <TextBlock Grid.Row="1" Text="{Binding Title}" Margin="0,10,0,0" Foreground="#FAF5EF" FontSize="22" FontWeight="Black" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Row="2" Text="{Binding Author}" Margin="0,7,0,0" Foreground="#D6C7BA" FontSize="13" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Row="3" Text="{Binding ReadingMetaText}" Margin="0,12,0,0" Foreground="#F0E5DA" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                            <Border Grid.Row="4" Margin="0,10,0,0" Padding="12,6" CornerRadius="{StaticResource RadiusControl}" Background="#F6E7D6" HorizontalAlignment="Left">
-                                <TextBlock Text="继续阅读" Foreground="#1D1714" FontSize="12" FontWeight="Bold"/>
-                            </Border>
+                            <Button Grid.Row="4"
+                                    Content="查看详情"
+                                    Margin="0,10,0,0"
+                                    HorizontalAlignment="Left"
+                                    Style="{StaticResource HomeBookActionButton}"
+                                    Click="HomeBookButton_Click"/>
                         </Grid>
                     </Grid>
                     <Border Padding="9,5"
@@ -854,7 +904,8 @@
             </Border>
         </DataTemplate>
         <DataTemplate x:Key="HomeCompactBookTemplate">
-            <Border Width="286" Height="104" Margin="0,0,14,0" Padding="10" CornerRadius="{StaticResource RadiusPanel}" Background="#FDFBF8" BorderBrush="#55FFFFFF" BorderThickness="1" Cursor="Hand" MouseLeftButtonDown="HomeBook_Click"
+            <Border Style="{StaticResource HomeCompactBookCard}"
+                    MouseLeftButtonDown="HomeBook_Click"
                     Loaded="BookCoverHost_Loaded"
                     Unloaded="BookCoverHost_Unloaded">
                 <Grid>
@@ -1008,16 +1059,31 @@
                         </Border>
 
                         <StackPanel x:Name="HomeSectionsPanel">
-                        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding ContinueReadingBooks}" ItemTemplate="{StaticResource HomeWideBookTemplate}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <TextBlock x:Name="ContinueReadingEmptyText" Text="还没有可继续阅读的漫画，先打开一本书，主页就会把它放在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                        <Border Padding="18"
+                                CornerRadius="{StaticResource RadiusPanel}"
+                                Background="#FFFFFF"
+                                BorderBrush="#E5E7EB"
+                                BorderThickness="1"
+                                Effect="{StaticResource PanelShadow}">
+                            <StackPanel>
+                                <TextBlock Text="继续阅读" Margin="4,0,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                                <ItemsControl ItemsSource="{Binding ContinueReadingBooks}" ItemTemplate="{StaticResource HomeWideBookTemplate}">
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Margin" Value="0,0,12,0"/>
+                                            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                            <Setter Property="VerticalAlignment" Value="Stretch"/>
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="3"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <TextBlock x:Name="ContinueReadingEmptyText" Text="还没有可继续阅读的漫画，先打开一本书，主页就会把它放在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
 
                         <TextBlock Text="之前读过" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
@@ -1316,6 +1382,49 @@
                         </StackPanel>
                     </Border>
                 </Grid>
+
+                <Border x:Name="LibraryLoadProgressPanel"
+                        Grid.RowSpan="4"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False"
+                        Margin="8,0,22,12"
+                        CornerRadius="{StaticResource RadiusPanel}"
+                        Background="#BDF8FAFC"
+                        BorderBrush="#E5E7EB"
+                        BorderThickness="1"
+                        Panel.ZIndex="34">
+                    <Border Width="520"
+                            Padding="28"
+                            CornerRadius="{StaticResource RadiusPanel}"
+                            Background="#FFFFFF"
+                            BorderBrush="#E5E7EB"
+                            BorderThickness="1"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Effect="{StaticResource PanelShadow}">
+                        <StackPanel>
+                            <TextBlock x:Name="LibraryLoadProgressTitle"
+                                       Text="正在加载漫画库"
+                                       FontSize="26"
+                                       FontWeight="Black"
+                                       Foreground="#111827"
+                                       TextAlignment="Center"/>
+                            <ProgressBar x:Name="LibraryLoadProgressBar"
+                                         Style="{StaticResource SlimProgressBar}"
+                                         Margin="0,18,0,0"
+                                         Minimum="0"
+                                         Maximum="1"
+                                         Value="0"/>
+                            <TextBlock x:Name="LibraryLoadProgressText"
+                                       Text="准备扫描..."
+                                       Margin="0,14,0,0"
+                                       FontSize="13"
+                                       Foreground="#475569"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Border>
 
                 <Border x:Name="ImportProgressPanel"
                         Grid.RowSpan="4"
@@ -1812,40 +1921,54 @@
                                 </Border>
                                 <TextBlock x:Name="DetailCoverPageText"
                                            Style="{StaticResource DetailCoverPageHintText}"/>
+                                <Button x:Name="DetailOpenCatalogButton"
+                                        Content="打开目录"
+                                        Click="DetailOpenCatalog_Click"
+                                        Style="{StaticResource DetailHeroSecondaryButton}"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,12,0,0"/>
                             </StackPanel>
 
                             <StackPanel>
                                 <StackPanel x:Name="ReadOnlyInfoPanel">
                                     <TextBlock x:Name="BookTitleText"
                                                Style="{StaticResource DetailHeroTitleText}"/>
-                                    <Button x:Name="BookAuthorFilterButton"
-                                            Click="DetailAuthorFilter_Click"
-                                            Style="{StaticResource DetailHeroSecondaryButton}"
-                                            HorizontalAlignment="Left"
-                                            Margin="0,8,0,0"/>
-                                    <TextBlock x:Name="BookMetaLineText"
-                                               Style="{StaticResource DetailHeroMetaText}"/>
-
-                                    <ItemsControl x:Name="BookTagChips" Margin="0,12,0,0">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type models:TagChip}">
-                                                <Border Style="{StaticResource AppTagChipBorder}"
-                                                        Background="{Binding Color}"
-                                                        MouseEnter="TagChip_MouseEnter"
-                                                        MouseLeave="TagChip_MouseLeave"
-                                                        PreviewMouseLeftButtonDown="TagChip_PreviewMouseLeftButtonDown"
-                                                        PreviewMouseLeftButtonUp="TagChip_PreviewMouseLeftButtonUp"
-                                                        MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
-                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <WrapPanel Margin="0,8,0,0" VerticalAlignment="Center">
+                                        <Button x:Name="BookAuthorFilterButton"
+                                                Click="DetailAuthorFilter_Click"
+                                                Style="{StaticResource DetailHeroSecondaryButton}"
+                                                Margin="0,0,8,8"/>
+                                        <Border Padding="14,7"
+                                                Margin="0,0,8,8"
+                                                CornerRadius="{StaticResource RadiusControl}"
+                                                Background="{StaticResource Brush.SurfaceMuted}"
+                                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                                BorderThickness="1">
+                                            <TextBlock x:Name="BookMetaLineText"
+                                                       Style="{StaticResource DetailHeroMetaText}"
+                                                       Margin="0"/>
+                                        </Border>
+                                        <ItemsControl x:Name="BookTagChips" Margin="0,0,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:TagChip}">
+                                                    <Border Style="{StaticResource AppTagChipBorder}"
+                                                            Background="{Binding Color}"
+                                                            MouseEnter="TagChip_MouseEnter"
+                                                            MouseLeave="TagChip_MouseLeave"
+                                                            PreviewMouseLeftButtonDown="TagChip_PreviewMouseLeftButtonDown"
+                                                            PreviewMouseLeftButtonUp="TagChip_PreviewMouseLeftButtonUp"
+                                                            MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
+                                                        <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </WrapPanel>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
                                         <Button Content="开始阅读"
@@ -1898,29 +2021,29 @@
                                         <TextBlock Text="作品信息" Style="{StaticResource DetailSectionTitleText}"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="96"/>
+                                                <ColumnDefinition Width="72"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="28"/>
+                                                <ColumnDefinition Width="72"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="作者" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
                                             <TextBlock x:Name="MetaAuthorValueText" Grid.Row="0" Grid.Column="1" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="外文名" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
-                                            <TextBlock x:Name="MetaForeignNameValueText" Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="页数" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
-                                            <TextBlock x:Name="MetaPageCountValueText" Grid.Row="2" Grid.Column="1" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="封面页" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
-                                            <TextBlock x:Name="MetaCoverPageValueText" Grid.Row="3" Grid.Column="1" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="出品时间" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
-                                            <TextBlock x:Name="MetaProducedAtValueText" Grid.Row="4" Grid.Column="1" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
-                                            <TextBlock Grid.Row="5" Grid.Column="0" Text="录入时间" Style="{StaticResource DetailMetaLabelText}"/>
-                                            <TextBlock x:Name="MetaImportedAtValueText" Grid.Row="5" Grid.Column="1" Style="{StaticResource DetailMetaValueText}"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="3" Text="外文名" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
+                                            <TextBlock x:Name="MetaForeignNameValueText" Grid.Row="0" Grid.Column="4" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="页数" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
+                                            <TextBlock x:Name="MetaPageCountValueText" Grid.Row="1" Grid.Column="1" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="3" Text="封面页" Style="{StaticResource DetailMetaLabelText}" Margin="0,0,0,10"/>
+                                            <TextBlock x:Name="MetaCoverPageValueText" Grid.Row="1" Grid.Column="4" Style="{StaticResource DetailMetaValueText}" Margin="0,0,0,10"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="出品时间" Style="{StaticResource DetailMetaLabelText}"/>
+                                            <TextBlock x:Name="MetaProducedAtValueText" Grid.Row="2" Grid.Column="1" Style="{StaticResource DetailMetaValueText}"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="3" Text="录入时间" Style="{StaticResource DetailMetaLabelText}"/>
+                                            <TextBlock x:Name="MetaImportedAtValueText" Grid.Row="2" Grid.Column="4" Style="{StaticResource DetailMetaValueText}"/>
                                         </Grid>
                                     </StackPanel>
 
@@ -2141,5 +2264,157 @@
                 </ScrollViewer>
             </Grid>
         </Border>
+
+        <Grid x:Name="DetailCatalogOverlay"
+              Grid.Column="1"
+              Grid.ColumnSpan="2"
+              Panel.ZIndex="18"
+              Visibility="Collapsed"
+              Background="#99000000"
+              PreviewMouseWheel="DetailCatalogOverlay_PreviewMouseWheel">
+            <Border Width="980"
+                    MaxHeight="760"
+                    Margin="26"
+                    Padding="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    CornerRadius="{StaticResource RadiusPanel}"
+                    Background="{StaticResource Brush.Surface}"
+                    BorderBrush="{StaticResource Brush.BorderSubtle}"
+                    BorderThickness="1"
+                    Effect="{StaticResource PanelShadow}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock x:Name="DetailCatalogTitleText"
+                                       Text="目录"
+                                       FontSize="24"
+                                       FontWeight="Black"
+                                       Foreground="{StaticResource Brush.TextPrimary}"/>
+                            <TextBlock Text="左键预览页面；右键可将图片设为封面。不会启动阅读器。"
+                                       Margin="0,6,0,0"
+                                       FontSize="12"
+                                       Foreground="{StaticResource Brush.TextMuted}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="关闭"
+                                Click="CloseDetailCatalog_Click"
+                                Style="{StaticResource DetailHeroSecondaryButton}"
+                                VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="310"/>
+                        </Grid.ColumnDefinitions>
+                        <ListBox x:Name="DetailCatalogList"
+                                 ItemsSource="{Binding DetailPageCatalogItems}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:PageCatalogItem}">
+                                    <Border Width="118"
+                                            Height="176"
+                                            Margin="6"
+                                            Padding="7"
+                                            CornerRadius="{StaticResource RadiusControl}"
+                                            Background="{StaticResource Brush.SurfaceMuted}"
+                                            BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                            BorderThickness="1"
+                                            Cursor="Hand"
+                                            MouseLeftButtonDown="DetailCatalogItem_MouseLeftButtonDown">
+                                        <Border.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="设为封面" Click="SetDetailCatalogPageAsCover_Click"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Border CornerRadius="{StaticResource RadiusControl}"
+                                                    Background="#111827"
+                                                    ClipToBounds="True">
+                                                <Image Source="{Binding Thumbnail}"
+                                                       Stretch="Uniform"
+                                                       RenderOptions.BitmapScalingMode="LowQuality"/>
+                                            </Border>
+                                            <TextBlock Grid.Row="1"
+                                                       Text="{Binding PageText}"
+                                                       Margin="0,7,0,0"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{StaticResource Brush.TextMuted}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border Grid.Column="1"
+                                Margin="18,0,0,0"
+                                Padding="14"
+                                CornerRadius="{StaticResource RadiusPanel}"
+                                Background="{StaticResource Brush.SurfaceMuted}"
+                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border CornerRadius="{StaticResource RadiusControl}"
+                                        Background="#111827"
+                                        ClipToBounds="True">
+                                    <Image x:Name="DetailCatalogPreviewImage"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                </Border>
+                                <TextBlock x:Name="DetailCatalogPreviewText"
+                                           Grid.Row="1"
+                                           Text="选择一页预览"
+                                           Margin="0,12,0,0"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource Brush.TextMuted}"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

@@ -1,9 +1,7 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -1833,7 +1831,7 @@ public partial class ReaderWindow : Window
 
         QualityModeButton.Content = _qualityMode == ReaderQualityMode.Quality ? "质量" : "性能";
         QualityModeButton.ToolTip = _qualityMode == ReaderQualityMode.Quality
-            ? "当前为质量模式：原图解码，按原始像素布局"
+            ? "当前为质量模式：原图解码，适配模式生成清晰适配图；原始模式为 1:1"
             : "当前为性能模式：按视口降采样，降低内存压力";
     }
 
@@ -2114,35 +2112,4 @@ public partial class ReaderWindow : Window
         UpdateNavigationState();
     }
 
-    public sealed class PageCatalogItem : INotifyPropertyChanged
-    {
-        private BitmapSource? _thumbnail;
-
-        public PageCatalogItem(int pageIndex, string path)
-        {
-            PageIndex = pageIndex;
-            Path = path;
-        }
-
-        public int PageIndex { get; }
-        public string Path { get; }
-        public string PageText => $"第 {PageIndex + 1} 页";
-
-        public BitmapSource? Thumbnail
-        {
-            get => _thumbnail;
-            set
-            {
-                _thumbnail = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
 }

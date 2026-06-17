@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     private MangaBook? _currentBook;
     private CancellationTokenSource? _scanCancellation;
     private CancellationTokenSource? _importCancellation;
+    private CancellationTokenSource? _detailCatalogLoadCancellation;
     private List<Key> _nextKeys = [Key.Right, Key.Space];
     private List<Key> _prevKeys = [Key.Left];
     private bool _isEditMode;
@@ -122,6 +123,7 @@ public partial class MainWindow : Window
     public RangeObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> FavoriteShowcaseBooks { get; } = [];
     public RangeObservableCollection<MangaBook> RecentlyAddedBooks { get; } = [];
+    public RangeObservableCollection<PageCatalogItem> DetailPageCatalogItems { get; } = [];
 
     public MainWindow()
     {
@@ -384,6 +386,36 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ShowLibraryLoadProgress(string title, int completed, int total, int booksFound, string detail)
+    {
+        if (LibraryLoadProgressPanel is null)
+        {
+            return;
+        }
+
+        var safeTotal = Math.Max(1, total);
+        var safeCompleted = Math.Clamp(completed, 0, safeTotal);
+        if (LibraryLoadProgressPanel.Visibility != Visibility.Visible)
+        {
+            MotionService.ShowWithFade(LibraryLoadProgressPanel);
+        }
+
+        LibraryLoadProgressTitle.Text = title;
+        LibraryLoadProgressBar.Minimum = 0;
+        LibraryLoadProgressBar.Maximum = safeTotal;
+        LibraryLoadProgressBar.Value = safeCompleted;
+        LibraryLoadProgressText.Text = $"{safeCompleted} / {safeTotal} · 已发现 {booksFound} 本 · {detail}";
+        StatusText.Text = LibraryLoadProgressText.Text;
+    }
+
+    private void HideLibraryLoadProgress()
+    {
+        if (LibraryLoadProgressPanel is not null)
+        {
+            MotionService.HideWithFade(LibraryLoadProgressPanel);
+        }
+    }
+
     private async void BookCoverHost_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: MangaBook book })
@@ -488,9 +520,46 @@ public partial class MainWindow : Window
         _allBooks = [];
         _currentBook = null;
         SetDetailVisible(false);
+        ShowLibraryView("library");
+        ShowLibraryLoadProgress("正在加载漫画库", 0, 1, 0, "准备扫描...");
 
         try
         {
+            var rootIndexes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var index = 0; index < roots.Count; index++)
+            {
+                rootIndexes.TryAdd(roots[index], index);
+            }
+
+            var lastProgressUpdate = DateTimeOffset.MinValue;
+            var scanProgress = new Progress<LibraryScanProgress>(update =>
+            {
+                var now = DateTimeOffset.Now;
+                var isComplete = update.CompletedFolders >= update.TotalFolders;
+                if (!isComplete && now - lastProgressUpdate < TimeSpan.FromMilliseconds(90))
+                {
+                    return;
+                }
+
+                lastProgressUpdate = now;
+                rootIndexes.TryGetValue(update.RootPath, out var rootIndex);
+                var title = roots.Count > 1
+                    ? $"正在加载漫画库（路径 {rootIndex + 1}/{roots.Count}）"
+                    : "正在加载漫画库";
+                var folderName = Path.GetFileName(update.CurrentFolder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                if (string.IsNullOrWhiteSpace(folderName))
+                {
+                    folderName = update.CurrentFolder;
+                }
+
+                ShowLibraryLoadProgress(
+                    title,
+                    update.CompletedFolders,
+                    update.TotalFolders,
+                    update.BooksFound,
+                    $"正在扫描：{folderName}");
+            });
+
             var scanned = await Task.Run(() =>
             {
                 var savedBooks = _database.LoadBooksByPath();
@@ -498,7 +567,7 @@ public partial class MainWindow : Window
                 foreach (var root in roots)
                 {
                     token.ThrowIfCancellationRequested();
-                    all.AddRange(_scanner.Scan(root, savedBooks));
+                    all.AddRange(_scanner.Scan(root, savedBooks, scanProgress, token));
                 }
 
                 var scannedPaths = all.Select(book => book.FolderPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -517,6 +586,7 @@ public partial class MainWindow : Window
 
             var missingBooks = scanned.MissingBooks;
             var visibleBooks = scanned.Scanned.Concat(missingBooks).ToList();
+            ShowLibraryLoadProgress("正在保存书库索引", 1, 1, visibleBooks.Count, "正在写入数据库...");
             await Task.Run(() => _database.UpsertBooksBatch(visibleBooks), token);
 
             _allBooks = visibleBooks;
@@ -533,6 +603,10 @@ public partial class MainWindow : Window
         {
             AppLogger.Error("library-scan", ex, "Library scan failed.");
             StatusText.Text = $"扫描失败：{ex.Message}";
+        }
+        finally
+        {
+            HideLibraryLoadProgress();
         }
     }
 
@@ -908,6 +982,138 @@ public partial class MainWindow : Window
         }
 
         OpenBook(_currentBook);
+    }
+
+    private void DetailOpenCatalog_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null)
+        {
+            StatusText.Text = "请先选择一本漫画。";
+            return;
+        }
+
+        if (_currentBook.Pages.Count == 0)
+        {
+            StatusText.Text = "这本漫画没有可浏览页面。";
+            return;
+        }
+
+        EnsureDetailCatalogItems(_currentBook);
+        DetailCatalogTitleText.Text = $"目录 · {_currentBook.Title}";
+        DetailCatalogPreviewImage.Source = null;
+        DetailCatalogPreviewText.Text = "选择一页预览";
+        MotionService.ShowWithFade(DetailCatalogOverlay);
+        StartDetailCatalogThumbnailLoad();
+    }
+
+    private void CloseDetailCatalog_Click(object sender, RoutedEventArgs e)
+    {
+        HideDetailCatalog();
+    }
+
+    private void HideDetailCatalog()
+    {
+        _detailCatalogLoadCancellation?.Cancel();
+        _detailCatalogLoadCancellation?.Dispose();
+        _detailCatalogLoadCancellation = null;
+        DetailCatalogPreviewImage.Source = null;
+        if (DetailCatalogOverlay is not null)
+        {
+            MotionService.HideWithFade(DetailCatalogOverlay);
+        }
+    }
+
+    private void DetailCatalogOverlay_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = false;
+    }
+
+    private void EnsureDetailCatalogItems(MangaBook book)
+    {
+        if (DetailPageCatalogItems.Count == book.Pages.Count
+            && DetailPageCatalogItems.Select(item => item.Path).SequenceEqual(book.Pages, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        DetailPageCatalogItems.ReplaceRange(book.Pages
+            .Select((path, index) => new PageCatalogItem(index, path))
+            .ToList());
+    }
+
+    private void StartDetailCatalogThumbnailLoad()
+    {
+        _detailCatalogLoadCancellation?.Cancel();
+        _detailCatalogLoadCancellation?.Dispose();
+        _detailCatalogLoadCancellation = new CancellationTokenSource();
+        var token = _detailCatalogLoadCancellation.Token;
+        var items = DetailPageCatalogItems.ToList();
+
+        _ = Task.Run(async () =>
+        {
+            foreach (var item in items)
+            {
+                token.ThrowIfCancellationRequested();
+                if (item.Thumbnail is not null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var thumbnail = ImageLoader.LoadBitmap(item.Path, 180);
+                    await Dispatcher.InvokeAsync(() => item.Thumbnail = thumbnail, DispatcherPriority.Background);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
+                {
+                    AppLogger.Warn("detail-catalog", $"Thumbnail failed: page={item.PageIndex + 1}, path={item.Path}, error={ex.Message}");
+                }
+            }
+        }, token);
+    }
+
+    private async void DetailCatalogItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        try
+        {
+            DetailCatalogPreviewText.Text = $"正在预览 {item.PageText}...";
+            var preview = await Task.Run(() => ImageLoader.LoadBitmap(item.Path, 900, ignoreColorProfile: false));
+            DetailCatalogPreviewImage.Source = preview;
+            DetailCatalogPreviewText.Text = $"{item.PageText} · 预览";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
+        {
+            DetailCatalogPreviewText.Text = $"{item.PageText} 预览失败";
+            AppLogger.Warn("detail-catalog", $"Preview failed: page={item.PageIndex + 1}, path={item.Path}, error={ex.Message}");
+        }
+
+        e.Handled = true;
+    }
+
+    private async void SetDetailCatalogPageAsCover_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var book = _currentBook;
+        book.CoverPageIndex = item.PageIndex;
+        await Task.Run(() => _database.SaveMetadata(book));
+        await ReloadCoverAsync(book);
+        book.NotifyAll();
+        FillMetadataEditors(book);
+        ScheduleBookViewRefresh(refreshShelfOverview: false);
+        StatusText.Text = $"已将第 {item.PageIndex + 1} 页设为封面。";
     }
 
     private async void ManualBackup_Click(object sender, RoutedEventArgs e)
@@ -2064,6 +2270,7 @@ public partial class MainWindow : Window
 
         if (!visible)
         {
+            HideDetailCatalog();
             SetEditMode(false);
         }
     }
@@ -3104,10 +3311,53 @@ public partial class MainWindow : Window
 
     private void HomeBook_Click(object sender, MouseButtonEventArgs e)
     {
+        if (e.OriginalSource is DependencyObject source
+            && FindAncestor<System.Windows.Controls.Primitives.ButtonBase>(source) is not null)
+        {
+            return;
+        }
+
         if (sender is FrameworkElement { DataContext: MangaBook book })
         {
-            OpenBook(book);
+            OpenBookDetailFromHome(book);
+            e.Handled = true;
         }
+    }
+
+    private void HomeBookButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: MangaBook book })
+        {
+            OpenBookDetailFromHome(book);
+            e.Handled = true;
+        }
+    }
+
+    private void OpenBookDetailFromHome(MangaBook book)
+    {
+        ShowLibraryView("library");
+        ResetLibraryFilters();
+
+        _currentBook = book;
+        BooksList.SelectedItem = Books.Contains(book) ? book : null;
+        if (BooksList.SelectedItem is not null)
+        {
+            BooksList.ScrollIntoView(book);
+        }
+
+        FillMetadataEditors(book);
+        SetEditMode(false);
+        SetDetailVisible(true);
+        StatusText.Text = $"已打开详情：{book.Title}";
+
+        _ = Dispatcher.InvokeAsync(() =>
+        {
+            if (Books.Contains(book))
+            {
+                BooksList.SelectedItem = book;
+                BooksList.ScrollIntoView(book);
+            }
+        }, DispatcherPriority.ApplicationIdle);
     }
 
     private void NavHome_Click(object sender, RoutedEventArgs e)

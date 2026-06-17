@@ -459,12 +459,26 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <TextBlock Text="显示"
+                               Foreground="#94A3B8"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Margin="2,0,4,0"/>
                     <Button x:Name="FitWidthButton" Content="适宽" Click="FitWidth_Click"/>
                     <Button x:Name="FitHeightButton" Content="适高" Click="FitHeight_Click"/>
                     <Button x:Name="OriginalSizeButton" Content="原始" Click="OriginalSize_Click"/>
+                    <Border Width="1" Height="24" Background="#22FFFFFF" Margin="8,0"/>
+                    <TextBlock Text="渲染"
+                               Foreground="#94A3B8"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Margin="0,0,4,0"/>
+                    <Button x:Name="QualityModeButton" Content="质量" Click="ToggleQualityModeButton_Click"/>
+                    <Border Width="1" Height="24" Background="#22FFFFFF" Margin="8,0"/>
                     <Button x:Name="BackgroundButton" Content="背景" Click="CycleBackgroundButton_Click"/>
                     <Button x:Name="CatalogButton" Content="目录" Click="CatalogButton_Click"/>
-                    <Button x:Name="QualityModeButton" Content="质量" Click="ToggleQualityModeButton_Click"/>
                 </StackPanel>
                 <Slider Grid.Column="1" x:Name="ZoomSlider" Minimum="0.05" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="ZoomSlider_ValueChanged" Margin="0,0,14,0"/>
                 <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
