@@ -24,6 +24,7 @@ public partial class ReaderWindow : Window
     private const double PortraitPageSlotAspect = 0.707;
     private const int MaxReaderPageCacheEntries = 5;
     private const int MaxQualityReaderPageCacheEntries = 3;
+    private const int MaxQualityFitCacheEntries = 6;
     private const int MemoryPressureReaderPageCacheEntries = 2;
 
     private static SolidColorBrush FrozenBrush(string hex)
@@ -89,13 +90,20 @@ public partial class ReaderWindow : Window
     private readonly object _pageCacheLock = new();
     private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _pageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<PageCacheEntry> _pageCacheLru = new();
+    private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _qualityFitCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly LinkedList<PageCacheEntry> _qualityFitCacheLru = new();
+    private LoadedPage? _currentLoadedPage;
+    private bool _currentRightToLeft;
+    private CancellationTokenSource? _qualityFitCancellation;
+    private int _qualityFitRequestId;
 
     public ObservableCollection<PageCatalogItem> PageCatalogItems { get; } = [];
 
     private enum FitMode
     {
         Width,
-        Height
+        Height,
+        Original
     }
 
     private enum ReaderQualityMode
@@ -159,6 +167,9 @@ public partial class ReaderWindow : Window
         _pagePreloadCancellation?.Cancel();
         _pagePreloadCancellation?.Dispose();
         _pagePreloadCancellation = null;
+        _qualityFitCancellation?.Cancel();
+        _qualityFitCancellation?.Dispose();
+        _qualityFitCancellation = null;
         _catalogLoadCancellation?.Cancel();
         _catalogLoadCancellation?.Dispose();
         _catalogLoadCancellation = null;
@@ -277,6 +288,11 @@ public partial class ReaderWindow : Window
         SetFitMode(FitMode.Height);
     }
 
+    private void OriginalSize_Click(object sender, RoutedEventArgs e)
+    {
+        SetFitMode(FitMode.Original);
+    }
+
     private void SetFitMode(FitMode mode)
     {
         _fitMode = mode;
@@ -290,6 +306,15 @@ public partial class ReaderWindow : Window
         if (_fitMode == FitMode.Width)
         {
             ApplyFitWidth();
+            return;
+        }
+
+        if (_fitMode == FitMode.Original)
+        {
+            RestoreOriginalReaderSources();
+            NormalizeDisplayedImageSizing();
+            ApplyDoublePageGap();
+            ZoomSlider.Value = 1;
             return;
         }
 
@@ -365,6 +390,11 @@ public partial class ReaderWindow : Window
 
     private void ApplyFitWidth()
     {
+        if (TryApplyQualityFit(FitMode.Width))
+        {
+            return;
+        }
+
         var width = GetDisplayedPixelWidth();
         var availableWidth = GetAvailableContentWidth();
         if (width > 0 && availableWidth > 0)
@@ -375,6 +405,11 @@ public partial class ReaderWindow : Window
 
     private void ApplyFitHeight()
     {
+        if (TryApplyQualityFit(FitMode.Height))
+        {
+            return;
+        }
+
         var height = GetDisplayedPixelHeight();
         var availableHeight = GetAvailableContentHeight();
         if (height > 0 && availableHeight > 0)
@@ -383,10 +418,132 @@ public partial class ReaderWindow : Window
         }
     }
 
+    private bool TryApplyQualityFit(FitMode mode)
+    {
+        if (_qualityMode != ReaderQualityMode.Quality || mode == FitMode.Original || _currentLoadedPage is null)
+        {
+            return false;
+        }
+
+        RestoreOriginalReaderSources();
+        NormalizeDisplayedImageSizing();
+        ApplyDoublePageGap();
+
+        var sourceWidth = GetDisplayedPixelWidth();
+        var sourceHeight = GetDisplayedPixelHeight();
+        var available = mode == FitMode.Width ? GetAvailableContentWidth() : GetAvailableContentHeight();
+        var source = mode == FitMode.Width ? sourceWidth : sourceHeight;
+        if (source <= 0 || available <= 0)
+        {
+            return false;
+        }
+
+        var scale = Math.Clamp(available / source, ZoomSlider.Minimum, ZoomSlider.Maximum);
+        if (scale >= 0.98)
+        {
+            CancelQualityFitRequest();
+            ZoomSlider.Value = scale;
+            return true;
+        }
+
+        if (ReaderImage.Source is not BitmapSource left)
+        {
+            return false;
+        }
+
+        var useDouble = ReaderImageRight.Visibility == Visibility.Visible && ReaderImageRight.Source is BitmapSource;
+        var right = useDouble ? ReaderImageRight.Source as BitmapSource : null;
+        var cacheKey = CreateQualityFitCacheKey(mode, left, right, scale);
+        if (TryGetQualityFitCache(cacheKey, out var cached))
+        {
+            ApplyFittedReaderSources(cached);
+            ZoomSlider.Value = 1;
+            return true;
+        }
+
+        ZoomSlider.Value = scale;
+        StartQualityFitRequest(cacheKey, left, right, scale, mode, _requestedPageIndex);
+        return true;
+    }
+
+    private string CreateQualityFitCacheKey(FitMode mode, BitmapSource left, BitmapSource? right, double scale)
+    {
+        var leftWidth = Math.Max(1, (int)Math.Round(left.PixelWidth * scale));
+        var leftHeight = Math.Max(1, (int)Math.Round(left.PixelHeight * scale));
+        var rightText = right is null
+            ? "single"
+            : $"{Math.Max(1, (int)Math.Round(right.PixelWidth * scale))}x{Math.Max(1, (int)Math.Round(right.PixelHeight * scale))}";
+        return $"{_requestedPageIndex}:{mode}:{_currentRightToLeft}:{left.PixelWidth}x{left.PixelHeight}->{leftWidth}x{leftHeight}:{rightText}";
+    }
+
+    private async void StartQualityFitRequest(
+        string cacheKey,
+        BitmapSource left,
+        BitmapSource? right,
+        double scale,
+        FitMode mode,
+        int pageIndex)
+    {
+        CancelQualityFitRequest();
+        var requestId = ++_qualityFitRequestId;
+        var fitCancellation = new CancellationTokenSource();
+        _qualityFitCancellation = fitCancellation;
+        var token = fitCancellation.Token;
+
+        try
+        {
+            var fitted = await Task.Run(() =>
+            {
+                token.ThrowIfCancellationRequested();
+                var first = CreateCrispFitBitmap(left, scale);
+                token.ThrowIfCancellationRequested();
+                var second = right is null ? null : CreateCrispFitBitmap(right, scale);
+                token.ThrowIfCancellationRequested();
+                return new LoadedPage(first, second, second is not null);
+            }, token);
+
+            if (token.IsCancellationRequested
+                || requestId != _qualityFitRequestId
+                || _requestedPageIndex != pageIndex
+                || _fitMode != mode
+                || _qualityMode != ReaderQualityMode.Quality)
+            {
+                return;
+            }
+
+            AddQualityFitCache(cacheKey, fitted);
+            ApplyFittedReaderSources(fitted);
+            ZoomSlider.Value = 1;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("reader-quality-fit", $"{_book.Title} crisp fit skipped: {ex.Message}");
+        }
+        finally
+        {
+            if (_qualityFitCancellation == fitCancellation)
+            {
+                _qualityFitCancellation.Dispose();
+                _qualityFitCancellation = null;
+            }
+        }
+    }
+
+    private void CancelQualityFitRequest()
+    {
+        _qualityFitCancellation?.Cancel();
+        _qualityFitCancellation?.Dispose();
+        _qualityFitCancellation = null;
+    }
+
     private void UpdateFitButtons()
     {
         SetFitButtonState(FitWidthButton, _fitMode == FitMode.Width);
         SetFitButtonState(FitHeightButton, _fitMode == FitMode.Height);
+        SetFitButtonState(OriginalSizeButton, _fitMode == FitMode.Original);
     }
 
     private static void SetFitButtonState(System.Windows.Controls.Button button, bool active)
@@ -609,6 +766,7 @@ public partial class ReaderWindow : Window
         _pagePreloadCancellation?.Cancel();
         _pagePreloadCancellation?.Dispose();
         _pagePreloadCancellation = null;
+        CancelQualityFitRequest();
         var cancellationToken = loadCancellation.Token;
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _boundaryHint = "";
@@ -634,25 +792,9 @@ public partial class ReaderWindow : Window
                 return;
             }
 
-            ReaderImage.Source = page.First;
-            ReaderImageRight.Source = null;
-            ReaderImageRight.Visibility = Visibility.Collapsed;
-            _displayedPageCount = 1;
-
-            if (page.UseDouble && page.Second is not null)
-            {
-                _displayedPageCount = 2;
-                ReaderImageRight.Visibility = Visibility.Visible;
-                if (rightToLeft)
-                {
-                    ReaderImage.Source = page.Second;
-                    ReaderImageRight.Source = page.First;
-                }
-                else
-                {
-                    ReaderImageRight.Source = page.Second;
-                }
-            }
+            _currentLoadedPage = page;
+            _currentRightToLeft = rightToLeft;
+            RestoreOriginalReaderSources();
 
             NormalizeDisplayedImageSizing();
             ApplyDoublePageGap();
@@ -941,30 +1083,202 @@ public partial class ReaderWindow : Window
         NormalizePerformanceImageSizing();
     }
 
+    private void RestoreOriginalReaderSources()
+    {
+        if (_currentLoadedPage is not { } page)
+        {
+            return;
+        }
+
+        ReaderImage.Source = page.First;
+        ReaderImageRight.Source = null;
+        ReaderImageRight.Visibility = Visibility.Collapsed;
+        _displayedPageCount = 1;
+
+        if (page.UseDouble && page.Second is not null)
+        {
+            _displayedPageCount = 2;
+            ReaderImageRight.Visibility = Visibility.Visible;
+            if (_currentRightToLeft)
+            {
+                ReaderImage.Source = page.Second;
+                ReaderImageRight.Source = page.First;
+            }
+            else
+            {
+                ReaderImageRight.Source = page.Second;
+            }
+        }
+    }
+
+    private void ApplyFittedReaderSources(LoadedPage page)
+    {
+        ReaderImage.Source = page.First;
+        ReaderImageRight.Source = null;
+        ReaderImageRight.Visibility = Visibility.Collapsed;
+        _displayedPageCount = 1;
+        var leftSize = GetDevicePixelAlignedDipSize(page.First);
+        ReaderImage.Width = leftSize.Width;
+        ReaderImage.Height = leftSize.Height;
+        ReaderImage.Stretch = Stretch.Fill;
+        _pageSlotWidth = leftSize.Width;
+        _pageSlotHeight = leftSize.Height;
+
+        if (page.UseDouble && page.Second is not null)
+        {
+            _displayedPageCount = 2;
+            ReaderImageRight.Visibility = Visibility.Visible;
+            ReaderImageRight.Source = page.Second;
+            var size = GetDevicePixelAlignedDipSize(page.Second);
+            ReaderImageRight.Width = size.Width;
+            ReaderImageRight.Height = size.Height;
+            ReaderImageRight.Stretch = Stretch.Fill;
+            _pageSlotWidth += size.Width;
+            _pageSlotHeight = Math.Max(_pageSlotHeight, size.Height);
+        }
+
+        ApplyDoublePageGap();
+    }
+
+    private bool TryGetQualityFitCache(string key, out LoadedPage page)
+    {
+        lock (_pageCacheLock)
+        {
+            if (_qualityFitCache.TryGetValue(key, out var node))
+            {
+                _qualityFitCacheLru.Remove(node);
+                _qualityFitCacheLru.AddFirst(node);
+                page = node.Value.Page;
+                return true;
+            }
+        }
+
+        page = null!;
+        return false;
+    }
+
+    private void AddQualityFitCache(string key, LoadedPage page)
+    {
+        lock (_pageCacheLock)
+        {
+            if (_qualityFitCache.TryGetValue(key, out var existing))
+            {
+                existing.Value = new PageCacheEntry(key, page);
+                _qualityFitCacheLru.Remove(existing);
+                _qualityFitCacheLru.AddFirst(existing);
+            }
+            else
+            {
+                var node = new LinkedListNode<PageCacheEntry>(new PageCacheEntry(key, page));
+                _qualityFitCacheLru.AddFirst(node);
+                _qualityFitCache[key] = node;
+            }
+
+            while (_qualityFitCacheLru.Count > MaxQualityFitCacheEntries)
+            {
+                var last = _qualityFitCacheLru.Last;
+                if (last is null)
+                {
+                    break;
+                }
+
+                _qualityFitCache.Remove(last.Value.Key);
+                _qualityFitCacheLru.RemoveLast();
+            }
+        }
+    }
+
+    private static BitmapSource CreateCrispFitBitmap(BitmapSource source, double scale)
+    {
+        var targetWidth = Math.Max(1, (int)Math.Round(source.PixelWidth * scale));
+        var targetHeight = Math.Max(1, (int)Math.Round(source.PixelHeight * scale));
+        var scaled = new TransformedBitmap(
+            source,
+            new ScaleTransform(
+                (double)targetWidth / source.PixelWidth,
+                (double)targetHeight / source.PixelHeight));
+        scaled.Freeze();
+
+        var converted = new FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
+        converted.Freeze();
+        var stride = targetWidth * 4;
+        var pixels = new byte[stride * targetHeight];
+        converted.CopyPixels(pixels, stride, 0);
+        SharpenBgraPixels(pixels, targetWidth, targetHeight, stride);
+
+        var result = BitmapSource.Create(targetWidth, targetHeight, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+        result.Freeze();
+        return result;
+    }
+
+    private static void SharpenBgraPixels(byte[] pixels, int width, int height, int stride)
+    {
+        if (width < 3 || height < 3)
+        {
+            return;
+        }
+
+        const double amount = 0.18;
+        var original = (byte[])pixels.Clone();
+        for (var y = 1; y < height - 1; y++)
+        {
+            var row = y * stride;
+            var up = row - stride;
+            var down = row + stride;
+            for (var x = 1; x < width - 1; x++)
+            {
+                var i = row + x * 4;
+                for (var c = 0; c < 3; c++)
+                {
+                    var center = original[i + c];
+                    var edge = center * 4
+                        - original[i - 4 + c]
+                        - original[i + 4 + c]
+                        - original[up + x * 4 + c]
+                        - original[down + x * 4 + c];
+                    pixels[i + c] = ClampToByte(center + edge * amount);
+                }
+            }
+        }
+    }
+
+    private static byte ClampToByte(double value)
+    {
+        if (value <= 0)
+        {
+            return 0;
+        }
+
+        return value >= 255 ? (byte)255 : (byte)Math.Round(value);
+    }
+
     private void NormalizeQualityImageSizing()
     {
         if (ReaderImageRight.Visibility == Visibility.Visible
             && ReaderImage.Source is BitmapSource left
             && ReaderImageRight.Source is BitmapSource right)
         {
-            ReaderImage.Width = left.PixelWidth;
-            ReaderImage.Height = left.PixelHeight;
+            var leftSize = GetDevicePixelAlignedDipSize(left);
+            var rightSize = GetDevicePixelAlignedDipSize(right);
+            ReaderImage.Width = leftSize.Width;
+            ReaderImage.Height = leftSize.Height;
             ReaderImage.Stretch = Stretch.Fill;
-            ReaderImageRight.Width = right.PixelWidth;
-            ReaderImageRight.Height = right.PixelHeight;
+            ReaderImageRight.Width = rightSize.Width;
+            ReaderImageRight.Height = rightSize.Height;
             ReaderImageRight.Stretch = Stretch.Fill;
-            _pageSlotWidth = left.PixelWidth + right.PixelWidth;
-            _pageSlotHeight = Math.Max(left.PixelHeight, right.PixelHeight);
+            _pageSlotWidth = leftSize.Width + rightSize.Width;
+            _pageSlotHeight = Math.Max(leftSize.Height, rightSize.Height);
             return;
         }
 
         if (ReaderImage.Source is BitmapSource single)
         {
-            ReaderImage.Width = single.PixelWidth;
-            ReaderImage.Height = single.PixelHeight;
+            var size = GetDevicePixelAlignedDipSize(single);
+            ReaderImage.Width = size.Width;
+            ReaderImage.Height = size.Height;
             ReaderImage.Stretch = Stretch.Fill;
-            _pageSlotWidth = single.PixelWidth;
-            _pageSlotHeight = single.PixelHeight;
+            _pageSlotWidth = size.Width;
+            _pageSlotHeight = size.Height;
         }
         else
         {
@@ -978,6 +1292,16 @@ public partial class ReaderWindow : Window
         ReaderImageRight.Height = double.NaN;
         ReaderImageRight.Width = double.NaN;
         ReaderImageRight.Stretch = Stretch.None;
+    }
+
+    private System.Windows.Size GetDevicePixelAlignedDipSize(BitmapSource source)
+    {
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var scaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1;
+        var scaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1;
+        return new System.Windows.Size(
+            Math.Max(1, source.PixelWidth / scaleX),
+            Math.Max(1, source.PixelHeight / scaleY));
     }
 
     private void NormalizePerformanceImageSizing()
