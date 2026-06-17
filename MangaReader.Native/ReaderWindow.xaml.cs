@@ -2,6 +2,7 @@ using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
@@ -25,6 +26,8 @@ public partial class ReaderWindow : Window
     private const int MaxReaderPageCacheEntries = 5;
     private const int MaxQualityReaderPageCacheEntries = 3;
     private const int MaxQualityFitCacheEntries = 6;
+    private const long MaxQualityFitCacheBytes = 96L * 1024 * 1024;
+    private const long MemoryPressureQualityFitCacheBytes = 48L * 1024 * 1024;
     private const int MemoryPressureReaderPageCacheEntries = 2;
 
     private static SolidColorBrush FrozenBrush(string hex)
@@ -92,6 +95,7 @@ public partial class ReaderWindow : Window
     private readonly LinkedList<PageCacheEntry> _pageCacheLru = new();
     private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _qualityFitCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<PageCacheEntry> _qualityFitCacheLru = new();
+    private long _qualityFitCacheBytes;
     private LoadedPage? _currentLoadedPage;
     private bool _currentRightToLeft;
     private CancellationTokenSource? _qualityFitCancellation;
@@ -492,14 +496,18 @@ public partial class ReaderWindow : Window
 
         try
         {
-            var fitted = await Task.Run(() =>
+            var result = await Task.Run(() =>
             {
+                var stopwatch = Stopwatch.StartNew();
+                var sharpenAmount = GetSharpenAmount(scale);
                 token.ThrowIfCancellationRequested();
-                var first = CreateCrispFitBitmap(left, scale);
+                var first = CreateCrispFitBitmap(left, scale, sharpenAmount);
                 token.ThrowIfCancellationRequested();
-                var second = right is null ? null : CreateCrispFitBitmap(right, scale);
+                var second = right is null ? null : CreateCrispFitBitmap(right, scale, sharpenAmount);
                 token.ThrowIfCancellationRequested();
-                return new LoadedPage(first, second, second is not null);
+                var fitted = new LoadedPage(first, second, second is not null);
+                stopwatch.Stop();
+                return new QualityFitResult(fitted, EstimateLoadedPageBytes(fitted), stopwatch.ElapsedMilliseconds, sharpenAmount);
             }, token);
 
             if (token.IsCancellationRequested
@@ -511,9 +519,12 @@ public partial class ReaderWindow : Window
                 return;
             }
 
-            AddQualityFitCache(cacheKey, fitted);
-            ApplyFittedReaderSources(fitted);
+            AddQualityFitCache(cacheKey, result.Page, result.ByteSize);
+            ApplyFittedReaderSources(result.Page);
             ZoomSlider.Value = 1;
+            AppLogger.Info(
+                "reader-quality-fit",
+                $"{_book.Title} page={pageIndex + 1}, mode={mode}, scale={scale:0.###}, bytes={result.ByteSize / 1024 / 1024}MB, sharpen={result.SharpenAmount:0.###}, elapsed={result.ElapsedMs}ms, cache={_qualityFitCacheBytes / 1024 / 1024}MB");
         }
         catch (OperationCanceledException)
         {
@@ -866,7 +877,8 @@ public partial class ReaderWindow : Window
 
     private static bool IsLandscape(BitmapSource image) => image.PixelWidth > image.PixelHeight * 1.15;
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
-    private sealed record PageCacheEntry(string Key, LoadedPage Page);
+    private sealed record PageCacheEntry(string Key, LoadedPage Page, long ByteSize = 0);
+    private sealed record QualityFitResult(LoadedPage Page, long ByteSize, long ElapsedMs, double SharpenAmount);
 
     private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
     {
@@ -991,6 +1003,9 @@ public partial class ReaderWindow : Window
         {
             _pageCache.Clear();
             _pageCacheLru.Clear();
+            _qualityFitCache.Clear();
+            _qualityFitCacheLru.Clear();
+            _qualityFitCacheBytes = 0;
         }
     }
 
@@ -1008,6 +1023,7 @@ public partial class ReaderWindow : Window
             lock (_pageCacheLock)
             {
                 TrimReaderPageCache(MemoryPressureReaderPageCacheEntries);
+                TrimQualityFitCache();
             }
             return;
         }
@@ -1157,38 +1173,87 @@ public partial class ReaderWindow : Window
         return false;
     }
 
-    private void AddQualityFitCache(string key, LoadedPage page)
+    private void AddQualityFitCache(string key, LoadedPage page, long byteSize)
     {
         lock (_pageCacheLock)
         {
             if (_qualityFitCache.TryGetValue(key, out var existing))
             {
-                existing.Value = new PageCacheEntry(key, page);
+                _qualityFitCacheBytes -= existing.Value.ByteSize;
+                existing.Value = new PageCacheEntry(key, page, byteSize);
+                _qualityFitCacheBytes += byteSize;
                 _qualityFitCacheLru.Remove(existing);
                 _qualityFitCacheLru.AddFirst(existing);
             }
             else
             {
-                var node = new LinkedListNode<PageCacheEntry>(new PageCacheEntry(key, page));
+                var node = new LinkedListNode<PageCacheEntry>(new PageCacheEntry(key, page, byteSize));
                 _qualityFitCacheLru.AddFirst(node);
                 _qualityFitCache[key] = node;
+                _qualityFitCacheBytes += byteSize;
             }
 
-            while (_qualityFitCacheLru.Count > MaxQualityFitCacheEntries)
-            {
-                var last = _qualityFitCacheLru.Last;
-                if (last is null)
-                {
-                    break;
-                }
-
-                _qualityFitCache.Remove(last.Value.Key);
-                _qualityFitCacheLru.RemoveLast();
-            }
+            TrimQualityFitCache();
         }
     }
 
-    private static BitmapSource CreateCrispFitBitmap(BitmapSource source, double scale)
+    private void TrimQualityFitCache()
+    {
+        var byteLimit = IsMemoryPressureHigh() ? MemoryPressureQualityFitCacheBytes : MaxQualityFitCacheBytes;
+        while ((_qualityFitCacheLru.Count > MaxQualityFitCacheEntries || _qualityFitCacheBytes > byteLimit)
+            && _qualityFitCacheLru.Last is not null)
+        {
+            var last = _qualityFitCacheLru.Last;
+            _qualityFitCache.Remove(last.Value.Key);
+            _qualityFitCacheBytes -= last.Value.ByteSize;
+            _qualityFitCacheLru.RemoveLast();
+        }
+
+        if (_qualityFitCacheBytes < 0)
+        {
+            _qualityFitCacheBytes = 0;
+        }
+    }
+
+    private static long EstimateLoadedPageBytes(LoadedPage page)
+    {
+        var total = EstimateBitmapBytes(page.First);
+        if (page.Second is not null)
+        {
+            total += EstimateBitmapBytes(page.Second);
+        }
+
+        return total;
+    }
+
+    private static long EstimateBitmapBytes(BitmapSource source)
+    {
+        var bitsPerPixel = source.Format.BitsPerPixel > 0 ? source.Format.BitsPerPixel : 32;
+        var stride = ((source.PixelWidth * bitsPerPixel + 31) / 32) * 4;
+        return (long)stride * source.PixelHeight;
+    }
+
+    private static double GetSharpenAmount(double scale)
+    {
+        if (scale >= 0.85)
+        {
+            return 0.08;
+        }
+
+        if (scale >= 0.65)
+        {
+            return 0.14;
+        }
+
+        if (scale >= 0.45)
+        {
+            return 0.18;
+        }
+
+        return 0.22;
+    }
+
+    private static BitmapSource CreateCrispFitBitmap(BitmapSource source, double scale, double sharpenAmount)
     {
         var targetWidth = Math.Max(1, (int)Math.Round(source.PixelWidth * scale));
         var targetHeight = Math.Max(1, (int)Math.Round(source.PixelHeight * scale));
@@ -1204,21 +1269,20 @@ public partial class ReaderWindow : Window
         var stride = targetWidth * 4;
         var pixels = new byte[stride * targetHeight];
         converted.CopyPixels(pixels, stride, 0);
-        SharpenBgraPixels(pixels, targetWidth, targetHeight, stride);
+        SharpenBgraPixels(pixels, targetWidth, targetHeight, stride, sharpenAmount);
 
         var result = BitmapSource.Create(targetWidth, targetHeight, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
         result.Freeze();
         return result;
     }
 
-    private static void SharpenBgraPixels(byte[] pixels, int width, int height, int stride)
+    private static void SharpenBgraPixels(byte[] pixels, int width, int height, int stride, double amount)
     {
-        if (width < 3 || height < 3)
+        if (width < 3 || height < 3 || amount <= 0)
         {
             return;
         }
 
-        const double amount = 0.18;
         var original = (byte[])pixels.Clone();
         for (var y = 1; y < height - 1; y++)
         {
