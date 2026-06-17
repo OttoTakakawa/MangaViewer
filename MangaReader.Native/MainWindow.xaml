@@ -2353,6 +2353,7 @@
                                             BorderBrush="{StaticResource Brush.BorderSubtle}"
                                             BorderThickness="1"
                                             Cursor="Hand"
+                                            MouseEnter="DetailCatalogItem_MouseEnter"
                                             MouseLeftButtonDown="DetailCatalogItem_MouseLeftButtonDown">
                                         <Border.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">

@@ -18,21 +18,24 @@ public sealed class LibraryScanner
             return books;
         }
 
-        var folders = Directory.EnumerateDirectories(rootPath, "*", SearchOption.AllDirectories)
-            .Prepend(rootPath)
-            .ToList();
-        var totalFolders = Math.Max(1, folders.Count);
+        var folders = new Queue<string>();
+        folders.Enqueue(rootPath);
+        var discoveredFolders = 1;
+        var completedFolders = 0;
 
-        for (var index = 0; index < folders.Count; index++)
+        while (folders.Count > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var folder = folders[index];
-            progress?.Report(new LibraryScanProgress(rootPath, index, totalFolders, books.Count, folder));
+            var folder = folders.Dequeue();
+            progress?.Report(new LibraryScanProgress(rootPath, completedFolders, discoveredFolders, books.Count, folder));
 
-            var pages = Directory.EnumerateFiles(folder)
-                .Where(ImageLoader.IsSupportedImage)
-                .OrderBy(path => path, _pathComparer)
-                .ToList();
+            foreach (var childFolder in EnumerateChildFolders(folder, cancellationToken))
+            {
+                folders.Enqueue(childFolder);
+                discoveredFolders++;
+            }
+
+            var pages = EnumerateImages(folder, cancellationToken);
 
             if (pages.Count > 0)
             {
@@ -66,10 +69,51 @@ public sealed class LibraryScanner
 
                 books.Add(book);
             }
-            progress?.Report(new LibraryScanProgress(rootPath, index + 1, totalFolders, books.Count, folder));
+
+            completedFolders++;
+            progress?.Report(new LibraryScanProgress(rootPath, completedFolders, discoveredFolders, books.Count, folder));
         }
 
         return books.OrderBy(book => book.Author).ThenBy(book => book.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    private List<string> EnumerateChildFolders(string folder, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(folder, "*", SearchOption.TopDirectoryOnly)
+                .Select(path =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return path;
+                })
+                .OrderBy(path => path, _pathComparer)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or NotSupportedException)
+        {
+            return [];
+        }
+    }
+
+    private List<string> EnumerateImages(string folder, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(folder)
+                .Select(path =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return path;
+                })
+                .Where(ImageLoader.IsSupportedImage)
+                .OrderBy(path => path, _pathComparer)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or NotSupportedException)
+        {
+            return [];
+        }
     }
 
     private static string TryGetAuthorName(string rootPath, string folder)
