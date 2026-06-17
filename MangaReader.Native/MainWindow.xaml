@@ -2194,7 +2194,7 @@
 
                                 </StackPanel>
 
-                                <StackPanel x:Name="EditFormPanel" Visibility="Collapsed" MinHeight="590">
+                                <StackPanel x:Name="EditFormPanel" Visibility="Collapsed">
                                     <Grid Margin="0,0,0,18">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -2261,22 +2261,14 @@
                                             </StackPanel>
                                         </Grid>
 
-                                        <Grid Margin="0,0,0,14">
+                                        <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
-                                                <DockPanel>
-                                                    <TextBlock Text="Tag" Style="{StaticResource LabelText}"/>
-                                                </DockPanel>
-                                                <TextBox x:Name="EditTagSearchBox"
-                                                         Margin="0,0,0,8"
-                                                         TextChanged="EditTagSearchBox_TextChanged"
-                                                         ToolTip="输入关键词搜索已有 Tag"/>
                                                 <TextBox x:Name="TagsBox" Visibility="Collapsed"/>
-                                                <Border MinHeight="106"
-                                                        MaxHeight="150"
-                                                        Padding="10"
+                                                <Border Height="74"
+                                                        Padding="10,8"
                                                         CornerRadius="{StaticResource RadiusField}"
                                                         Background="{StaticResource Brush.Surface}"
                                                         BorderBrush="{StaticResource Brush.BorderStrong}"
@@ -2290,32 +2282,46 @@
                                                                 <ColumnDefinition Width="1"/>
                                                                 <ColumnDefinition Width="*"/>
                                                             </Grid.ColumnDefinitions>
-                                                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                                                <TextBlock Text="已选 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
-                                                                <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                                    <ItemsControl.ItemsPanel>
-                                                                        <ItemsPanelTemplate>
-                                                                            <WrapPanel/>
-                                                                        </ItemsPanelTemplate>
-                                                                    </ItemsControl.ItemsPanel>
-                                                                    <ItemsControl.ItemTemplate>
-                                                                        <DataTemplate DataType="{x:Type models:TagChip}">
-                                                                            <Border Style="{StaticResource AppTagChipBorder}"
-                                                                                    Background="{Binding Color}"
-                                                                                    MouseLeftButtonDown="EditTagRemove_Click"
-                                                                                    ToolTip="点击移除">
-                                                                                <StackPanel Orientation="Horizontal">
-                                                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
-                                                                                </StackPanel>
-                                                                            </Border>
-                                                                        </DataTemplate>
-                                                                    </ItemsControl.ItemTemplate>
-                                                                </ItemsControl>
-                                                            </StackPanel>
+                                                            <Grid Grid.Column="0" Margin="0,0,12,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="220"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                                                    <TextBlock Text="Tag 搜索" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                                                    <TextBox x:Name="EditTagSearchBox"
+                                                                             Height="34"
+                                                                             Padding="12,4"
+                                                                             TextChanged="EditTagSearchBox_TextChanged"
+                                                                             ToolTip="输入关键词搜索已有 Tag"/>
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="1">
+                                                                    <TextBlock Text="已选 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
+                                                                    <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate>
+                                                                                <WrapPanel/>
+                                                                            </ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate DataType="{x:Type models:TagChip}">
+                                                                                <Border Style="{StaticResource AppTagChipBorder}"
+                                                                                        Background="{Binding Color}"
+                                                                                        MouseLeftButtonDown="EditTagRemove_Click"
+                                                                                        ToolTip="点击移除">
+                                                                                    <StackPanel Orientation="Horizontal">
+                                                                                        <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                                                        <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
+                                                                                    </StackPanel>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </StackPanel>
+                                                            </Grid>
                                                             <Border Grid.Column="1" Background="{StaticResource Brush.BorderSubtle}"/>
                                                             <StackPanel Grid.Column="2" Margin="12,0,0,0">
-                                                                <TextBlock Text="可添加 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
+                                                                <TextBlock Text="可添加 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
                                                                 <ItemsControl ItemsSource="{Binding EditTagOptions, RelativeSource={RelativeSource AncestorType=Window}}">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
@@ -2343,41 +2349,47 @@
 
                                         <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
                                         <TextBox x:Name="SummaryBox"
-                                                 Height="92"
+                                                 Height="76"
                                                  TextWrapping="Wrap"
                                                  AcceptsReturn="True"
                                                  VerticalScrollBarVisibility="Auto"/>
                                     </StackPanel>
 
-                                    <StackPanel Margin="0,28,0,0">
-                                        <TextBlock Text="危险操作" Style="{StaticResource DetailSectionTitleText}"/>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button x:Name="PrivacyCoverButtonEdit"
-                                                    Content="保持隐私封面"
-                                                    Click="ToggleBookPrivacyCover_Click"
-                                                    Style="{StaticResource DetailFileActionButton}"/>
-                                            <Button x:Name="HideBookButtonEdit"
-                                                    Content="隐藏作品"
-                                                    Click="HideBook_Click"
-                                                    Style="{StaticResource DetailFileActionButton}"/>
-                                            <Button Content="删除库记录"
-                                                    Click="DeleteBook_Click"
-                                                    Style="{StaticResource DetailDangerInlineButton}"/>
+                                    <Grid Margin="0,18,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="危险操作" Style="{StaticResource DetailSectionTitleText}" Margin="0,0,0,8"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button x:Name="PrivacyCoverButtonEdit"
+                                                        Content="保持隐私封面"
+                                                        Click="ToggleBookPrivacyCover_Click"
+                                                        Style="{StaticResource DetailFileActionButton}"/>
+                                                <Button x:Name="HideBookButtonEdit"
+                                                        Content="隐藏作品"
+                                                        Click="HideBook_Click"
+                                                        Style="{StaticResource DetailFileActionButton}"/>
+                                                <Button Content="删除库记录"
+                                                        Click="DeleteBook_Click"
+                                                        Style="{StaticResource DetailDangerInlineButton}"/>
+                                            </StackPanel>
                                         </StackPanel>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Right"
-                                                Margin="0,24,0,0">
-                                        <Button Content="取消"
-                                                Click="ToggleEditMode_Click"
-                                                Style="{StaticResource DetailHeroSecondaryButton}"
-                                                Margin="0,0,10,0"/>
-                                        <Button x:Name="SaveMetadataButton"
-                                                Content="保存信息"
-                                                Click="SaveMetadata_Click"
-                                                Style="{StaticResource DetailHeroPrimaryButton}"/>
-                                    </StackPanel>
+                                        <StackPanel Grid.Column="1"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Bottom"
+                                                    Margin="18,0,0,0">
+                                            <Button Content="取消"
+                                                    Click="ToggleEditMode_Click"
+                                                    Style="{StaticResource DetailHeroSecondaryButton}"
+                                                    Margin="0,0,10,0"/>
+                                            <Button x:Name="SaveMetadataButton"
+                                                    Content="保存信息"
+                                                    Click="SaveMetadata_Click"
+                                                    Style="{StaticResource DetailHeroPrimaryButton}"/>
+                                        </StackPanel>
+                                    </Grid>
 
                                     <Border Visibility="Collapsed">
                                         <StackPanel>
@@ -2408,6 +2420,7 @@
               Panel.ZIndex="18"
               Visibility="Collapsed"
               Background="#99000000"
+              MouseLeftButtonDown="DetailCatalogOverlay_MouseLeftButtonDown"
               PreviewMouseWheel="DetailCatalogOverlay_PreviewMouseWheel">
             <Border Width="1120"
                     MaxHeight="760"
@@ -2419,7 +2432,8 @@
                     Background="{StaticResource Brush.Surface}"
                     BorderBrush="{StaticResource Brush.BorderSubtle}"
                     BorderThickness="1"
-                    Effect="{StaticResource PanelShadow}">
+                    Effect="{StaticResource PanelShadow}"
+                    MouseLeftButtonDown="DetailCatalogContent_MouseLeftButtonDown">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -2436,10 +2450,6 @@
                                        FontSize="24"
                                        FontWeight="Black"
                                        Foreground="{StaticResource Brush.TextPrimary}"/>
-                            <TextBlock Text="左键预览页面；右键可将图片设为封面。不会启动阅读器。"
-                                       Margin="0,6,0,0"
-                                       FontSize="12"
-                                       Foreground="{StaticResource Brush.TextMuted}"/>
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Content="关闭"

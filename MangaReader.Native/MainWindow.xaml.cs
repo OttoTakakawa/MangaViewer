@@ -1065,7 +1065,7 @@ public partial class MainWindow : Window
 
         EnsureDetailCatalogItems(_currentBook);
         _detailCatalogBook = _currentBook;
-        DetailCatalogTitleText.Text = $"目录 · {_currentBook.Title}";
+        DetailCatalogTitleText.Text = $"目录预览 · {_currentBook.Title}";
         DetailCatalogPreviewImage.Source = null;
         DetailCatalogPreviewText.Text = "选择一页预览";
         MotionService.ShowWithFade(DetailCatalogOverlay);
@@ -1094,6 +1094,17 @@ public partial class MainWindow : Window
     private void DetailCatalogOverlay_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         e.Handled = false;
+    }
+
+    private void DetailCatalogOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        HideDetailCatalog();
+        e.Handled = true;
+    }
+
+    private void DetailCatalogContent_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
     }
 
     private void EnsureDetailCatalogItems(MangaBook book)
