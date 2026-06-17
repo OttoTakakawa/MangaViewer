@@ -60,6 +60,10 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
+        <Style x:Key="PrivacyCoverOverlay" TargetType="Border">
+            <Setter Property="Background" Value="#F111827"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
         <Style x:Key="FilterActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="18,10"/>
@@ -735,6 +739,16 @@
                                     </Border>
                                 </Border>
                             </Grid>
+                            <Border Style="{StaticResource PrivacyCoverOverlay}"
+                                    CornerRadius="{StaticResource RadiusProgress}"
+                                    Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="隐私模式"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="#E5E7EB"
+                                           FontSize="13"
+                                           FontWeight="Black"/>
+                            </Border>
                         </Grid>
                         <Border Padding="8,4"
                                 CornerRadius="{StaticResource RadiusControl}"
@@ -842,7 +856,11 @@
                             <GradientStop Color="#171310" Offset="1"/>
                         </LinearGradientBrush>
                     </Grid.Background>
-                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill" Opacity="0.34"/>
+                    <Grid>
+                        <Image Source="{Binding CoverImage}" Stretch="UniformToFill" Opacity="0.34"/>
+                        <Border Style="{StaticResource PrivacyCoverOverlay}"
+                                Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                    </Grid>
                     <Rectangle>
                         <Rectangle.Fill>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -858,7 +876,12 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Width="92" Height="138" CornerRadius="{StaticResource RadiusPanel}" Background="{Binding BookAccentColor}" ClipToBounds="True" VerticalAlignment="Center" Effect="{StaticResource BookShadow}">
+                            <Grid>
                             <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                <Border Style="{StaticResource PrivacyCoverOverlay}"
+                                        CornerRadius="{StaticResource RadiusPanel}"
+                                        Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                            </Grid>
                         </Border>
                         <Grid Grid.Column="1" Margin="12,4,0,4">
                             <Grid.RowDefinitions>
@@ -914,7 +937,12 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Border Width="68" Height="84" CornerRadius="{StaticResource RadiusPanel}" Background="{Binding BookAccentColor}" ClipToBounds="True" VerticalAlignment="Center">
+                        <Grid>
                         <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                            <Border Style="{StaticResource PrivacyCoverOverlay}"
+                                    CornerRadius="{StaticResource RadiusPanel}"
+                                    Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                        </Grid>
                     </Border>
                     <Border Padding="6,2"
                             CornerRadius="{StaticResource RadiusControl}"
@@ -1004,6 +1032,10 @@
                             <StackPanel Width="132" HorizontalAlignment="Center">
                                 <Button Content="指定数据" Click="ChooseDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
                                 <Button Content="备份数据" Click="DataSafety_Click" Style="{StaticResource SidebarActionButton}"/>
+                                <Button x:Name="PrivacyModeButton"
+                                        Content="隐私模式：关"
+                                        Click="TogglePrivacyMode_Click"
+                                        Style="{StaticResource SidebarActionButton}"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -1917,7 +1949,19 @@
                                         BorderThickness="1"
                                         ClipToBounds="True"
                                         Effect="{StaticResource BookShadow}">
-                                    <Image Source="{Binding CoverImage}" Stretch="Uniform"/>
+                                    <Grid>
+                                        <Image Source="{Binding CoverImage}" Stretch="Uniform"/>
+                                        <Border Style="{StaticResource PrivacyCoverOverlay}"
+                                                CornerRadius="{StaticResource RadiusPanel}"
+                                                Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="隐私模式"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#E5E7EB"
+                                                       FontSize="20"
+                                                       FontWeight="Black"/>
+                                        </Border>
+                                    </Grid>
                                 </Border>
                                 <TextBlock x:Name="DetailCoverPageText"
                                            Style="{StaticResource DetailCoverPageHintText}"/>

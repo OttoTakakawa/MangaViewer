@@ -90,6 +90,12 @@ public sealed class LibraryDatabase
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS managed_tags (
                 name TEXT PRIMARY KEY,
                 category TEXT NOT NULL DEFAULT '自定义',
@@ -562,6 +568,15 @@ public sealed class LibraryDatabase
         return result;
     }
 
+    public string LoadSetting(string key, string defaultValue = "")
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM app_settings WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", key);
+        return command.ExecuteScalar() as string ?? defaultValue;
+    }
+
     public List<ManagedTagRecord> LoadManagedTags()
     {
         using var connection = Open();
@@ -783,6 +798,24 @@ public sealed class LibraryDatabase
             """;
         command.Parameters.AddWithValue("$actionId", actionId);
         command.Parameters.AddWithValue("$keybinding", keybinding);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void SaveSetting(string key, string value)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO app_settings(key, value, updated_at)
+            VALUES ($key, $value, $updatedAt)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at;
+            """;
+        command.Parameters.AddWithValue("$key", key);
+        command.Parameters.AddWithValue("$value", value);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
     }

@@ -25,12 +25,20 @@ public partial class MainWindow : Window
             typeof(MainWindow),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty IsPrivacyModeProperty =
+        DependencyProperty.Register(
+            nameof(IsPrivacyMode),
+            typeof(bool),
+            typeof(MainWindow),
+            new PropertyMetadata(false));
+
     private const double WheelScrollMultiplier = 1.45;
     private const double NormalLogPanelHeight = 160;
     private const double ExpandedLogPanelHeight = 420;
     private const int MaxLiveLogLines = 300;
     private const int MaxLiveLogLineLength = 900;
     private const int InitialDetailCatalogThumbnailLimit = 96;
+    private const string PrivacyModeSettingKey = "app.privacy_mode";
     private const string TagDragDataFormat = "MangaReader.TagName";
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
@@ -123,6 +131,12 @@ public partial class MainWindow : Window
         set => SetValue(IsBatchSelectionUiVisibleProperty, value);
     }
 
+    public bool IsPrivacyMode
+    {
+        get => (bool)GetValue(IsPrivacyModeProperty);
+        set => SetValue(IsPrivacyModeProperty, value);
+    }
+
     public RangeObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> FavoriteShowcaseBooks { get; } = [];
@@ -168,6 +182,7 @@ public partial class MainWindow : Window
             LoadManagedTags();
             LoadManagedAuthors();
             LoadShortcuts();
+            LoadPrivacyMode();
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
@@ -2439,6 +2454,31 @@ public partial class MainWindow : Window
             PrevShortcutBox.Text = previous;
             _prevKeys = ParseKeys(previous);
         }
+    }
+
+    private void LoadPrivacyMode()
+    {
+        IsPrivacyMode = string.Equals(_database.LoadSetting(PrivacyModeSettingKey), "1", StringComparison.Ordinal);
+        UpdatePrivacyModeButton();
+    }
+
+    private void TogglePrivacyMode_Click(object sender, RoutedEventArgs e)
+    {
+        IsPrivacyMode = !IsPrivacyMode;
+        _database.SaveSetting(PrivacyModeSettingKey, IsPrivacyMode ? "1" : "0");
+        UpdatePrivacyModeButton();
+        StatusText.Text = IsPrivacyMode ? "隐私模式已开启：所有作品封面已隐藏。" : "隐私模式已关闭：封面显示已恢复。";
+    }
+
+    private void UpdatePrivacyModeButton()
+    {
+        if (PrivacyModeButton is null)
+        {
+            return;
+        }
+
+        PrivacyModeButton.Content = IsPrivacyMode ? "隐私模式：开" : "隐私模式：关";
+        PrivacyModeButton.ToolTip = IsPrivacyMode ? "当前不会显示任何作品封面" : "点击后隐藏所有作品封面";
     }
 
     private void RefreshVisibleTags()

@@ -35,12 +35,7 @@ internal static class Program
                 }
             }
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = Path.Combine(options.TargetDirectory, options.ExecutableName),
-                WorkingDirectory = options.TargetDirectory,
-                UseShellExecute = true
-            });
+            StartMainExecutableWithRetry(options);
 
             return 0;
         }
@@ -96,6 +91,37 @@ internal static class Program
         {
             // The process may already be gone, which is the desired state.
         }
+    }
+
+    private static void StartMainExecutableWithRetry(UpdateOptions options)
+    {
+        var executablePath = Path.Combine(options.TargetDirectory, options.ExecutableName);
+        if (!File.Exists(executablePath))
+        {
+            throw new FileNotFoundException("更新完成，但未找到要重启的主程序。", executablePath);
+        }
+
+        Exception? lastError = null;
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = executablePath,
+                    WorkingDirectory = options.TargetDirectory,
+                    UseShellExecute = true
+                });
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+            {
+                lastError = ex;
+                Thread.Sleep(1000 + attempt * 500);
+            }
+        }
+
+        throw new InvalidOperationException($"更新已完成，但自动重启主程序失败：{executablePath}", lastError);
     }
 
     private static string ResolvePackageRoot(string packagePath, string extractRoot)

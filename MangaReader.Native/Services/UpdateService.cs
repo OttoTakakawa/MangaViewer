@@ -130,17 +130,28 @@ public sealed class UpdateService
             throw new FileNotFoundException("未找到更新器 MangaReader.Updater.exe。请使用正式发布包运行自动更新。", updaterPath);
         }
 
+        var isolatedUpdaterPath = CreateIsolatedUpdaterCopy(updaterPath);
         var currentProcess = Process.GetCurrentProcess();
         var targetDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var executableName = Path.GetFileName(Environment.ProcessPath) ?? "MangaReader.Native.exe";
 
         Process.Start(new ProcessStartInfo
         {
-            FileName = updaterPath,
+            FileName = isolatedUpdaterPath,
             Arguments = $"--package \"{packagePath}\" --target \"{targetDirectory}\" --exe \"{executableName}\" --pid {currentProcess.Id}",
-            WorkingDirectory = Path.GetDirectoryName(updaterPath),
+            WorkingDirectory = Path.GetDirectoryName(isolatedUpdaterPath),
             UseShellExecute = true
         });
+    }
+
+    private static string CreateIsolatedUpdaterCopy(string updaterPath)
+    {
+        var updaterDirectory = Path.Combine(Path.GetTempPath(), "MangaReader_Updater_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(updaterDirectory);
+
+        var isolatedUpdaterPath = Path.Combine(updaterDirectory, Path.GetFileName(updaterPath));
+        File.Copy(updaterPath, isolatedUpdaterPath, overwrite: true);
+        return isolatedUpdaterPath;
     }
 
     private static string ResolveUpdaterPath()
