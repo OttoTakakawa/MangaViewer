@@ -443,7 +443,7 @@ public partial class ReaderWindow : Window
         }
 
         var scale = Math.Clamp(available / source, ZoomSlider.Minimum, ZoomSlider.Maximum);
-        if (scale >= 0.98)
+        if (scale >= 0.93)
         {
             CancelQualityFitRequest();
             ZoomSlider.Value = scale;
@@ -1237,7 +1237,7 @@ public partial class ReaderWindow : Window
     {
         if (scale >= 0.85)
         {
-            return 0.08;
+            return 0.04;
         }
 
         if (scale >= 0.65)
