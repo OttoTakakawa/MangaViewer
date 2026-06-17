@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private const int MaxLiveLogLineLength = 900;
     private const int InitialDetailCatalogThumbnailLimit = 96;
     private const string PrivacyModeSettingKey = "app.privacy_mode";
+    private const string CustomTagColorsSettingKey = "tag.custom_colors";
     private const string TagDragDataFormat = "MangaReader.TagName";
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
@@ -79,6 +80,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, bool> _managedTagIsExclusive = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagUpdatedAt = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagColors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _customTagColors = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<MangaBook>> _tagBooksByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _suppressedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _visibleCoverReferences = new(StringComparer.OrdinalIgnoreCase);
@@ -180,6 +182,7 @@ public partial class MainWindow : Window
         {
             await Task.Run(() => _database.Initialize());
             LoadManagedTags();
+            LoadCustomTagColors();
             LoadManagedAuthors();
             LoadShortcuts();
             LoadPrivacyMode();
@@ -2415,7 +2418,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        EditModeButton.Content = enabled ? "取消编辑" : "编辑";
+        EditModeButton.Content = "编辑";
+        EditModeButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         EditModeHintText.Text = enabled ? "编辑模式：修改后点击“保存信息”" : "只读模式：点击“编辑”后修改信息";
         ReadOnlyInfoPanel.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         EditFormPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
@@ -3959,6 +3963,44 @@ public partial class MainWindow : Window
         }
     }
 
+    private void LoadCustomTagColors()
+    {
+        _customTagColors.Clear();
+        foreach (var color in _database.LoadSetting(CustomTagColorsSettingKey)
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(IsValidHexColor))
+        {
+            _customTagColors.Add(color);
+        }
+    }
+
+    private void SaveCustomTagColors(IEnumerable<string> colors)
+    {
+        var changed = false;
+        foreach (var color in colors.Where(IsValidHexColor))
+        {
+            changed |= _customTagColors.Add(color);
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        var value = string.Join(";", _customTagColors.OrderBy(color => color, StringComparer.OrdinalIgnoreCase));
+        _database.SaveSetting(CustomTagColorsSettingKey, value);
+    }
+
+    private static bool IsValidHexColor(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length != 7 || value[0] != '#')
+        {
+            return false;
+        }
+
+        return value.Skip(1).All(Uri.IsHexDigit);
+    }
+
     private void LoadManagedAuthors()
     {
         _managedAuthors.Clear();
@@ -4067,13 +4109,14 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories(), BuildTagCategoryColorMap()) { Owner = this };
+        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(), _customTagColors) { Owner = this };
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
         {
             StatusText.Text = "没有创建标签。";
             return false;
         }
 
+        SaveCustomTagColors(dialog.CustomColors);
         tag = dialog.TagName;
         category = dialog.TagCategory;
         isExclusive = dialog.IsExclusive;
@@ -4648,7 +4691,7 @@ public partial class MainWindow : Window
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
-        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(chip.Name)) { Owner = this };
+        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(chip.Name), _customTagColors) { Owner = this };
         var result = dialog.ShowDialog();
         if (dialog.OpenMoreRequested)
         {
@@ -4664,6 +4707,7 @@ public partial class MainWindow : Window
         var newCategory = dialog.TagCategory;
         var newIsExclusive = dialog.IsExclusive;
         var newColor = dialog.SelectedColor;
+        SaveCustomTagColors(dialog.CustomColors);
         if (string.IsNullOrWhiteSpace(newName))
         {
             StatusText.Text = "标签名不能为空。";

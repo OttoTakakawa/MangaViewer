@@ -684,7 +684,7 @@ public partial class ReaderWindow : Window
         switch (key)
         {
             case Key.W:
-                CyclePresentationMode();
+                ToggleFullscreen();
                 return true;
             case Key.E:
                 SetFitMode(FitMode.Height);
@@ -1925,7 +1925,7 @@ public partial class ReaderWindow : Window
 
     private void FullscreenButton_Click(object sender, RoutedEventArgs e)
     {
-        CyclePresentationMode();
+        ToggleFullscreen();
     }
 
     private void CyclePresentationMode()
@@ -1993,11 +1993,7 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        FullscreenButton.Content = !_isFullscreen
-            ? "全屏"
-            : _controlsHidden
-                ? "窗口"
-                : "隐藏UI";
+        FullscreenButton.Content = _isFullscreen ? "窗口" : "全屏";
     }
 
     private void CatalogButton_Click(object sender, RoutedEventArgs e)

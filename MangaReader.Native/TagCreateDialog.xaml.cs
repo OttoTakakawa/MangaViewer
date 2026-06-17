@@ -16,6 +16,7 @@ public partial class TagCreateDialog : Window
     ];
 
     public ObservableCollection<string> CustomColors { get; } = new();
+    public ObservableCollection<string> AvailableColors { get; } = new();
     private string _selectedColor = "#F4B6C2";
 
     public string TagName => TagNameBox.Text.Trim();
@@ -26,14 +27,15 @@ public partial class TagCreateDialog : Window
     public TagCreateDialog(
         string initialValue,
         IEnumerable<string>? existingCategories = null,
-        IReadOnlyDictionary<string, string>? categoryColors = null)
+        IReadOnlyDictionary<string, string>? categoryColors = null,
+        IEnumerable<string>? customColors = null)
     {
         InitializeComponent();
         TagNameBox.Text = initialValue;
         PopulateCategories(existingCategories);
         TagTypeBox.SelectedIndex = 1;
-        PresetColorPicker.ItemsSource = PresetColors;
-        CustomColorPicker.ItemsSource = CustomColors;
+        PopulateColors(customColors);
+        PresetColorPicker.ItemsSource = AvailableColors;
         SelectColor(_selectedColor);
         Loaded += (_, _) =>
         {
@@ -54,6 +56,10 @@ public partial class TagCreateDialog : Window
             {
                 CustomColors.Add(color);
             }
+            if (!AvailableColors.Contains(color, StringComparer.OrdinalIgnoreCase))
+            {
+                AvailableColors.Add(color);
+            }
             SelectColor(color);
         }
     }
@@ -63,6 +69,28 @@ public partial class TagCreateDialog : Window
         if (sender is Border border && border.DataContext is string color)
         {
             SelectColor(color);
+        }
+    }
+
+    private void PopulateColors(IEnumerable<string>? customColors)
+    {
+        foreach (var color in PresetColors)
+        {
+            AvailableColors.Add(color);
+        }
+
+        if (customColors is null)
+        {
+            return;
+        }
+
+        foreach (var color in customColors.Where(IsValidHexColor).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!PresetColors.Contains(color, StringComparer.OrdinalIgnoreCase))
+            {
+                CustomColors.Add(color);
+                AvailableColors.Add(color);
+            }
         }
     }
 
@@ -107,10 +135,25 @@ public partial class TagCreateDialog : Window
 
     private void SelectColor(string color)
     {
+        if (!IsValidHexColor(color))
+        {
+            return;
+        }
+
         _selectedColor = color;
         SelectedColorPreview.Background = new SolidColorBrush(
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
         SelectedColorText.Text = $"已选颜色：{color}";
+    }
+
+    private static bool IsValidHexColor(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length != 7 || value[0] != '#')
+        {
+            return false;
+        }
+
+        return value.Skip(1).All(Uri.IsHexDigit);
     }
 
     private void Confirm_Click(object sender, RoutedEventArgs e)

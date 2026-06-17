@@ -1961,7 +1961,92 @@
                                         ClipToBounds="True"
                                         Effect="{StaticResource BookShadow}">
                                     <Grid>
-                                        <Image Source="{Binding CoverImage}" Stretch="Uniform"/>
+                                        <Grid x:Name="DetailGrooveCover">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Border CornerRadius="{StaticResource RadiusPanel}" ClipToBounds="True" Background="Transparent">
+                                                <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                            </Border>
+                                            <Rectangle Width="7" Margin="70,22,0,22" HorizontalAlignment="Left" Fill="#66000000" RadiusX="3.5" RadiusY="3.5"/>
+                                            <Rectangle Width="2" Margin="82,25,0,25" HorizontalAlignment="Left" Fill="#66FFFFFF" RadiusX="1" RadiusY="1"/>
+                                        </Grid>
+
+                                        <Grid x:Name="DetailBoundMangaCover">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="1">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Border CornerRadius="{StaticResource RadiusPanel}" ClipToBounds="True" Background="Transparent">
+                                                <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                            </Border>
+                                            <Border Width="84" HorizontalAlignment="Left" CornerRadius="{StaticResource RadiusClipLeft}">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                        <GradientStop Color="#70000000" Offset="0"/>
+                                                        <GradientStop Color="#26000000" Offset="0.48"/>
+                                                        <GradientStop Color="#24FFFFFF" Offset="0.66"/>
+                                                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                            <Rectangle Width="22" HorizontalAlignment="Left" Margin="54,10,0,10" RadiusX="11" RadiusY="11" Opacity="0.38">
+                                                <Rectangle.Fill>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                        <GradientStop Color="#00000000" Offset="0"/>
+                                                        <GradientStop Color="#55FFFFFF" Offset="0.55"/>
+                                                        <GradientStop Color="#00000000" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Rectangle.Fill>
+                                            </Rectangle>
+                                        </Grid>
+
+                                        <Grid x:Name="DetailPlainCover">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="2">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Border CornerRadius="{StaticResource RadiusPanel}" ClipToBounds="True" Background="Transparent">
+                                                <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid x:Name="DetailWhiteBorderCover">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="3">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Border Background="#FAFFFFFF" CornerRadius="{StaticResource RadiusPanel}" Padding="14">
+                                                <Border CornerRadius="{StaticResource RadiusClip}" ClipToBounds="True" Background="Transparent">
+                                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                                </Border>
+                                            </Border>
+                                        </Grid>
                                         <Border Style="{StaticResource PrivacyCoverOverlay}"
                                                 CornerRadius="{StaticResource RadiusPanel}">
                                             <TextBlock Text="隐私模式"
@@ -1987,7 +2072,7 @@
                                 <StackPanel x:Name="ReadOnlyInfoPanel">
                                     <TextBlock x:Name="BookTitleText"
                                                Style="{StaticResource DetailHeroTitleText}"/>
-                                    <WrapPanel Margin="0,8,0,0" VerticalAlignment="Center">
+                                    <WrapPanel Margin="0,14,0,0" VerticalAlignment="Center">
                                         <Button x:Name="BookAuthorFilterButton"
                                                 Click="DetailAuthorFilter_Click"
                                                 Style="{StaticResource DetailHeroSecondaryButton}"
@@ -2006,7 +2091,7 @@
                                                        Margin="0"
                                                        VerticalAlignment="Center"/>
                                         </Border>
-                                        <ItemsControl x:Name="BookTagChips" Margin="0,6,0,0" VerticalAlignment="Center">
+                                        <ItemsControl x:Name="BookTagChips" Margin="0,0,0,0" VerticalAlignment="Center">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel Orientation="Horizontal"/>
@@ -2028,7 +2113,7 @@
                                         </ItemsControl>
                                     </WrapPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                         <Button Content="开始阅读"
                                                 Click="OpenCurrentBook_Click"
                                                 Style="{StaticResource DetailHeroPrimaryButton}"
@@ -2108,23 +2193,12 @@
 
                                 </StackPanel>
 
-                                <StackPanel x:Name="EditFormPanel" Visibility="Collapsed">
+                                <StackPanel x:Name="EditFormPanel" Visibility="Collapsed" MinHeight="590">
                                     <Grid Margin="0,0,0,18">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="编辑作品信息" Style="{StaticResource DetailEditFormHeaderText}"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                            <Button Content="取消"
-                                                    Click="ToggleEditMode_Click"
-                                                    Style="{StaticResource DetailHeroSecondaryButton}"
-                                                    Margin="0,0,10,0"/>
-                                            <Button x:Name="SaveMetadataButton"
-                                                    Content="保存信息"
-                                                    Click="SaveMetadata_Click"
-                                                    Style="{StaticResource DetailHeroPrimaryButton}"/>
-                                        </StackPanel>
                                     </Grid>
 
                                     <StackPanel>
@@ -2199,8 +2273,8 @@
                                                          TextChanged="EditTagSearchBox_TextChanged"
                                                          ToolTip="输入关键词搜索已有 Tag"/>
                                                 <TextBox x:Name="TagsBox" Visibility="Collapsed"/>
-                                                <Border MinHeight="76"
-                                                        MaxHeight="132"
+                                                <Border MinHeight="106"
+                                                        MaxHeight="150"
                                                         Padding="10"
                                                         CornerRadius="{StaticResource RadiusField}"
                                                         Background="{StaticResource Brush.Surface}"
@@ -2209,47 +2283,58 @@
                                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                                   HorizontalScrollBarVisibility="Disabled"
                                                                   PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
-                                                        <StackPanel>
-                                                            <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <WrapPanel/>
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate DataType="{x:Type models:TagChip}">
-                                                                        <Border Style="{StaticResource AppTagChipBorder}"
-                                                                                Background="{Binding Color}"
-                                                                                MouseLeftButtonDown="EditTagRemove_Click"
-                                                                                ToolTip="点击移除">
-                                                                            <StackPanel Orientation="Horizontal">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="1"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                                <TextBlock Text="已选 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
+                                                                <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate DataType="{x:Type models:TagChip}">
+                                                                            <Border Style="{StaticResource AppTagChipBorder}"
+                                                                                    Background="{Binding Color}"
+                                                                                    MouseLeftButtonDown="EditTagRemove_Click"
+                                                                                    ToolTip="点击移除">
+                                                                                <StackPanel Orientation="Horizontal">
+                                                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
+                                                                                </StackPanel>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                            <Border Grid.Column="1" Background="{StaticResource Brush.BorderSubtle}"/>
+                                                            <StackPanel Grid.Column="2" Margin="12,0,0,0">
+                                                                <TextBlock Text="可添加 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,8"/>
+                                                                <ItemsControl ItemsSource="{Binding EditTagOptions, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate DataType="{x:Type models:TagChip}">
+                                                                            <Border Style="{StaticResource AppTagChipBorder}"
+                                                                                    Background="{Binding Color}"
+                                                                                    Opacity="0.72"
+                                                                                    MouseLeftButtonDown="EditTagOption_Click"
+                                                                                    ToolTip="点击添加">
                                                                                 <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                                                <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
-                                                                            </StackPanel>
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                            <Separator Margin="0,2,0,8"/>
-                                                            <ItemsControl ItemsSource="{Binding EditTagOptions, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <WrapPanel/>
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate DataType="{x:Type models:TagChip}">
-                                                                        <Border Style="{StaticResource AppTagChipBorder}"
-                                                                                Background="{Binding Color}"
-                                                                                Opacity="0.72"
-                                                                                MouseLeftButtonDown="EditTagOption_Click"
-                                                                                ToolTip="点击添加">
-                                                                            <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </ScrollViewer>
                                                 </Border>
                                             </StackPanel>
@@ -2278,6 +2363,19 @@
                                                     Click="DeleteBook_Click"
                                                     Style="{StaticResource DetailDangerInlineButton}"/>
                                         </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,24,0,0">
+                                        <Button Content="取消"
+                                                Click="ToggleEditMode_Click"
+                                                Style="{StaticResource DetailHeroSecondaryButton}"
+                                                Margin="0,0,10,0"/>
+                                        <Button x:Name="SaveMetadataButton"
+                                                Content="保存信息"
+                                                Click="SaveMetadata_Click"
+                                                Style="{StaticResource DetailHeroPrimaryButton}"/>
                                     </StackPanel>
 
                                     <Border Visibility="Collapsed">
