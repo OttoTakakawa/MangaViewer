@@ -769,7 +769,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        var previousCoverPageIndex = _currentBook.CoverPageIndex;
         _currentBook.Title = title;
         var nextAuthor = AuthorBox.Text.Trim();
         if (!string.IsNullOrWhiteSpace(nextAuthor)
@@ -782,7 +781,6 @@ public partial class MainWindow : Window
 
         _currentBook.Author = nextAuthor;
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
-        _currentBook.ReadingStatus = GetSelectedReadingStatus();
         if (!TryNormalizeDate(ProducedAtBox.Text, out var producedAt))
         {
             StatusText.Text = "出品时间格式不正确，请使用类似 2002-03-09 的标准格式。";
@@ -800,24 +798,9 @@ public partial class MainWindow : Window
         _currentBook.Tags = NormalizeTagsRespectingRules(TagService.ParseTags(TagsBox.Text.Trim()));
         TagsBox.Text = _currentBook.Tags;
         RefreshEditTagEditor(_currentBook.Tags);
-        if (int.TryParse(CoverPageBox.Text.Trim(), out var coverPage))
-        {
-            _currentBook.CoverPageIndex = Math.Clamp(coverPage - 1, 0, Math.Max(_currentBook.PageCount - 1, 0));
-        }
-        if (!int.TryParse(ReadCountBox.Text.Trim(), out var readCount) || readCount < 0)
-        {
-            StatusText.Text = "阅读次数必须是大于等于 0 的数字。";
-            return;
-        }
-        _currentBook.ReadCount = readCount;
-        NormalizeReadingStatusForReadCount(_currentBook);
 
         var book = _currentBook;
         await Task.Run(() => _database.SaveMetadata(book));
-        if (previousCoverPageIndex != book.CoverPageIndex)
-        {
-            await ReloadCoverAsync(book);
-        }
         if (!ReferenceEquals(_currentBook, book))
         {
             return;
@@ -970,6 +953,21 @@ public partial class MainWindow : Window
 
         FillMetadataEditors(book);
         StatusText.Text = book.IsHidden ? $"《{book.Title}》已隐藏。" : $"《{book.Title}》已恢复显示。";
+    }
+
+    private async void ToggleBookPrivacyCover_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null) return;
+
+        var book = _currentBook;
+        book.IsPrivacyCover = !book.IsPrivacyCover;
+        await Task.Run(() => _database.SetPrivacyCover(book, book.IsPrivacyCover));
+        book.NotifyAll();
+        FillMetadataEditors(book);
+        RefreshHomeShelves();
+        StatusText.Text = book.IsPrivacyCover
+            ? $"《{book.Title}》已保持隐私封面。"
+            : $"《{book.Title}》已取消隐私封面。";
     }
 
     private async void DeleteBook_Click(object sender, RoutedEventArgs e)
@@ -2331,6 +2329,7 @@ public partial class MainWindow : Window
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
         HideBookButtonEdit.Content = book.IsHidden ? "恢复显示" : "隐藏作品";
+        PrivacyCoverButtonEdit.Content = book.IsPrivacyCover ? "取消隐私封面" : "保持隐私封面";
         ToggleFavoriteButton.Content = book.IsFavorite ? "★ 已收藏" : "☆ 收藏";
         if (MoreActionsHideMenuItem is not null)
         {

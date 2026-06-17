@@ -650,7 +650,7 @@
     </Style>
 
     <Style x:Key="DetailTagChipBorder" TargetType="Border">
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+        <Setter Property="CornerRadius" Value="999"/>
         <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
         <Setter Property="BorderThickness" Value="1"/>

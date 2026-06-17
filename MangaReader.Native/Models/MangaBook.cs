@@ -19,6 +19,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     private string _tags = "";
     private string _readingStatus = "unread";
     private bool _isFavorite;
+    private bool _isPrivacyCover;
     private bool _isSelectedForBatch;
     private long _totalBytes;
 
@@ -57,6 +58,21 @@ public sealed class MangaBook : INotifyPropertyChanged
     public int BookStyle { get; set; } = -1;
     public bool IsMissing { get; set; }
     public bool IsHidden { get; set; }
+    public bool IsPrivacyCover
+    {
+        get => _isPrivacyCover;
+        set
+        {
+            if (_isPrivacyCover == value)
+            {
+                return;
+            }
+
+            _isPrivacyCover = value;
+            OnPropertyChanged();
+        }
+    }
+
     public bool IsFavorite
     {
         get => _isFavorite;

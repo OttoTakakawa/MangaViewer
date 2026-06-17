@@ -16,7 +16,6 @@ public partial class TagCreateDialog : Window
     ];
 
     public ObservableCollection<string> CustomColors { get; } = new();
-    private readonly IReadOnlyDictionary<string, string> _categoryColors;
     private string _selectedColor = "#F4B6C2";
 
     public string TagName => TagNameBox.Text.Trim();
@@ -30,15 +29,12 @@ public partial class TagCreateDialog : Window
         IReadOnlyDictionary<string, string>? categoryColors = null)
     {
         InitializeComponent();
-        _categoryColors = categoryColors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         TagNameBox.Text = initialValue;
         PopulateCategories(existingCategories);
         TagTypeBox.SelectedIndex = 1;
         PresetColorPicker.ItemsSource = PresetColors;
         CustomColorPicker.ItemsSource = CustomColors;
         SelectColor(_selectedColor);
-        TagCategoryBox.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent, new TextChangedEventHandler(TagCategoryBox_TextChanged));
-        UpdateColorFromCategory();
         Loaded += (_, _) =>
         {
             TagNameBox.Focus();
@@ -58,25 +54,6 @@ public partial class TagCreateDialog : Window
             {
                 CustomColors.Add(color);
             }
-            SelectColor(color);
-        }
-    }
-
-    private void TagCategoryBox_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        UpdateColorFromCategory();
-    }
-
-    private void TagCategoryBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        UpdateColorFromCategory();
-    }
-
-    private void UpdateColorFromCategory()
-    {
-        var category = GetSelectedCategory();
-        if (_categoryColors.TryGetValue(category, out var color) && !string.IsNullOrWhiteSpace(color))
-        {
             SelectColor(color);
         }
     }

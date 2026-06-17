@@ -63,6 +63,15 @@
         <Style x:Key="PrivacyCoverOverlay" TargetType="Border">
             <Setter Property="Background" Value="#F1111827"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsPrivacyCover}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="FilterActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="MinHeight" Value="44"/>
@@ -147,6 +156,12 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="#263238"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="DetailHeroTagChipBorder" TargetType="Border" BasedOn="{StaticResource AppTagChipBorder}">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="11,0"/>
+            <Setter Property="Margin" Value="0,0,7,8"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="BatchActionButton" TargetType="Button" BasedOn="{StaticResource TinyButton}">
@@ -740,8 +755,7 @@
                                 </Border>
                             </Grid>
                             <Border Style="{StaticResource PrivacyCoverOverlay}"
-                                    CornerRadius="{StaticResource RadiusProgress}"
-                                    Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+                                    CornerRadius="{StaticResource RadiusProgress}">
                                 <TextBlock Text="隐私模式"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
@@ -858,8 +872,7 @@
                     </Grid.Background>
                     <Grid>
                         <Image Source="{Binding CoverImage}" Stretch="UniformToFill" Opacity="0.34"/>
-                        <Border Style="{StaticResource PrivacyCoverOverlay}"
-                                Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                        <Border Style="{StaticResource PrivacyCoverOverlay}"/>
                     </Grid>
                     <Rectangle>
                         <Rectangle.Fill>
@@ -879,8 +892,7 @@
                             <Grid>
                             <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
                                 <Border Style="{StaticResource PrivacyCoverOverlay}"
-                                        CornerRadius="{StaticResource RadiusPanel}"
-                                        Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                                        CornerRadius="{StaticResource RadiusPanel}"/>
                             </Grid>
                         </Border>
                         <Grid Grid.Column="1" Margin="12,4,0,4">
@@ -940,8 +952,7 @@
                         <Grid>
                         <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
                             <Border Style="{StaticResource PrivacyCoverOverlay}"
-                                    CornerRadius="{StaticResource RadiusPanel}"
-                                    Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                                    CornerRadius="{StaticResource RadiusPanel}"/>
                         </Grid>
                     </Border>
                     <Border Padding="6,2"
@@ -1952,8 +1963,7 @@
                                     <Grid>
                                         <Image Source="{Binding CoverImage}" Stretch="Uniform"/>
                                         <Border Style="{StaticResource PrivacyCoverOverlay}"
-                                                CornerRadius="{StaticResource RadiusPanel}"
-                                                Visibility="{Binding IsPrivacyMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+                                                CornerRadius="{StaticResource RadiusPanel}">
                                             <TextBlock Text="隐私模式"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
@@ -1981,18 +1991,22 @@
                                         <Button x:Name="BookAuthorFilterButton"
                                                 Click="DetailAuthorFilter_Click"
                                                 Style="{StaticResource DetailHeroSecondaryButton}"
+                                                VerticalAlignment="Center"
                                                 Margin="0,0,8,8"/>
-                                        <Border Padding="14,7"
+                                        <Border Height="44"
+                                                Padding="16,0"
                                                 Margin="0,0,8,8"
                                                 CornerRadius="{StaticResource RadiusControl}"
                                                 Background="{StaticResource Brush.SurfaceMuted}"
                                                 BorderBrush="{StaticResource Brush.BorderSubtle}"
-                                                BorderThickness="1">
+                                                BorderThickness="1"
+                                                VerticalAlignment="Center">
                                             <TextBlock x:Name="BookMetaLineText"
                                                        Style="{StaticResource DetailHeroMetaText}"
-                                                       Margin="0"/>
+                                                       Margin="0"
+                                                       VerticalAlignment="Center"/>
                                         </Border>
-                                        <ItemsControl x:Name="BookTagChips" Margin="0,0,0,0">
+                                        <ItemsControl x:Name="BookTagChips" Margin="0,6,0,0" VerticalAlignment="Center">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel Orientation="Horizontal"/>
@@ -2000,7 +2014,7 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type models:TagChip}">
-                                                    <Border Style="{StaticResource AppTagChipBorder}"
+                                                    <Border Style="{StaticResource DetailHeroTagChipBorder}"
                                                             Background="{Binding Color}"
                                                             MouseEnter="TagChip_MouseEnter"
                                                             MouseLeave="TagChip_MouseLeave"
@@ -2037,7 +2051,8 @@
                                     </StackPanel>
 
                                     <TextBlock x:Name="ReadingStatusInlineText"
-                                               Style="{StaticResource DetailReadingStatusText}"/>
+                                               Style="{StaticResource DetailReadingStatusText}"
+                                               Margin="18,14,0,0"/>
 
                                     <!-- 隐藏的旧字段控件，供代码后置继续赋值，避免空引用 -->
                                     <StackPanel Visibility="Collapsed">
@@ -2053,7 +2068,7 @@
                                         <Button x:Name="HideBookButton" Click="HideBook_Click"/>
                                     </StackPanel>
 
-                                    <Border Margin="0,28,0,0" Padding="0" Background="Transparent">
+                                    <Border Margin="18,30,0,0" Padding="0" Background="Transparent">
                                         <StackPanel>
                                             <TextBlock Text="简介" Style="{StaticResource DetailSectionTitleText}"/>
                                             <TextBlock x:Name="ReadOnlySummaryText"
@@ -2061,7 +2076,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <StackPanel Margin="0,28,0,0">
+                                    <StackPanel Margin="18,28,0,0">
                                         <TextBlock Text="作品信息" Style="{StaticResource DetailSectionTitleText}"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -2159,31 +2174,6 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
-                                                <TextBlock Text="阅读状态" Style="{StaticResource LabelText}"/>
-                                                <ComboBox x:Name="ReadingStatusBox" SelectedIndex="0">
-                                                    <ComboBoxItem Content="未读" Tag="unread"/>
-                                                    <ComboBoxItem Content="在读" Tag="reading"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="阅读次数" Style="{StaticResource LabelText}"/>
-                                                <DockPanel>
-                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
-                                                        <Button Content="-1" Click="DecreaseReadCount_Click" Style="{StaticResource TinyButton}" Margin="0,0,8,0"/>
-                                                        <Button Content="+1" Click="IncreaseReadCount_Click" Style="{StaticResource TinyButton}"/>
-                                                    </StackPanel>
-                                                    <TextBox x:Name="ReadCountBox"/>
-                                                </DockPanel>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <Grid Margin="0,0,0,14">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="14"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
                                                 <TextBlock Text="出品时间" Style="{StaticResource LabelText}"/>
                                                 <TextBox x:Name="ProducedAtBox"/>
                                             </StackPanel>
@@ -2198,8 +2188,6 @@
 
                                         <Grid Margin="0,0,0,14">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="1.7*"/>
-                                                <ColumnDefinition Width="14"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
@@ -2265,10 +2253,6 @@
                                                     </ScrollViewer>
                                                 </Border>
                                             </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="封面页" Style="{StaticResource LabelText}"/>
-                                                <TextBox x:Name="CoverPageBox"/>
-                                            </StackPanel>
                                         </Grid>
 
                                         <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
@@ -2282,6 +2266,10 @@
                                     <StackPanel Margin="0,28,0,0">
                                         <TextBlock Text="危险操作" Style="{StaticResource DetailSectionTitleText}"/>
                                         <StackPanel Orientation="Horizontal">
+                                            <Button x:Name="PrivacyCoverButtonEdit"
+                                                    Content="保持隐私封面"
+                                                    Click="ToggleBookPrivacyCover_Click"
+                                                    Style="{StaticResource DetailFileActionButton}"/>
                                             <Button x:Name="HideBookButtonEdit"
                                                     Content="隐藏作品"
                                                     Click="HideBook_Click"
@@ -2297,6 +2285,12 @@
                                             <TextBox x:Name="NextShortcutBox" Text="Right,Space"/>
                                             <TextBox x:Name="PrevShortcutBox" Text="Left"/>
                                             <Button Content="保存快捷键" Click="SaveShortcuts_Click"/>
+                                            <TextBox x:Name="CoverPageBox"/>
+                                            <TextBox x:Name="ReadCountBox"/>
+                                            <ComboBox x:Name="ReadingStatusBox" SelectedIndex="0">
+                                                <ComboBoxItem Content="未读" Tag="unread"/>
+                                                <ComboBoxItem Content="在读" Tag="reading"/>
+                                            </ComboBox>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>

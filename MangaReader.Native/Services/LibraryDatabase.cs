@@ -9,9 +9,9 @@ public sealed class LibraryDatabase
     private const string UpsertBookSql =
         """
         INSERT INTO books(id, title, author, character_name, foreign_name, tags, produced_at, imported_at, summary,
-                          folder_path, page_count, total_bytes, cover_page_index, last_read_page_index, is_missing, updated_at)
+                          folder_path, page_count, total_bytes, cover_page_index, last_read_page_index, is_missing, is_privacy_cover, updated_at)
         VALUES ($id, $title, $author, $characterName, $foreignName, $tags, $producedAt, $importedAt, $summary,
-                $folderPath, $pageCount, $totalBytes, $coverPageIndex, $lastReadPageIndex, $isMissing, $updatedAt)
+                $folderPath, $pageCount, $totalBytes, $coverPageIndex, $lastReadPageIndex, $isMissing, $isPrivacyCover, $updatedAt)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             author = excluded.author,
@@ -27,6 +27,7 @@ public sealed class LibraryDatabase
             cover_page_index = excluded.cover_page_index,
             last_read_page_index = excluded.last_read_page_index,
             is_missing = excluded.is_missing,
+            is_privacy_cover = excluded.is_privacy_cover,
             updated_at = excluded.updated_at;
         """;
     private static readonly TimeSpan MetadataBackupInterval = TimeSpan.FromMinutes(10);
@@ -76,6 +77,7 @@ public sealed class LibraryDatabase
                 is_favorite INTEGER NOT NULL DEFAULT 0,
                 is_missing INTEGER NOT NULL DEFAULT 0,
                 is_hidden INTEGER NOT NULL DEFAULT 0,
+                is_privacy_cover INTEGER NOT NULL DEFAULT 0,
                 updated_at TEXT NOT NULL
             );
 
@@ -131,6 +133,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "reading_status", "TEXT NOT NULL DEFAULT 'unread'");
         EnsureColumn(connection, "books", "is_favorite", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "books", "is_privacy_cover", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
         EnsureColumn(connection, "managed_tags", "is_exclusive", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "color", "TEXT NOT NULL DEFAULT ''");
@@ -173,7 +176,7 @@ public sealed class LibraryDatabase
             """
             SELECT id, title, author, tags, folder_path, page_count, cover_page_index,
                    last_read_page_index, is_missing
-                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes
+                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes, is_privacy_cover
             FROM books;
             """;
         using var reader = command.ExecuteReader();
@@ -201,7 +204,8 @@ public sealed class LibraryDatabase
                 ReadingStatus = reader.GetString(16),
                 IsFavorite = reader.GetInt32(17) == 1,
                 ForeignName = reader.GetString(18),
-                TotalBytes = reader.GetInt64(19)
+                TotalBytes = reader.GetInt64(19),
+                IsPrivacyCover = reader.GetInt32(20) == 1
             };
             result[book.FolderPath] = book;
         }
@@ -290,6 +294,7 @@ public sealed class LibraryDatabase
                 read_count = $readCount,
                 reading_status = $readingStatus,
                 is_favorite = $isFavorite,
+                is_privacy_cover = $isPrivacyCover,
                 updated_at = $updatedAt
             WHERE id = $id;
             """;
@@ -307,6 +312,7 @@ public sealed class LibraryDatabase
         command.Parameters.AddWithValue("$readCount", book.ReadCount);
         command.Parameters.AddWithValue("$readingStatus", book.ReadingStatus);
         command.Parameters.AddWithValue("$isFavorite", book.IsFavorite ? 1 : 0);
+        command.Parameters.AddWithValue("$isPrivacyCover", book.IsPrivacyCover ? 1 : 0);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
         _lastMetadataBackupAt = DateTimeOffset.Now;
@@ -511,6 +517,25 @@ public sealed class LibraryDatabase
             """;
         command.Parameters.AddWithValue("$id", book.Id);
         command.Parameters.AddWithValue("$isHidden", isHidden ? 1 : 0);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+        _lastMetadataBackupAt = DateTimeOffset.Now;
+    }
+
+    public void SetPrivacyCover(MangaBook book, bool isPrivacyCover)
+    {
+        BackupDatabase("before-privacy-cover-toggle", force: ShouldCreateMetadataBackup());
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE books
+            SET is_privacy_cover = $isPrivacyCover,
+                updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", book.Id);
+        command.Parameters.AddWithValue("$isPrivacyCover", isPrivacyCover ? 1 : 0);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
         _lastMetadataBackupAt = DateTimeOffset.Now;
@@ -946,6 +971,7 @@ public sealed record ManagedTagRecord(string Name, string Category, bool IsExclu
         command.Parameters.AddWithValue("$coverPageIndex", book.CoverPageIndex);
         command.Parameters.AddWithValue("$lastReadPageIndex", book.LastReadPageIndex);
         command.Parameters.AddWithValue("$isMissing", book.IsMissing ? 1 : 0);
+        command.Parameters.AddWithValue("$isPrivacyCover", book.IsPrivacyCover ? 1 : 0);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
     }
 }
