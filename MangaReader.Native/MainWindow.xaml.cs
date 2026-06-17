@@ -108,6 +108,7 @@ public partial class MainWindow : Window
     private string _lastStatusLogText = "";
     private bool _cachedFavoriteOnly;
     private bool _cachedShowHidden;
+    private bool _sortDescending;
     private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
 
@@ -1777,7 +1778,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!TryResolveTagForCreate(TagSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive, out var color))
+        if (!TryResolveTagForBatchAdd(selectedBooks, out var tag, out var category, out var isExclusive, out var color))
         {
             return;
         }
@@ -2757,6 +2758,7 @@ public partial class MainWindow : Window
         _ensureLibraryViewAfterBookFilter = false;
         var snapshot = _allBooks.ToList();
         var sortIndex = SortBox?.SelectedIndex ?? 0;
+        var sortDescending = _sortDescending;
         var searchQuery = _cachedSearchQuery;
         var statusFilter = _cachedStatusFilter;
         var authorFilter = _cachedAuthorFilter;
@@ -2768,6 +2770,7 @@ public partial class MainWindow : Window
         _ = ExecuteBookViewRefreshAsync(
             snapshot,
             sortIndex,
+            sortDescending,
             searchQuery,
             statusFilter,
             authorFilter,
@@ -2782,6 +2785,7 @@ public partial class MainWindow : Window
     private async Task ExecuteBookViewRefreshAsync(
         List<MangaBook> snapshot,
         int sortIndex,
+        bool sortDescending,
         string searchQuery,
         string statusFilter,
         string authorFilter,
@@ -2799,6 +2803,7 @@ public partial class MainWindow : Window
                 () => FilterAndSortBooks(
                     snapshot,
                     sortIndex,
+                    sortDescending,
                     searchQuery,
                     statusFilter,
                     authorFilter,
@@ -2892,11 +2897,6 @@ public partial class MainWindow : Window
         }
         else
         {
-            var category = TagCategory(chip.Name);
-            if (IsExclusiveTag(chip.Name))
-            {
-                RemoveActiveTagsInExclusiveGroup(category);
-            }
             _activeTagFilters.Add(chip.Name);
             StatusText.Text = $"已追加 Tag：{chip.Name}";
         }
@@ -2917,10 +2917,6 @@ public partial class MainWindow : Window
         SetDetailVisible(false);
         if (!_activeTagFilters.Contains(chip.Name))
         {
-            if (IsExclusiveTag(chip.Name))
-            {
-                RemoveActiveTagsInExclusiveGroup(TagCategory(chip.Name));
-            }
             _activeTagFilters.Add(chip.Name);
         }
 
@@ -2990,7 +2986,24 @@ public partial class MainWindow : Window
 
     private void SortBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        _sortDescending = (SortBox?.SelectedIndex ?? 0) != 0;
+        UpdateSortDirectionButton();
         ApplyBookSort();
+    }
+
+    private void ToggleSortDirection_Click(object sender, RoutedEventArgs e)
+    {
+        _sortDescending = !_sortDescending;
+        UpdateSortDirectionButton();
+        ApplyBookSort();
+    }
+
+    private void UpdateSortDirectionButton()
+    {
+        if (SortDirectionButton is not null)
+        {
+            SortDirectionButton.Content = _sortDescending ? "降序" : "升序";
+        }
     }
 
     private void FilterComboBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -3021,6 +3034,7 @@ public partial class MainWindow : Window
     private static List<MangaBook> FilterAndSortBooks(
         List<MangaBook> allBooks,
         int sortIndex,
+        bool sortDescending,
         string searchQuery,
         string statusFilter,
         string authorFilter,
@@ -3082,18 +3096,37 @@ public partial class MainWindow : Window
                 || Contains(book.ReadCountText, searchQuery);
         });
 
-        var sorted = sortIndex switch
-        {
-            1 => filtered.OrderByDescending(book => book.LastReadPageIndex).ThenBy(book => book.Title),
-            2 => filtered.OrderByDescending(book => book.PageCount).ThenBy(book => book.Title),
-            3 => filtered.OrderByDescending(book => book.TotalBytes).ThenBy(book => book.Title),
-            4 => filtered.OrderByDescending(book => book.ReadCount).ThenBy(book => book.Title),
-            5 => filtered.OrderByDescending(book => book.ImportedAt).ThenBy(book => book.Title),
-            6 => filtered.OrderByDescending(book => book.ProducedAt).ThenBy(book => book.Title),
-            _ => filtered.OrderBy(book => book.Title),
-        };
+        var sorted = SortBooks(filtered, sortIndex, sortDescending);
 
         return sorted.ToList();
+    }
+
+    private static IOrderedEnumerable<MangaBook> SortBooks(IEnumerable<MangaBook> filtered, int sortIndex, bool sortDescending)
+    {
+        return sortIndex switch
+        {
+            1 => sortDescending
+                ? filtered.OrderByDescending(book => book.LastReadPageIndex).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.LastReadPageIndex).ThenBy(book => book.Title),
+            2 => sortDescending
+                ? filtered.OrderByDescending(book => book.PageCount).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.PageCount).ThenBy(book => book.Title),
+            3 => sortDescending
+                ? filtered.OrderByDescending(book => book.TotalBytes).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.TotalBytes).ThenBy(book => book.Title),
+            4 => sortDescending
+                ? filtered.OrderByDescending(book => book.ReadCount).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.ReadCount).ThenBy(book => book.Title),
+            5 => sortDescending
+                ? filtered.OrderByDescending(book => book.ImportedAt).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.ImportedAt).ThenBy(book => book.Title),
+            6 => sortDescending
+                ? filtered.OrderByDescending(book => book.ProducedAt).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.ProducedAt).ThenBy(book => book.Title),
+            _ => sortDescending
+                ? filtered.OrderByDescending(book => book.Title)
+                : filtered.OrderBy(book => book.Title),
+        };
     }
 
     private string GetSelectedReadingStatus()
@@ -4124,6 +4157,71 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private bool TryResolveTagForBatchAdd(
+        IReadOnlyList<MangaBook> selectedBooks,
+        out string tag,
+        out string category,
+        out bool isExclusive,
+        out string color)
+    {
+        var initialValue = TagSearchBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(initialValue))
+        {
+            initialValue = _activeTagFilters.LastOrDefault()
+                ?? selectedBooks
+                    .SelectMany(book => TagService.ParseTags(book.Tags))
+                    .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .OrderByDescending(group => group.Count())
+                    .ThenBy(group => group.Key)
+                    .Select(group => group.Key)
+                    .FirstOrDefault()
+                ?? EnumerateKnownTags().FirstOrDefault()
+                ?? "";
+        }
+
+        if (!string.IsNullOrWhiteSpace(initialValue)
+            && EnumerateKnownTags().Any(name => string.Equals(name, initialValue, StringComparison.OrdinalIgnoreCase)))
+        {
+            tag = initialValue.Trim();
+            category = TagCategory(tag);
+            isExclusive = IsExclusiveTag(tag);
+            color = TagColor(tag);
+            return true;
+        }
+
+        var dialog = new RenameDialog(
+            "批量加 Tag",
+            "输入已有 Tag 名称会直接使用；输入新名称则进入创建流程。",
+            "处理范围",
+            $"{selectedBooks.Count} 本漫画",
+            "Tag 名称",
+            initialValue)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            tag = "";
+            category = "自定义";
+            isExclusive = false;
+            color = "";
+            StatusText.Text = "已取消批量添加 Tag。";
+            return false;
+        }
+
+        var requestedTag = dialog.NewName.Trim();
+        if (EnumerateKnownTags().Any(name => string.Equals(name, requestedTag, StringComparison.OrdinalIgnoreCase)))
+        {
+            tag = requestedTag;
+            category = TagCategory(tag);
+            isExclusive = IsExclusiveTag(tag);
+            color = TagColor(tag);
+            return true;
+        }
+
+        return TryResolveTagForCreate(requestedTag, out tag, out category, out isExclusive, out color);
+    }
+
     private void AddTagToBookRespectingRules(MangaBook book, string tag)
     {
         var names = TagService.ParseTags(book.Tags).ToList();
@@ -4460,16 +4558,6 @@ public partial class MainWindow : Window
         return TagService.IsMutuallyExclusiveCategory(category);
     }
 
-    private void RemoveActiveTagsInExclusiveGroup(string category)
-    {
-        foreach (var tag in _activeTagFilters
-            .Where(tag => IsExclusiveTag(tag) && string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase))
-            .ToList())
-        {
-            _activeTagFilters.Remove(tag);
-        }
-    }
-
     private void TagContextRename_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: TagChip chip })
@@ -4659,11 +4747,10 @@ public partial class MainWindow : Window
             return;
         }
         ShowLibraryView("library");
-        if (chip.IsExclusive)
+        if (!_activeTagFilters.Contains(chip.Name))
         {
-            RemoveActiveTagsInExclusiveGroup(chip.Category);
+            _activeTagFilters.Add(chip.Name);
         }
-        _activeTagFilters.Add(chip.Name);
         RefreshLibraryViews(tagManager: false, authors: false, activeTags: true);
         StatusText.Text = chip.UsageCount == 0
             ? $"已按 Tag 筛选：{chip.Name}。当前没有关联漫画，所以结果为空。"
@@ -4814,10 +4901,6 @@ public partial class MainWindow : Window
 
         if (_activeTagFilters.Remove(chip.Name))
         {
-            if (newIsExclusive)
-            {
-                RemoveActiveTagsInExclusiveGroup(newCategory);
-            }
             _activeTagFilters.Add(newName);
         }
 

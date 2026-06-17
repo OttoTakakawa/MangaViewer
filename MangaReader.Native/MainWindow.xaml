@@ -1245,6 +1245,7 @@
                                 <ComboBoxItem Content="排序：录入时间"/>
                                 <ComboBoxItem Content="排序：出品时间"/>
                             </ComboBox>
+                            <Button x:Name="SortDirectionButton" Content="升序" Click="ToggleSortDirection_Click" Style="{StaticResource FilterActionButton}" Height="44" Margin="0,0,10,0"/>
                             <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterActionButton}" Height="44" Margin="0,0,10,0"/>
                             <Button Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterActionButton}" Height="44"/>
                         </WrapPanel>
@@ -2408,7 +2409,7 @@
               Visibility="Collapsed"
               Background="#99000000"
               PreviewMouseWheel="DetailCatalogOverlay_PreviewMouseWheel">
-            <Border Width="980"
+            <Border Width="1120"
                     MaxHeight="760"
                     Margin="26"
                     Padding="20"
@@ -2448,8 +2449,8 @@
                     </Grid>
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="548"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="310"/>
                         </Grid.ColumnDefinitions>
                         <ListBox x:Name="DetailCatalogList"
                                  ItemsSource="{Binding DetailPageCatalogItems}"
