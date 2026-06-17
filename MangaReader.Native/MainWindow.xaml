@@ -61,7 +61,7 @@
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
         <Style x:Key="PrivacyCoverOverlay" TargetType="Border">
-            <Setter Property="Background" Value="#F111827"/>
+            <Setter Property="Background" Value="#F1111827"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
         <Style x:Key="FilterActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
