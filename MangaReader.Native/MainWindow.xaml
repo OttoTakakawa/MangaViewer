@@ -774,8 +774,6 @@
                         </Grid>
                         <Border Padding="7,3"
                                 CornerRadius="{StaticResource RadiusControl}"
-                                Background="#FFEEAA"
-                                BorderBrush="#E4B95F"
                                 BorderThickness="1"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
@@ -783,54 +781,48 @@
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Setter Property="Background" Value="#F3F4F6"/>
+                                    <Setter Property="BorderBrush" Value="#D1D5DB"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding HasRating}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsFavorite}" Value="True">
                                             <Setter Property="Visibility" Value="Visible"/>
+                                            <Setter Property="Background" Value="#FFEEAA"/>
+                                            <Setter Property="BorderBrush" Value="#E4B95F"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <StackPanel.Style>
-                                        <Style TargetType="StackPanel">
+                                <TextBlock Text="{Binding RatingText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Foreground" Value="#6B7280"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding HasRating}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible"/>
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                    <Setter Property="Foreground" Value="#B45309"/>
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </StackPanel.Style>
-                                    <TextBlock Text="{Binding RatingText}" FontSize="12" FontWeight="Bold" Foreground="#B45309" VerticalAlignment="Center"/>
-                                    <TextBlock Text="★" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="2,0,0,0" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <Border Width="1" Margin="6,2,6,2" Background="#E4B95F">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <MultiDataTrigger>
-                                                    <MultiDataTrigger.Conditions>
-                                                        <Condition Binding="{Binding HasRating}" Value="True"/>
-                                                        <Condition Binding="{Binding IsFavorite}" Value="True"/>
-                                                    </MultiDataTrigger.Conditions>
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </MultiDataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                </Border>
-                                <TextBlock Text="★" FontSize="14" Foreground="#F59E0B" VerticalAlignment="Center">
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="★" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Margin" Value="0"/>
+                                            <Setter Property="Foreground" Value="#9CA3AF"/>
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasRating}" Value="True">
+                                                    <Setter Property="Margin" Value="3,0,0,0"/>
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Setter Property="Foreground" Value="#B45309"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
