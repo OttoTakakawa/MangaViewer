@@ -523,46 +523,37 @@
         <Style x:Key="BatchSelectCheckBox" TargetType="CheckBox">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Width" Value="30"/>
-            <Setter Property="Height" Value="30"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
                         <Border x:Name="SelectRoot"
-                                Width="30"
-                                Height="30"
-                                Background="#DDF8FAFC"
-                                BorderBrush="#94A3B8"
-                                BorderThickness="1.2"
-                                CornerRadius="{StaticResource RadiusControl}">
-                            <Grid>
-                                <Ellipse x:Name="SelectDot"
-                                         Width="16"
-                                         Height="16"
-                                         Fill="Transparent"
-                                         HorizontalAlignment="Center"
-                                         VerticalAlignment="Center"/>
-                                <Path x:Name="SelectGlyph"
-                                      Data="M 5 10 L 8 13 L 15 6"
-                                      Stroke="#FFFFFF"
-                                      StrokeThickness="2"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Visibility="Collapsed"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"/>
-                            </Grid>
+                                Width="22"
+                                Height="22"
+                                Background="#E6F8FAFC"
+                                BorderBrush="#CBD5E1"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <Path x:Name="SelectGlyph"
+                                  Data="M 4 8 L 7 11 L 12 5"
+                                  Stroke="#FFFFFF"
+                                  StrokeThickness="1.7"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Visibility="Collapsed"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="SelectRoot" Property="Background" Value="#EEF2F7"/>
-                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#64748B"/>
+                                <Setter TargetName="SelectRoot" Property="Background" Value="#F1F5F9"/>
+                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#94A3B8"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="SelectRoot" Property="Background" Value="#111827"/>
-                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#111827"/>
-                                <Setter TargetName="SelectDot" Property="Fill" Value="#111827"/>
+                                <Setter TargetName="SelectRoot" Property="Background" Value="#1F2937"/>
+                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#1F2937"/>
                                 <Setter TargetName="SelectGlyph" Property="Visibility" Value="Visible"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -2351,7 +2342,7 @@
                                                             </Grid.ColumnDefinitions>
                                                             <Grid Grid.Column="0" Margin="0,0,12,0">
                                                                 <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="220"/>
+                                                                    <ColumnDefinition Width="140"/>
                                                                     <ColumnDefinition Width="*"/>
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">

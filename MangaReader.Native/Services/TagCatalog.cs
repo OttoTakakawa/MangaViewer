@@ -2,7 +2,7 @@ namespace MangaReader.Native.Services;
 
 public static class TagCatalog
 {
-    private static readonly string[] CustomColors =
+    public static readonly string[] PresetColors =
     [
         "#F4B6C2", "#B7D7A8", "#A9CCE3", "#F7DC6F",
         "#D7BDE2", "#F5CBA7", "#AED6F1", "#A3E4D7"
@@ -44,7 +44,7 @@ public static class TagCatalog
             return preset.Color;
         }
 
-        return CustomColors[Math.Abs(tag.GetHashCode()) % CustomColors.Length];
+        return PresetColors[Math.Abs(tag.GetHashCode()) % PresetColors.Length];
     }
 }
 

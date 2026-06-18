@@ -4269,6 +4269,17 @@ public partial class MainWindow : Window
         return colors;
     }
 
+    private Dictionary<string, int> BuildTagCategoryCountMap()
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tag in _managedTags)
+        {
+            var category = TagCategory(tag);
+            counts[category] = counts.GetValueOrDefault(category) + 1;
+        }
+        return counts;
+    }
+
     private string? ResolveCategoryColor(string category, string? excludingTag = null)
     {
         return BuildTagCategoryColorMap(excludingTag).TryGetValue(category, out var color) ? color : null;
@@ -4290,7 +4301,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(), _customTagColors) { Owner = this };
+        var dialog = new TagCreateDialog(initialValue, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(), BuildTagCategoryCountMap(), _customTagColors) { Owner = this };
         if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName))
         {
             StatusText.Text = "没有创建标签。";

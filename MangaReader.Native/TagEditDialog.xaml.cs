@@ -1,4 +1,5 @@
 using MangaReader.Native.Models;
+using MangaReader.Native.Services;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,11 +11,7 @@ namespace MangaReader.Native;
 
 public partial class TagEditDialog : Window
 {
-    private static readonly string[] PresetColors =
-    [
-        "#F4B6C2", "#B7D7A8", "#A9CCE3", "#F7DC6F",
-        "#D7BDE2", "#F5CBA7", "#AED6F1"
-    ];
+    private static readonly string[] PresetColors = TagCatalog.PresetColors;
 
     public ObservableCollection<string> CustomColors { get; } = new();
     public ObservableCollection<string> AvailableColors { get; } = new();
