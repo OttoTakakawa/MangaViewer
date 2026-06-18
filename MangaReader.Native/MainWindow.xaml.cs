@@ -2765,14 +2765,39 @@ public partial class MainWindow : Window
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
-        var tags = tagNames
+        var filtered = tagNames
             .Select(tag => CreateTagChip(tag, _activeTagFilters.Contains(tag)))
-            .Where(tag => string.IsNullOrWhiteSpace(query) || tag.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(tag => TagCategoryOrder(tag.Category))
-            .ThenBy(tag => tag.Name)
-            .ToList();
+            .Where(tag => string.IsNullOrWhiteSpace(query) || tag.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
+
+        var sortMode = WaterfallTagSortBox?.SelectedIndex ?? 0;
+        var tags = sortMode switch
+        {
+            1 => filtered
+                .OrderByDescending(tag => !string.IsNullOrWhiteSpace(tag.UpdatedAt))
+                .ThenByDescending(tag => tag.UpdatedAt, StringComparer.Ordinal)
+                .ThenBy(tag => tag.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            2 => filtered
+                .OrderBy(tag => tag.Color, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(tag => TagCategoryOrder(tag.Category))
+                .ThenBy(tag => tag.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            3 => filtered
+                .OrderByDescending(tag => tag.UsageCount)
+                .ThenBy(tag => tag.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            _ => filtered
+                .OrderBy(tag => TagCategoryOrder(tag.Category))
+                .ThenBy(tag => tag.Name)
+                .ToList(),
+        };
 
         VisibleTags.ReplaceRange(tags);
+    }
+
+    private void WaterfallTagSort_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        RefreshVisibleTags();
     }
 
     private void RefreshAuthorFilters()

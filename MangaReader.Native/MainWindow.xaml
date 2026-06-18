@@ -1318,10 +1318,16 @@
                 <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,10">
+                            <ComboBox x:Name="WaterfallTagSortBox" DockPanel.Dock="Right" Width="110" Height="32" SelectedIndex="0" SelectionChanged="WaterfallTagSort_Changed" Style="{StaticResource FilterComboBox}" ToolTip="瀑布流 Tag 排序方式">
+                                <ComboBoxItem Content="默认"/>
+                                <ComboBoxItem Content="按时间"/>
+                                <ComboBoxItem Content="按颜色"/>
+                                <ComboBoxItem Content="按数量"/>
+                            </ComboBox>
                             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                                 <CheckBox x:Name="ShowHiddenBox" Content="显示隐藏作品" Margin="0,0,10,0" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
+                                <TextBlock x:Name="ActiveTagSummaryText" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="#8D8177"/>
                             </StackPanel>
-                            <TextBlock x:Name="ActiveTagSummaryText" DockPanel.Dock="Right" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="#8D8177"/>
                         </DockPanel>
                         <ItemsControl x:Name="ActiveTagFilterList" ItemsSource="{Binding ActiveTagFilters}" Visibility="Collapsed" Margin="0,0,0,12">
                             <ItemsControl.ItemsPanel>

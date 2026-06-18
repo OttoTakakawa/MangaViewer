@@ -1,74 +1,109 @@
 # MangaViewer
 
-Windows 本地漫画管理与图片查看器。
+Windows 本地漫画管理与阅读器。文件夹优先、离线优先、紧凑克制。
 
-## 当前定位
+## 这是什么
 
-- WPF / .NET 8 原生桌面应用。
-- SQLite 本地数据库。
-- 面向本地文件夹漫画库管理。
-- 支持作者、标签、封面、阅读状态、收藏、阅读进度与批量导入。
-- 数据默认保存在程序目录旁的 `MangaReader_Data`，该目录不会提交到 Git。
+把一堆散在硬盘里的漫画文件夹整理成一个可检索、可阅读、可管理的本地书库。不上云、不抓元数据、不解压压缩包——它只和你磁盘里现成的图片文件夹打交道。
 
-## 项目结构
+## 核心特性
 
-- `MangaReader.Native/`：当前主线 WPF 应用源码。
-- `MangaReader.Updater/`：自动更新器，负责在主程序退出后替换发布目录文件。
-- `漫画阅读器开发文档.md`：开发记录、架构约束与后续路线。
+**书库管理**
 
-## 本地运行
+- 自动扫描文件夹生成书库，按目录结构推断作者
+- 标签体系：分组、颜色、互斥、用户自定义 + 内置预设
+- 评分（0~5，0.5 步长）、收藏、阅读状态、阅读进度
+- 多维筛选：作者、标签、状态、隐藏作品；多种排序（标题 / 评分 / 页数 / 容量 / 阅读次数 / 录入 / 出品时间）
+- 批量管理：Shift 范围加选 / Ctrl 强制减选 / 空白拖动框选 / 批量改标签、封面样式、去前缀
+- 瀑布流虚拟化，几千本流畅
 
-要求：
+**阅读器**
 
-- Windows
-- .NET 8 SDK
+- 单页 / 双页、适宽 / 适高 / 原图、翻页 / 滚动
+- 单字母快捷键：`W` 全屏、`E` 适高、`Q` 适宽、`S` 单双页、`Z` 滚轮模式、`D` 切 HUD、`C` 翻转方向、`A` 背景循环、`X` 退出
+- 鼠标：左键按点击位置翻页、右键长按临时放大、中键切 HUD
+- 读完自动跳下一本，遵循当前书库筛选 + 排序
+
+**数据安全**
+
+- 元数据编辑前自动备份（节流防抖）
+- 评分等用户付出心智的字段走"半托管"路径，扫描器不会覆盖
+- 数据库目录与发布产物均不入仓
+
+## 快速开始
+
+要求 Windows + .NET 8 SDK。
 
 ```powershell
 dotnet build .\MangaReader.Native\MangaReader.Native.csproj
 dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 ```
 
-## 本地数据
+首次启动后在侧边栏点 **添加书库**，选择一个根目录即可。
 
-本项目不上传任何本地漫画数据。
+## 数据与备份
 
-- `MangaReader_Data/`：运行时数据库、缩略图缓存、备份目录，已加入 `.gitignore`。
-- `_release/`：本地发布产物，已加入 `.gitignore`。
-- `bin/`、`obj/`：编译缓存，已加入 `.gitignore`。
-- `*.db`、`*.db-wal`、`*.db-shm`：SQLite 数据文件，已加入 `.gitignore`。
+运行时数据全部在 `MangaReader_Data/` 下（与主程序同级），**不会上传 Git**：
 
-如果需要迁移自己的书库数据，请手动复制本机的 `MangaReader_Data`，不要提交到 Git。
+- `app.db`：SQLite 数据库
+- `backups/`：手动 / 自动备份
+- 缩略图与封面缓存
 
-## 备份与恢复
+侧边栏 **立即备份** 把当前 `app.db` 复制到 `backups/`，**打开备份** 打开目录方便管理。
 
-软件侧边栏的 `立即备份` 会把当前 `app.db` 复制到 `MangaReader_Data/backups/`，`打开备份` 只是打开这个目录，方便查看和复制备份文件。
+恢复备份时**先关软件**，把目标备份复制为 `app.db` 覆盖，建议先把当前 `app.db` 另存一份。
 
-恢复备份时先关闭软件，再把目标备份文件复制到当前数据目录并重命名为 `app.db`。覆盖前建议把当前 `app.db` 另存一份，避免误恢复。
+迁移书库到新机：复制整个 `MangaReader_Data/` 即可。
 
-## 发布测试版
+## 发布与更新
 
-```powershell
-dotnet publish .\MangaReader.Native\MangaReader.Native.csproj -c Release -r win-x64 --self-contained true -o .\_release\0.3.xx
-```
-
-发布目录会自动包含 `Updater\MangaReader.Updater.exe`。
-
-主程序侧边栏的 `检查更新` 采用本地优先策略：
-
-- 如果本机存在 `_release/更高版本/MangaReader.Native.exe`，直接使用该发布目录更新当前运行目录。
-- 如果本机存在 `_release/` 或 `updates/` 下的更高版本 zip，直接使用该 zip 更新。
-- 如果你已经手动 `git pull`，并且源码里的 `MangaReader.Native.csproj` 版本号高于当前运行版本，软件会先本地执行 `dotnet publish` 生成更新目录，再用 `MangaReader.Updater.exe` 替换当前运行目录。
-- 只有本地没有可用更新时，才会读取 GitHub 最新 Release，并下载其中的 `MangaReader-win-x64-v*.zip` 资产。
-
-因此开发机上的推荐流程是：先 `git pull`，再打开旧版 exe 点 `检查更新`。这条路径不依赖 GitHub Release 下载，但需要本机安装 .NET 8 SDK。
-
-正式发布建议推送版本 Tag：
+**本地打包**：
 
 ```powershell
-git tag v0.3.xx
-git push origin v0.3.xx
+.\pack.ps1 -Mode standalone     # 自包含 ~60MB，无需 .NET 8 Runtime
+.\pack.ps1 -Mode runtime-dep    # 依赖 Runtime 的轻量包
 ```
 
-GitHub Actions 会自动构建 Windows x64 zip 并上传到对应 Release。
+脚本会自动从 `icon.png` 生成 `AppIcon.ico` 并打包到 `_release/`。
 
-`_release/` 已加入 `.gitignore`，不会上传发布产物。
+**侧边栏检查更新** 走本地优先：
+
+1. `_release/` 下的更高版本目录或 zip
+2. 源码版本更高时自动 `dotnet publish`
+3. 最后才访问 GitHub Release
+
+**正式发版**：
+
+```powershell
+git tag v0.6.0
+git push origin v0.6.0
+```
+
+GitHub Actions 监听 `v*` tag，自动构建 `MangaReader-win-x64-v*.zip` 并上传 Release。
+
+## 项目结构
+
+| 路径 | 说明 |
+|---|---|
+| `MangaReader.Native/` | WPF 主程序源码 |
+| `MangaReader.Updater/` | 独立更新器，主程序退出后替换文件 |
+| `漫画阅读器开发文档.md` | 版本记录与设计取舍 |
+| `AI_TECHNICAL_HANDOFF.md` | 改动约束与未来路线（面向接手开发者 / AI） |
+
+仓库根目录还残留早期 Vite / Avalonia 试验代码（`src/`、`dist/`、`MangaReader.Avalonia/`），**不在活跃维护范围**。
+
+## 不做的方向
+
+为避免误投入：
+
+- 云同步、在线漫画源、OPDS — 离线优先是硬约束
+- 压缩包（zip / cbz / rar / cbr）— 文件夹优先
+- 抓取远程元数据 — 用户本地决定
+- 移动端 / Web 端 — 项目定位 Windows 桌面
+- AI 自动打 tag / 图像增强 — 与"管理 + 阅读"主线偏离
+
+详见 `AI_TECHNICAL_HANDOFF.md` 第 14 节。
+
+## 许可
+
+仅个人使用。
