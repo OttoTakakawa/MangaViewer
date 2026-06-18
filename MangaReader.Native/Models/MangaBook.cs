@@ -107,13 +107,11 @@ public sealed class MangaBook : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasRating));
             OnPropertyChanged(nameof(RatingText));
-            OnPropertyChanged(nameof(RatingCapsuleText));
         }
     }
 
     public bool HasRating => _rating > 0;
     public string RatingText => _rating.ToString("0.#");
-    public string RatingCapsuleText => HasRating ? $"{RatingText}★" : "未评";
     public bool IsSelectedForBatch
     {
         get => _isSelectedForBatch;

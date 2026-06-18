@@ -2405,26 +2405,21 @@ public partial class MainWindow : Window
         RatingStarsHost.ToolTip = book.HasRating ? $"评分 {book.RatingText} · 点击调整，再点同处清零" : "未评分 · 点击设置";
     }
 
+    private static readonly Geometry StarGeometry = Geometry.Parse(
+        "M 12,2 L 14.39,8.59 L 21,9.39 L 16,14 L 17.39,21 L 12,17.27 L 6.61,21 L 8,14 L 3,9.39 L 9.61,8.59 Z");
+
     private System.Windows.Controls.Grid CreateRatingStar(double rating, int starIndex)
     {
         const double starSize = 22;
         var grid = new System.Windows.Controls.Grid
         {
             Width = starSize,
-            Height = starSize + 2,
+            Height = starSize,
             Margin = new Thickness(2, 0, 2, 0),
             Cursor = System.Windows.Input.Cursors.Hand
         };
 
-        var empty = new System.Windows.Controls.TextBlock
-        {
-            Text = "★",
-            FontSize = 20,
-            Foreground = RatingStarEmptyBrush,
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        grid.Children.Add(empty);
+        grid.Children.Add(BuildStarPath(starSize, RatingStarEmptyBrush, System.Windows.HorizontalAlignment.Center, fillToWidth: null));
 
         double fillWidth = 0;
         if (rating >= starIndex) fillWidth = starSize;
@@ -2438,16 +2433,7 @@ public partial class MainWindow : Window
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
                 ClipToBounds = true
             };
-            var filled = new System.Windows.Controls.TextBlock
-            {
-                Text = "★",
-                FontSize = 20,
-                Foreground = RatingStarFilledBrush,
-                Width = starSize,
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            clip.Child = filled;
+            clip.Child = BuildStarPath(starSize, RatingStarFilledBrush, System.Windows.HorizontalAlignment.Left, fillToWidth: starSize);
             grid.Children.Add(clip);
         }
 
@@ -2471,6 +2457,23 @@ public partial class MainWindow : Window
         grid.Children.Add(rightHit);
 
         return grid;
+    }
+
+    private static System.Windows.Shapes.Path BuildStarPath(double size, SolidColorBrush brush, System.Windows.HorizontalAlignment alignment, double? fillToWidth)
+    {
+        return new System.Windows.Shapes.Path
+        {
+            Data = StarGeometry,
+            Fill = brush,
+            Stroke = brush,
+            StrokeThickness = 1.5,
+            StrokeLineJoin = PenLineJoin.Round,
+            Stretch = Stretch.Uniform,
+            Width = fillToWidth ?? size,
+            Height = size,
+            HorizontalAlignment = alignment,
+            VerticalAlignment = VerticalAlignment.Center
+        };
     }
 
     private async void RatingStar_Click(object sender, MouseButtonEventArgs e)
