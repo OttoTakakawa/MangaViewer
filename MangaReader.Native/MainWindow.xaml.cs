@@ -2378,6 +2378,140 @@ public partial class MainWindow : Window
         ApplyMetaValue(MetaCoverPageValueText, (book.CoverPageIndex + 1).ToString(), forceFilled: true);
         ApplyMetaValue(MetaProducedAtValueText, book.ProducedAt);
         ApplyMetaValue(MetaImportedAtValueText, book.ImportedAt);
+
+        BuildRatingStars(book);
+    }
+
+    private static readonly SolidColorBrush RatingStarEmptyBrush = CreateFrozenBrush("#D1D5DB");
+    private static readonly SolidColorBrush RatingStarFilledBrush = CreateFrozenBrush("#F59E0B");
+    private static readonly System.Windows.Media.Brush RatingStarHitBrush = System.Windows.Media.Brushes.Transparent;
+
+    private static SolidColorBrush CreateFrozenBrush(string hex)
+    {
+        var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex)!;
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private void BuildRatingStars(MangaBook book)
+    {
+        if (RatingStarsHost is null) return;
+        RatingStarsHost.Children.Clear();
+        for (int i = 1; i <= 5; i++)
+        {
+            RatingStarsHost.Children.Add(CreateRatingStar(book.Rating, i));
+        }
+        RatingStarsHost.ToolTip = book.HasRating ? $"评分 {book.RatingText} · 点击调整，再点同处清零" : "未评分 · 点击设置";
+    }
+
+    private System.Windows.Controls.Grid CreateRatingStar(double rating, int starIndex)
+    {
+        const double starSize = 22;
+        var grid = new System.Windows.Controls.Grid
+        {
+            Width = starSize,
+            Height = starSize + 2,
+            Margin = new Thickness(2, 0, 2, 0),
+            Cursor = System.Windows.Input.Cursors.Hand
+        };
+
+        var empty = new System.Windows.Controls.TextBlock
+        {
+            Text = "★",
+            FontSize = 20,
+            Foreground = RatingStarEmptyBrush,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        grid.Children.Add(empty);
+
+        double fillWidth = 0;
+        if (rating >= starIndex) fillWidth = starSize;
+        else if (rating >= starIndex - 0.5) fillWidth = starSize / 2.0;
+
+        if (fillWidth > 0)
+        {
+            var clip = new System.Windows.Controls.Border
+            {
+                Width = fillWidth,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+                ClipToBounds = true
+            };
+            var filled = new System.Windows.Controls.TextBlock
+            {
+                Text = "★",
+                FontSize = 20,
+                Foreground = RatingStarFilledBrush,
+                Width = starSize,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            clip.Child = filled;
+            grid.Children.Add(clip);
+        }
+
+        var leftHit = new System.Windows.Shapes.Rectangle
+        {
+            Width = starSize / 2.0,
+            Fill = RatingStarHitBrush,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            Tag = $"{starIndex}|L"
+        };
+        var rightHit = new System.Windows.Shapes.Rectangle
+        {
+            Width = starSize / 2.0,
+            Fill = RatingStarHitBrush,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Tag = $"{starIndex}|R"
+        };
+        leftHit.MouseLeftButtonUp += RatingStar_Click;
+        rightHit.MouseLeftButtonUp += RatingStar_Click;
+        grid.Children.Add(leftHit);
+        grid.Children.Add(rightHit);
+
+        return grid;
+    }
+
+    private async void RatingStar_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_currentBook is null) return;
+        if (sender is not System.Windows.Shapes.Rectangle r || r.Tag is not string tag) return;
+        e.Handled = true;
+
+        var parts = tag.Split('|');
+        if (parts.Length != 2 || !int.TryParse(parts[0], out var starIndex)) return;
+        var newRating = parts[1] == "L" ? starIndex - 0.5 : starIndex;
+
+        if (Math.Abs(_currentBook.Rating - newRating) < 0.01)
+        {
+            newRating = 0;
+        }
+
+        var book = _currentBook;
+        book.Rating = newRating;
+        await Task.Run(() => _database.SaveMetadata(book));
+        BuildRatingStars(book);
+        ScheduleBookViewRefresh(refreshShelfOverview: false);
+        StatusText.Text = book.HasRating
+            ? $"《{book.Title}》评分 {book.RatingText}。"
+            : $"《{book.Title}》评分已清除。";
+    }
+
+    private void CopyBookTitle_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_currentBook is null) return;
+        var title = _currentBook.Title ?? "";
+        try
+        {
+            System.Windows.Clipboard.SetText(title);
+            StatusText.Text = string.IsNullOrEmpty(title) ? "标题为空，已复制空字符串。" : $"已复制标题：{title}";
+        }
+        catch
+        {
+            StatusText.Text = "标题复制失败，可能剪贴板被其他进程占用。";
+        }
+        e.Handled = true;
     }
 
     private void ApplyMetaValue(System.Windows.Controls.TextBlock target, string value, bool forceFilled = false)
@@ -2492,7 +2626,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        PrivacyModeButton.Content = IsPrivacyMode ? "隐私模式：开" : "隐私模式：关";
+        PrivacyModeButton.Tag = IsPrivacyMode ? "active" : "";
         PrivacyModeButton.ToolTip = IsPrivacyMode ? "当前不会显示任何作品封面" : "点击后隐藏所有作品封面";
     }
 
@@ -2736,7 +2870,7 @@ public partial class MainWindow : Window
 
         if (LogPanelToggleButton is not null)
         {
-            LogPanelToggleButton.Content = _isLogPanelVisible ? "收起日志" : "展开日志";
+            LogPanelToggleButton.Tag = _isLogPanelVisible ? "active" : "";
         }
 
         if (LogPanelExpandButton is not null)
@@ -3117,8 +3251,8 @@ public partial class MainWindow : Window
         return sortIndex switch
         {
             1 => sortDescending
-                ? filtered.OrderByDescending(book => book.LastReadPageIndex).ThenBy(book => book.Title)
-                : filtered.OrderBy(book => book.LastReadPageIndex).ThenBy(book => book.Title),
+                ? filtered.OrderByDescending(book => book.Rating).ThenBy(book => book.Title)
+                : filtered.OrderBy(book => book.Rating).ThenBy(book => book.Title),
             2 => sortDescending
                 ? filtered.OrderByDescending(book => book.PageCount).ThenBy(book => book.Title)
                 : filtered.OrderBy(book => book.PageCount).ThenBy(book => book.Title),

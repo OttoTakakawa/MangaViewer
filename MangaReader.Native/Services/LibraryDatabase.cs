@@ -75,6 +75,7 @@ public sealed class LibraryDatabase
                 read_count INTEGER NOT NULL DEFAULT 0,
                 reading_status TEXT NOT NULL DEFAULT 'unread',
                 is_favorite INTEGER NOT NULL DEFAULT 0,
+                rating REAL NOT NULL DEFAULT 0,
                 is_missing INTEGER NOT NULL DEFAULT 0,
                 is_hidden INTEGER NOT NULL DEFAULT 0,
                 is_privacy_cover INTEGER NOT NULL DEFAULT 0,
@@ -132,6 +133,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "read_count", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "reading_status", "TEXT NOT NULL DEFAULT 'unread'");
         EnsureColumn(connection, "books", "is_favorite", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "books", "rating", "REAL NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_privacy_cover", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
@@ -176,7 +178,7 @@ public sealed class LibraryDatabase
             """
             SELECT id, title, author, tags, folder_path, page_count, cover_page_index,
                    last_read_page_index, is_missing
-                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes, is_privacy_cover
+                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes, is_privacy_cover, rating
             FROM books;
             """;
         using var reader = command.ExecuteReader();
@@ -205,7 +207,8 @@ public sealed class LibraryDatabase
                 IsFavorite = reader.GetInt32(17) == 1,
                 ForeignName = reader.GetString(18),
                 TotalBytes = reader.GetInt64(19),
-                IsPrivacyCover = reader.GetInt32(20) == 1
+                IsPrivacyCover = reader.GetInt32(20) == 1,
+                Rating = reader.GetDouble(21)
             };
             result[book.FolderPath] = book;
         }
@@ -294,6 +297,7 @@ public sealed class LibraryDatabase
                 read_count = $readCount,
                 reading_status = $readingStatus,
                 is_favorite = $isFavorite,
+                rating = $rating,
                 is_privacy_cover = $isPrivacyCover,
                 updated_at = $updatedAt
             WHERE id = $id;
@@ -312,6 +316,7 @@ public sealed class LibraryDatabase
         command.Parameters.AddWithValue("$readCount", book.ReadCount);
         command.Parameters.AddWithValue("$readingStatus", book.ReadingStatus);
         command.Parameters.AddWithValue("$isFavorite", book.IsFavorite ? 1 : 0);
+        command.Parameters.AddWithValue("$rating", Math.Clamp(book.Rating, 0, 5));
         command.Parameters.AddWithValue("$isPrivacyCover", book.IsPrivacyCover ? 1 : 0);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();

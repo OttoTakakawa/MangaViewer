@@ -22,6 +22,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     private bool _isPrivacyCover;
     private bool _isSelectedForBatch;
     private long _totalBytes;
+    private double _rating;
 
     public string Id { get; set; } = "";
     public string Title { get; set; } = "";
@@ -89,6 +90,30 @@ public sealed class MangaBook : INotifyPropertyChanged
             OnPropertyChanged(nameof(StatusBadgeText));
         }
     }
+
+    public double Rating
+    {
+        get => _rating;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 5);
+            var quantized = Math.Round(clamped * 2, MidpointRounding.AwayFromZero) / 2;
+            if (Math.Abs(_rating - quantized) < 0.0001)
+            {
+                return;
+            }
+
+            _rating = quantized;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasRating));
+            OnPropertyChanged(nameof(RatingText));
+            OnPropertyChanged(nameof(RatingCapsuleText));
+        }
+    }
+
+    public bool HasRating => _rating > 0;
+    public string RatingText => _rating.ToString("0.#");
+    public string RatingCapsuleText => HasRating ? $"{RatingText}★" : "未评";
     public bool IsSelectedForBatch
     {
         get => _isSelectedForBatch;

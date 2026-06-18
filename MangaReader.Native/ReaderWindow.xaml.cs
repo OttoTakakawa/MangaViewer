@@ -807,6 +807,7 @@ public partial class ReaderWindow : Window
 
             NormalizeDisplayedImageSizing();
             ApplyDoublePageGap();
+            ReaderScrollViewer.ScrollToVerticalOffset(0);
             _book.LastReadPageIndex = safeIndex;
             if (safeIndex > 0 && _book.ReadingStatus == "unread")
             {
@@ -1620,7 +1621,7 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        CyclePresentationMode();
+        SetControlsHidden(!_controlsHidden);
         e.Handled = true;
     }
 
@@ -1928,25 +1929,6 @@ public partial class ReaderWindow : Window
         ToggleFullscreen();
     }
 
-    private void CyclePresentationMode()
-    {
-        if (!_isFullscreen)
-        {
-            EnterFullscreen();
-            SetControlsHidden(false);
-            return;
-        }
-
-        if (!_controlsHidden)
-        {
-            SetControlsHidden(true);
-            return;
-        }
-
-        ExitFullscreen();
-        SetControlsHidden(false);
-    }
-
     private void ToggleFullscreen()
     {
         if (_isFullscreen)
@@ -1971,6 +1953,7 @@ public partial class ReaderWindow : Window
         WindowStyle = WindowStyle.None;
         WindowState = WindowState.Maximized;
         UpdatePresentationButton();
+        ScheduleFitModeApply();
     }
 
     private void ExitFullscreen()
@@ -1984,6 +1967,7 @@ public partial class ReaderWindow : Window
         WindowStyle = _previousWindowStyle;
         WindowState = _previousWindowState;
         UpdatePresentationButton();
+        ScheduleFitModeApply();
     }
 
     private void UpdatePresentationButton()
