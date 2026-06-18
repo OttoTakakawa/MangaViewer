@@ -715,12 +715,50 @@ public partial class MainWindow : Window
         }
     }
 
+    private MangaBook? _batchAnchorBook;
+
     private void BookCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is UIElement element)
         {
             MotionService.PressBounce(element);
         }
+
+        if (!IsBatchSelectionMode) return;
+        if (sender is not FrameworkElement fe || fe.DataContext is not MangaBook book) return;
+        if (e.OriginalSource is DependencyObject dep
+            && FindAncestor<System.Windows.Controls.CheckBox>(dep) is not null)
+        {
+            return;
+        }
+
+        var modifiers = Keyboard.Modifiers;
+        var currentIndex = Books.IndexOf(book);
+        if (currentIndex < 0) return;
+
+        if ((modifiers & ModifierKeys.Shift) == ModifierKeys.Shift && _batchAnchorBook is not null)
+        {
+            var anchorIndex = Books.IndexOf(_batchAnchorBook);
+            if (anchorIndex >= 0)
+            {
+                var lo = Math.Min(anchorIndex, currentIndex);
+                var hi = Math.Max(anchorIndex, currentIndex);
+                for (int i = lo; i <= hi; i++) Books[i].IsSelectedForBatch = true;
+            }
+        }
+        else if ((modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            book.IsSelectedForBatch = false;
+            _batchAnchorBook = book;
+        }
+        else
+        {
+            book.IsSelectedForBatch = !book.IsSelectedForBatch;
+            _batchAnchorBook = book;
+        }
+
+        UpdateBatchSelectionState();
+        e.Handled = true;
     }
 
     private void BookCard_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -729,6 +767,87 @@ public partial class MainWindow : Window
         {
             MotionService.ScaleTo(element, element.IsMouseOver ? 1.025 : 1.0, MotionService.Fast);
         }
+    }
+
+    private bool _isRubberBanding;
+    private System.Windows.Point _rubberStart;
+    private bool _rubberSubtract;
+
+    private void BooksList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!IsBatchSelectionMode) return;
+        if (e.OriginalSource is not DependencyObject hit) return;
+        if (FindAncestor<System.Windows.Controls.ListBoxItem>(hit) is not null) return;
+        if (FindAncestor<System.Windows.Controls.Primitives.ButtonBase>(hit) is not null) return;
+        if (FindAncestor<System.Windows.Controls.Primitives.ScrollBar>(hit) is not null) return;
+
+        _isRubberBanding = true;
+        _rubberStart = e.GetPosition(BooksList);
+        _rubberSubtract = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+        Mouse.Capture(BooksList);
+
+        if (!_rubberSubtract && (Keyboard.Modifiers & ModifierKeys.Shift) != ModifierKeys.Shift)
+        {
+            foreach (var b in Books) b.IsSelectedForBatch = false;
+        }
+
+        System.Windows.Controls.Canvas.SetLeft(RubberBandRect, _rubberStart.X);
+        System.Windows.Controls.Canvas.SetTop(RubberBandRect, _rubberStart.Y);
+        RubberBandRect.Width = 0;
+        RubberBandRect.Height = 0;
+        RubberBandRect.Visibility = Visibility.Visible;
+        e.Handled = true;
+    }
+
+    private void BooksList_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_isRubberBanding) return;
+        var current = e.GetPosition(BooksList);
+        var x = Math.Min(_rubberStart.X, current.X);
+        var y = Math.Min(_rubberStart.Y, current.Y);
+        var w = Math.Abs(current.X - _rubberStart.X);
+        var h = Math.Abs(current.Y - _rubberStart.Y);
+        System.Windows.Controls.Canvas.SetLeft(RubberBandRect, x);
+        System.Windows.Controls.Canvas.SetTop(RubberBandRect, y);
+        RubberBandRect.Width = w;
+        RubberBandRect.Height = h;
+    }
+
+    private void BooksList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isRubberBanding) return;
+        _isRubberBanding = false;
+        Mouse.Capture(null);
+
+        var rect = new System.Windows.Rect(
+            System.Windows.Controls.Canvas.GetLeft(RubberBandRect),
+            System.Windows.Controls.Canvas.GetTop(RubberBandRect),
+            RubberBandRect.Width, RubberBandRect.Height);
+        RubberBandRect.Visibility = Visibility.Collapsed;
+
+        if (rect.Width < 4 && rect.Height < 4) return;
+
+        var generator = BooksList.ItemContainerGenerator;
+        foreach (var item in Books)
+        {
+            if (generator.ContainerFromItem(item) is not System.Windows.Controls.ListBoxItem container) continue;
+            if (!container.IsVisible || container.ActualWidth <= 0) continue;
+            try
+            {
+                var pos = container.TransformToAncestor(BooksList).Transform(new System.Windows.Point(0, 0));
+                var itemRect = new System.Windows.Rect(pos.X, pos.Y, container.ActualWidth, container.ActualHeight);
+                if (rect.IntersectsWith(itemRect))
+                {
+                    item.IsSelectedForBatch = !_rubberSubtract;
+                }
+            }
+            catch
+            {
+                // visual tree transient, skip
+            }
+        }
+        UpdateBatchSelectionState();
+        e.Handled = true;
     }
 
     private void LibraryArea_MouseDown(object sender, MouseButtonEventArgs e)

@@ -51,9 +51,12 @@
 - `last_read_page_index`：阅读进度。
 - `reading_status`：`unread / reading / finished / paused`。
 - `is_favorite`：收藏。
+- `rating`：评分（REAL，0~5，步长 0.5）。**只通过 `SaveMetadata` 写入**，扫描器路径不会覆盖。
 - `is_hidden`：隐藏作品。
 - `book_style`：封面样式。
 - `tags`：格式化后的标签字符串。
+
+**"半托管"字段模式**：`is_favorite` 和 `rating` 都有意**不出现**在 `UpsertBookSql` 和 `AddBookParameters` 里。原因是扫描器使用 `UpsertBooksBatch` 写入，会触发 `ON CONFLICT(id) DO UPDATE`；如果把这些字段加进去，每次重新扫描会把用户手设的值覆盖掉。新增"用户私有字段"（不应被扫描器覆盖）时，**故意不写进 UpsertBookSql / AddBookParameters**，只在 `SaveMetadata` 的 UPDATE 列表里出现。新增其他类型字段则需要同步全部 7 处。
 
 数据库写入注意：
 
@@ -99,9 +102,16 @@
 
 - 左键点击：按点击位置翻页。左侧约 36% 上一页，右侧下一页。
 - 左键双击：不再切换 UI，避免快速翻页误触。
+- 中键按下：切换 HUD 显示/隐藏（`SetControlsHidden(!_controlsHidden)`）。**不要恢复**之前的"三态循环窗口/全屏+HUD/全屏-HUD"，用户明确认为过重。全屏入口走 `W` 快捷键。
 - 右键长按：临时放大，松开恢复到原来的缩放滑块值。
 - 缩放滑块继续保留，右键长按以当前滑块倍率为基准临时放大。
 - 滚轮模式：翻页 / 缩放 / 滚动，由 `WheelModeBox` 控制。
+
+翻页与滚动：
+
+- 翻页统一入口 `LoadPageCore`。**所有翻页路径**（左键点击 / 滚轮 / 键盘 / 目录跳页）末尾都会汇聚到这里。
+- `LoadPageCore` 在 `ApplyDoublePageGap()` 之后必须 `ReaderScrollViewer.ScrollToVerticalOffset(0)`，避免滚动模式下从第 N 页底部翻到第 N+1 页时垂直位置跨页保留。
+- `EnterFullscreen` / `ExitFullscreen` 末尾必须 `ScheduleFitModeApply()`，否则窗口模式设置的适宽/适高在全屏切换后不会按新视口重算（80ms 防抖足够 WindowState 更新到位）。
 
 阅读器页码显示：
 
@@ -159,6 +169,30 @@
 - 书库卡片元信息为一行：`状态 · 页数 · 容量`。
 - 容量小于 1G 显示 MB，超过 1G 显示 G。
 
+瀑布流胶囊（评分 + 收藏 合一）：
+
+- 卡片右上角是单一圆角 Border，内含 `RatingText` + `★`，**不要**再恢复成两个独立胶囊。
+- 配色由 `IsFavorite` 切换：收藏 → 亮金 `#FFEEAA / #E4B95F / #B45309`；未收藏 → 银灰 `#F3F4F6 / #D1D5DB / #6B7280`。
+- `RatingText` 仅在 `HasRating=True` 时显示；`★` 仅在 `IsFavorite=True` 时显示；两者都为 false 时容器折叠。
+- "未评" 文案 / 独立 `RatingCapsuleText` 派生属性已废弃，**不要恢复**。
+
+详情页 5 颗星评分编辑器：
+
+- 用 `System.Windows.Shapes.Path` + `Geometry.Parse(StarGeometry)` 标准 5 角星矢量，**不要**用 `★` 字符 TextBlock 双层叠加（会有金灰抗锯齿错位重影）。
+- `StrokeLineJoin=PenLineJoin.Round` + 同色 1.5px Stroke 实现倒角圆润。
+- 半显示由 Border ClipToBounds + Width 控制；左右半透明 Rectangle 命中区调用 `RatingStar_Click`。
+- 保存路径：`book.Rating = newRating; await Task.Run(() => _database.SaveMetadata(book));`——`SaveMetadata` 内部已触发 10 分钟节流备份。
+
+侧栏 Toggle 按钮（隐私模式 / 展开日志）：
+
+- 用 `SidebarToggleButton` 样式，激活态通过 `Tag="active"` 触发深色（`#1F2937 / #FFFFFF`）。
+- 隐私模式 / 展开日志按钮的 `Content` **固定不变**，**不要恢复**"隐私模式：开 / 关"切字逻辑。
+- 启动时由 `LoadPrivacyMode()` / `UpdateLogPanelVisibility()` 初始化 Tag。
+
+瀑布流批量多选 CheckBox（`BatchSelectCheckBox` 样式）：
+
+- 尺寸 22×22，圆角 6，边框 `#CBD5E1` → 选中 `#1F2937` + 白勾。**不要恢复 30×30**，会让收藏/评分胶囊视觉孤立。
+
 焦点约束：
 
 - 阅读器交互控件尽量 `Focusable="False"`，避免抢走快捷键焦点。
@@ -169,15 +203,32 @@
 标签体系：
 
 - `TagService`：标签解析、格式化、颜色。
-- `TagCatalog`：内置标签目录。
-- `managed_tags`：用户管理的标签。
+- `TagCatalog`：内置标签目录 + **唯一颜色调色板来源** `TagCatalog.PresetColors`（8 色）。两个 Dialog（`TagCreateDialog` / `TagEditDialog`）的 `private static readonly string[] PresetColors` 都引用这一份，不要再在 Dialog 里定义独立色集。
+- `managed_tags`：用户管理的标签，`color` 列存调色板颜色。
 - `suppressed_tags`：被隐藏的候选标签。
+
+Tag 新建对话框（`TagCreateDialog`）规则：
+
+- 创建按钮 `ConfirmButton.IsEnabled` 联动 `TagNameBox.Text` 非空（`TagNameBox_TextChanged` → `UpdateConfirmEnabled`），不允许空名提交。
+- `TagCategoryBox` 选已有组 → `ApplyCategorySelection` 强制锁定颜色为该组色、隐藏自定义色按钮、`CategoryHintText` 提示「已选分组 X 下已有 N 个标签，颜色锁定。如需改色请到左侧标签 → 编辑标签」。
+- 输入新组名 → 允许选色 + 提示「将创建新分组 X，颜色可自定义」。
+- **组色只能从「左侧标签 → 编辑标签」（`TagEditDialog`）修改**，新建对话框是消费方而非编辑面。
+- 构造函数 5 个参数：`initialValue, existingCategories, categoryColors, categoryTagCounts, customColors`。修改签名时同步 `MainWindow.xaml.cs:TryResolveTagForCreate` 调用点。
 
 批量管理：
 
 - 多选状态绑定 `MangaBook.IsSelectedForBatch`。
 - 批量操作包括去前缀、应用封面样式、批量增删标签。
 - 批量改元数据时必须使用数据库批量方法，并考虑备份。
+
+批量模式下卡片交互（`IsBatchSelectionMode=true`）：
+
+- **普通点击卡片**：toggle 单本，并更新 `_batchAnchorBook` 为锚点。
+- **Shift+点击**：从 `_batchAnchorBook` 到当前卡片在 `Books` 集合中的范围**全部置 true**。
+- **Ctrl+点击**：强制移出选择（`IsSelectedForBatch=false`），更新锚点。
+- **空白处拖动框选**：`BooksList_PreviewMouseLeftButtonDown` 检测起点不在 `ListBoxItem` 上时启动；`RubberBandRect` Canvas overlay 跟随鼠标；`PreviewMouseLeftButtonUp` 时遍历 `BooksList.ItemContainerGenerator` 已实例化的 `ListBoxItem` 求交命中，命中的 `IsSelectedForBatch = !_rubberSubtract`。Ctrl+拖 = 减选；Shift+拖 = 加选（不清空既有）；普通拖 = 清空既有再选中框内。
+- 框选受 `VirtualizingWrapPanel` 虚拟化限制：**只能命中已实例化的可见项**，框选窗口外滚动区域的卡片**不会**被选中——这是当前实现的已知约束，非 bug。
+- `BookCard_PreviewMouseLeftButtonDown` 在 batch 模式下设 `e.Handled = true` 阻止 `BooksList.SelectionChanged` 触发详情面板。CheckBox 子元素仍走自身 toggle，不被卡片点击吃掉。
 
 作者管理：
 
@@ -301,6 +352,17 @@ dotnet run --project .\MangaReader.Native\MangaReader.Native.csproj
 - 标签管理页 / 作者管理页使用 Grid 三行布局 + ListBox 内置虚拟化，不要用 ScrollViewer 包裹 ListBox（会导致虚拟化失效）。
 - 对话框使用双层 Border 方案（外层承载阴影，内层承载内容），不要在单层 Border 上直接挂 DropShadowEffect。
 - 对话框风格统一为冷色浅调（白底 + 浅灰输入框），不要使用暖色奶油调。
+- **评分（`rating`）字段**只通过 `SaveMetadata` 写入，扫描器路径（`UpsertBookSql` / `AddBookParameters`）故意不带 `rating`，避免重新扫描覆盖用户评分。新增类似"半托管"字段同样处理。
+- 阅读器**翻页时必须 `ReaderScrollViewer.ScrollToVerticalOffset(0)`**，禁止跨页保留垂直滚动位置。
+- 阅读器**全屏切换（EnterFullscreen / ExitFullscreen）末尾必须 `ScheduleFitModeApply()`**，否则适宽/适高不会按新视口重算。
+- 阅读器**中键只切 HUD**，不要恢复"三态循环窗口/全屏+HUD/全屏-HUD"。
+- **瀑布流胶囊保持单容器 + 金银双态**：不要恢复"评分胶囊 + 收藏胶囊"两个独立 Border、不要恢复内部分隔线 + 双 ★ 重复。
+- **详情页评分用 Path 矢量 + StrokeLineJoin=Round**，不要恢复 TextBlock ★ 字符双层叠加（金灰重影问题）。
+- **`TagCatalog.PresetColors` 是 Tag 颜色调色板唯一来源**，两个 Tag Dialog 都引用它，不要在 Dialog 私有 PresetColors 数组里维护副本。
+- **Tag 新建对话框选已有组时颜色锁定**，组色只能在「编辑标签」对话框改。新建按钮 IsEnabled 联动名称非空。
+- **批量多选交互**：普通=toggle，Shift=范围加选，Ctrl=强制减选，空白拖=框选；框选受虚拟化限制只对可见 ListBoxItem 生效。
+- `BatchSelectCheckBox` 样式 22×22 圆角 6，不要恢复 30×30。
+- 全局 `FilterComboBox` 下拉 ScrollViewer 必须 `HorizontalScrollBarVisibility="Disabled"`；长项目通过 ItemTemplate 的 `TextTrimming="CharacterEllipsis"` 截断（AuthorFilterBox 单独加 ItemTemplate）。
 
 ## 12. 异步 I/O 模式
 

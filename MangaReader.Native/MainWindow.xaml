@@ -1436,6 +1436,9 @@
                              Margin="8,0,24,0"
                              SelectionChanged="BooksList_SelectionChanged"
                              MouseDoubleClick="BooksList_MouseDoubleClick"
+                             PreviewMouseLeftButtonDown="BooksList_PreviewMouseLeftButtonDown"
+                             PreviewMouseMove="BooksList_PreviewMouseMove"
+                             PreviewMouseLeftButtonUp="BooksList_PreviewMouseLeftButtonUp"
                              AllowDrop="True"
                              DragEnter="LibraryPagePanel_DragEnter"
                              DragOver="LibraryPagePanel_DragOver"
@@ -1461,6 +1464,16 @@
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                     </ListBox>
+                    <Canvas x:Name="RubberBandLayer" IsHitTestVisible="False" Margin="8,0,24,0">
+                        <Rectangle x:Name="RubberBandRect"
+                                   Stroke="#3B82F6"
+                                   StrokeThickness="1"
+                                   StrokeDashArray="3,2"
+                                   Fill="#223B82F6"
+                                   RadiusX="3"
+                                   RadiusY="3"
+                                   Visibility="Collapsed"/>
+                    </Canvas>
 
                     <Border x:Name="ShelfEmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28" CornerRadius="{StaticResource RadiusPanel}" Background="#EFFFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1">
                         <StackPanel Width="320">
