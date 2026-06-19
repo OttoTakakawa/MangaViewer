@@ -63,7 +63,7 @@ public partial class SettingsDialog : Window
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (NavList.SelectedIndex < 0) return;
+        if (NavList.SelectedIndex < 0 || SectionGeneral is null) return;
         SectionGeneral.Visibility = NavList.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
         SectionReading.Visibility = NavList.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         SectionData.Visibility = NavList.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
@@ -73,7 +73,8 @@ public partial class SettingsDialog : Window
 
     private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        DoublePageGapLabel.Text = ((int)e.NewValue).ToString();
+        if (DoublePageGapLabel is not null)
+            DoublePageGapLabel.Text = ((int)e.NewValue).ToString();
     }
 
     // --- 通用分区 ---
