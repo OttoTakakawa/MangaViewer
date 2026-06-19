@@ -69,10 +69,10 @@
                             <StackPanel x:Name="SectionReading" Visibility="Collapsed">
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="下一页快捷键" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                                    <Button x:Name="NextShortcutButton" Content="" Click="NextShortcutCapture_Click" Style="{StaticResource AppDialogTextBox}" HorizontalContentAlignment="Left" Height="44"/>
+                                    <Button x:Name="NextShortcutButton" Content="" Click="NextShortcutCapture_Click" Style="{StaticResource AppDialogGhostButton}" HorizontalContentAlignment="Left" Height="44"/>
                                     <TextBlock x:Name="NextShortcutConflict" Text="与上一页快捷键冲突" Foreground="#EF4444" FontSize="11" Visibility="Collapsed" Margin="0,4,0,12"/>
                                     <TextBlock Text="上一页快捷键" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                                    <Button x:Name="PrevShortcutButton" Content="" Click="PrevShortcutCapture_Click" Style="{StaticResource AppDialogTextBox}" HorizontalContentAlignment="Left" Height="44"/>
+                                    <Button x:Name="PrevShortcutButton" Content="" Click="PrevShortcutCapture_Click" Style="{StaticResource AppDialogGhostButton}" HorizontalContentAlignment="Left" Height="44"/>
                                     <TextBlock x:Name="PrevShortcutConflict" Text="与下一页快捷键冲突" Foreground="#EF4444" FontSize="11" Visibility="Collapsed" Margin="0,4,0,0"/>
                                 </StackPanel>
 
