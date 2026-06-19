@@ -144,7 +144,7 @@
 
                             <!-- 危险分区 -->
                             <StackPanel x:Name="SectionDanger" Visibility="Collapsed">
-                                <Button Content="清除所有书签" Click="ClearAllBookmarks_Click" Style="{StaticResource AppDialogDangerButton}" Margin="0,0,0,12"/>
+                                <Button Content="清除所有标记" Click="ClearAllBookmarks_Click" Style="{StaticResource AppDialogDangerButton}" Margin="0,0,0,12"/>
                                 <Button Content="重置所有设置为默认" Click="ResetSettings_Click" Style="{StaticResource AppDialogDangerButton}"/>
                             </StackPanel>
                         </Grid>

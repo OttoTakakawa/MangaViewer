@@ -2008,7 +2008,7 @@ public partial class MainWindow : Window
                 break;
             case SettingsAction.ClearAllBookmarks:
                 await Task.Run(() => _database.ClearAllBookmarks());
-                StatusText.Text = "已清除所有书签。";
+                StatusText.Text = "已清除所有标记。";
                 break;
         }
 

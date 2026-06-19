@@ -174,8 +174,8 @@ public partial class SettingsDialog : Window
     private void ClearAllBookmarks_Click(object sender, RoutedEventArgs e)
     {
         var result = System.Windows.MessageBox.Show(
-            "确定清除所有书籍的书签标记吗？此操作不可恢复。",
-            "清除书签",
+            "确定清除所有书籍的页标记吗？此操作不可恢复。",
+            "清除标记",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;

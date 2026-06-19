@@ -752,38 +752,38 @@ public partial class ReaderWindow : Window
     {
         if (_bookmarks.Count == 0)
         {
-            StatusCatalogFeedback("没有书签。");
+            StatusCatalogFeedback("没有标记。");
             return;
         }
 
         var prev = _bookmarks.Where(b => b < _requestedPageIndex).DefaultIfEmpty(-1).Max();
         if (prev < 0)
         {
-            StatusCatalogFeedback("已经是第一个书签。");
+            StatusCatalogFeedback("已经是第一个标记。");
             return;
         }
 
         RequestPageLoad(prev, immediate: true);
-        StatusCatalogFeedback($"跳转到书签：第 {prev + 1} 页");
+        StatusCatalogFeedback($"跳转到标记：第 {prev + 1} 页");
     }
 
     private void GoToNextBookmark()
     {
         if (_bookmarks.Count == 0)
         {
-            StatusCatalogFeedback("没有书签。");
+            StatusCatalogFeedback("没有标记。");
             return;
         }
 
         var next = _bookmarks.Where(b => b > _requestedPageIndex).DefaultIfEmpty(-1).Min();
         if (next < 0)
         {
-            StatusCatalogFeedback("已经是最后一个书签。");
+            StatusCatalogFeedback("已经是最后一个标记。");
             return;
         }
 
         RequestPageLoad(next, immediate: true);
-        StatusCatalogFeedback($"跳转到书签：第 {next + 1} 页");
+        StatusCatalogFeedback($"跳转到标记：第 {next + 1} 页");
     }
 
     private void RequestPageLoad(int pageIndex, bool immediate = false, bool forceReload = false)
