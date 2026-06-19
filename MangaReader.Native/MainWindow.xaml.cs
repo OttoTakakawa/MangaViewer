@@ -2712,33 +2712,42 @@ public partial class MainWindow : Window
 
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (Keyboard.Modifiers != ModifierKeys.Control) return;
-        if (System.Windows.Input.Keyboard.FocusedElement is not System.Windows.Controls.TextBox box) return;
-
-        switch (e.Key)
+        try
         {
-            case Key.C:
-                if (!string.IsNullOrEmpty(box.SelectedText))
-                    System.Windows.Clipboard.SetText(box.SelectedText);
-                e.Handled = true;
-                break;
-            case Key.V:
-                if (!box.IsReadOnly && System.Windows.Clipboard.ContainsText())
-                    box.SelectedText = System.Windows.Clipboard.GetText();
-                e.Handled = true;
-                break;
-            case Key.X:
-                if (!box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText))
-                {
-                    System.Windows.Clipboard.SetText(box.SelectedText);
-                    box.SelectedText = "";
-                }
-                e.Handled = true;
-                break;
-            case Key.A:
-                box.SelectAll();
-                e.Handled = true;
-                break;
+            if (Keyboard.Modifiers != ModifierKeys.Control) return;
+            var focused = System.Windows.Input.Keyboard.FocusedElement;
+
+            if (focused is not System.Windows.Controls.TextBox box) return;
+
+            switch (e.Key)
+            {
+                case Key.C:
+                    if (!string.IsNullOrEmpty(box.SelectedText))
+                        System.Windows.Clipboard.SetText(box.SelectedText);
+                    e.Handled = true;
+                    break;
+                case Key.V:
+                    if (!box.IsReadOnly && System.Windows.Clipboard.ContainsText())
+                        box.SelectedText = System.Windows.Clipboard.GetText();
+                    e.Handled = true;
+                    break;
+                case Key.X:
+                    if (!box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText))
+                    {
+                        System.Windows.Clipboard.SetText(box.SelectedText);
+                        box.SelectedText = "";
+                    }
+                    e.Handled = true;
+                    break;
+                case Key.A:
+                    box.SelectAll();
+                    e.Handled = true;
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("keyboard", ex, "PreviewKeyDown handler error");
         }
     }
 
