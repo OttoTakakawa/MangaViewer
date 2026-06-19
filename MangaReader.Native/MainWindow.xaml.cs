@@ -2710,10 +2710,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private void TextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (Keyboard.Modifiers != ModifierKeys.Control) return;
-        if (sender is not System.Windows.Controls.TextBox box) return;
+        if (System.Windows.Input.Keyboard.FocusedElement is not System.Windows.Controls.TextBox box) return;
 
         switch (e.Key)
         {

@@ -6,6 +6,7 @@
         xmlns:controls="clr-namespace:MangaReader.Native.Controls"
         xmlns:models="clr-namespace:MangaReader.Native.Models"
         mc:Ignorable="d"
+        PreviewKeyDown="MainWindow_PreviewKeyDown"
         Title="漫画库" Height="900" Width="1500" MinHeight="760" MinWidth="1180"
         Background="{StaticResource Brush.AppBackground}" WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -232,7 +233,6 @@
             </Setter>
         </Style>
         <Style TargetType="TextBox">
-            <EventSetter Event="PreviewKeyDown" Handler="TextBox_PreviewKeyDown"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="MinHeight" Value="40"/>
             <Setter Property="Padding" Value="13,5"/>
