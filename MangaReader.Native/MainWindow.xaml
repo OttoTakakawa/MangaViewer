@@ -674,30 +674,12 @@
                 <StackPanel>
                     <Grid Width="162" Height="220" HorizontalAlignment="Center">
                         <Grid Width="150" Height="214" VerticalAlignment="Top" Effect="{StaticResource BookShadow}">
-                            <Grid x:Name="GrooveCover">
-                                <Grid.Style>
-                                    <Style TargetType="Grid">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="0">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Grid.Style>
-                                <Border CornerRadius="{StaticResource RadiusProgress}" ClipToBounds="True" Background="Transparent">
-                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
-                                </Border>
-                                <Rectangle Width="3" Margin="34,12,0,12" HorizontalAlignment="Left" Fill="#66000000" RadiusX="1.5" RadiusY="1.5"/>
-                                <Rectangle Width="1" Margin="39,14,0,14" HorizontalAlignment="Left" Fill="#66FFFFFF" RadiusX="1" RadiusY="1"/>
-                            </Grid>
-
                             <Grid x:Name="BoundMangaCover">
                                 <Grid.Style>
                                     <Style TargetType="Grid">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="1">
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="0">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -732,7 +714,7 @@
                                     <Style TargetType="Grid">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="2">
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="1">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -748,7 +730,7 @@
                                     <Style TargetType="Grid">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="3">
+                                            <DataTrigger Binding="{Binding BookStyleIndex}" Value="2">
                                                 <Setter Property="Visibility" Value="Visible"/>
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -1346,18 +1328,16 @@
                                 <Button Content="全选" Click="SelectVisibleBooks_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="清空" Click="ClearBatchSelection_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="去前缀" Click="BatchRemoveTitlePrefix_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
-                                <ComboBox x:Name="BatchStyleBox" Width="120" Height="32" MinHeight="32" Padding="10,4" SelectedIndex="0" Style="{StaticResource FilterComboBox}" Margin="0,0,6,0">
-                                    <ComboBoxItem Content="样式 1"/>
-                                    <ComboBoxItem Content="样式 2"/>
-                                    <ComboBoxItem Content="样式 3"/>
-                                    <ComboBoxItem Content="样式 4"/>
+                                <ComboBox x:Name="BatchStyleBox" Width="140" Height="32" MinHeight="32" Padding="10,4" SelectedIndex="0" Style="{StaticResource FilterComboBox}" Margin="0,0,6,0">
+                                    <ComboBoxItem Content="漫画卡片"/>
+                                    <ComboBoxItem Content="纯图卡片"/>
+                                    <ComboBoxItem Content="圆角卡片"/>
                                 </ComboBox>
                                 <Button Content="应用" Click="BatchApplyStyle_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="+ Tag" Click="BatchAddTag_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="- Tag" Click="BatchRemoveTag_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="删库记录" Click="BatchDeleteRecords_Click" Style="{StaticResource BatchDangerActionButton}" Margin="0,0,6,0"/>
-                                <Button Content="删源文件" Click="BatchDeleteSourceFiles_Click" Style="{StaticResource BatchDangerActionButton}" Margin="0,0,6,0"/>
-                                <Button Content="退出" Click="ExitBatchSelectionMode_Click" Style="{StaticResource BatchActionButton}"/>
+                                <Button Content="删源文件" Click="BatchDeleteSourceFiles_Click" Style="{StaticResource BatchDangerActionButton}"/>
                             </WrapPanel>
                         </Border>
                     </Grid>
@@ -2067,30 +2047,12 @@
                                         ClipToBounds="True"
                                         Effect="{StaticResource BookShadow}">
                                     <Grid>
-                                        <Grid x:Name="DetailGrooveCover">
-                                            <Grid.Style>
-                                                <Style TargetType="Grid">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="0">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Grid.Style>
-                                            <Border CornerRadius="{StaticResource RadiusPanel}" ClipToBounds="True" Background="Transparent">
-                                                <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
-                                            </Border>
-                                            <Rectangle Width="7" Margin="70,22,0,22" HorizontalAlignment="Left" Fill="#66000000" RadiusX="3.5" RadiusY="3.5"/>
-                                            <Rectangle Width="2" Margin="82,25,0,25" HorizontalAlignment="Left" Fill="#66FFFFFF" RadiusX="1" RadiusY="1"/>
-                                        </Grid>
-
                                         <Grid x:Name="DetailBoundMangaCover">
                                             <Grid.Style>
                                                 <Style TargetType="Grid">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="1">
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="0">
                                                             <Setter Property="Visibility" Value="Visible"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
@@ -2125,7 +2087,7 @@
                                                 <Style TargetType="Grid">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="2">
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="1">
                                                             <Setter Property="Visibility" Value="Visible"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
@@ -2141,7 +2103,7 @@
                                                 <Style TargetType="Grid">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="3">
+                                                        <DataTrigger Binding="{Binding BookStyleIndex}" Value="2">
                                                             <Setter Property="Visibility" Value="Visible"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>

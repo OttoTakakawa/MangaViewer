@@ -16,8 +16,27 @@ public partial class SettingsDialog : Window
     public bool ShortcutsChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
 
-    private readonly List<string> _colors = new();
     private string? _pendingDataRoot;
+
+    // 快捷键捕获
+    private List<System.Windows.Input.Key> _nextKeys = new();
+    private List<System.Windows.Input.Key> _prevKeys = new();
+    private bool _capturingNext;
+    private bool _capturingPrev;
+
+    // 标记颜色预设
+    private static readonly string[] PresetGroupA =
+    [
+        "#EF4444", "#F97316", "#EAB308", "#22C55E",
+        "#14B8A6", "#3B82F6", "#6366F1", "#A855F7",
+        "#EC4899", "#F43F5E", "#84CC16", "#06B6D4"
+    ];
+    private static readonly string[] PresetGroupB =
+    [
+        "#FB923C", "#FBBF24", "#4ADE80", "#2DD4BF",
+        "#60A5FA", "#818CF8", "#C084FC", "#F472B6",
+        "#FB7185", "#A3E635", "#22D3EE", "#E879F9"
+    ];
 
     public SettingsDialog(AppStorage storage, LibraryDatabase database)
     {
@@ -26,6 +45,7 @@ public partial class SettingsDialog : Window
         _database = database;
         LoadCurrentSettings();
         DoublePageGapSlider.ValueChanged += DoublePageGapSlider_ValueChanged;
+        PreviewKeyDown += SettingsDialog_PreviewKeyDown;
     }
 
     private void LoadCurrentSettings()
@@ -37,9 +57,10 @@ public partial class SettingsDialog : Window
         // 阅读
         var shortcuts = _database.LoadShortcuts();
         if (shortcuts.TryGetValue("reader.next", out var next))
-            NextShortcutTextBox.Text = next;
+            _nextKeys = ParseKeys(next);
         if (shortcuts.TryGetValue("reader.previous", out var prev))
-            PrevShortcutTextBox.Text = prev;
+            _prevKeys = ParseKeys(prev);
+        UpdateShortcutButtons();
         if (shortcuts.TryGetValue("reader.wheelmode", out var wheel) && int.TryParse(wheel, out var wheelIdx))
             WheelModeComboBox.SelectedIndex = Math.Clamp(wheelIdx, 0, 2);
         if (shortcuts.TryGetValue("reader.qualitymode", out var quality))
@@ -51,14 +72,8 @@ public partial class SettingsDialog : Window
         // 数据
         DataRootTextBox.Text = _storage.Root;
 
-        // 标签
-        _colors.Clear();
-        foreach (var c in _database.LoadSetting("tag.custom_colors")
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            _colors.Add(c);
-        }
-        ColorList.ItemsSource = _colors.ToList();
+        // 标记颜色
+        BuildColorSwatches();
     }
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -75,6 +90,79 @@ public partial class SettingsDialog : Window
     {
         if (DoublePageGapLabel is not null)
             DoublePageGapLabel.Text = ((int)e.NewValue).ToString();
+    }
+
+    // --- 快捷键捕获 ---
+
+    private void UpdateShortcutButtons()
+    {
+        NextShortcutButton.Content = _nextKeys.Count > 0 ? string.Join(" + ", _nextKeys) : "点击设置";
+        PrevShortcutButton.Content = _prevKeys.Count > 0 ? string.Join(" + ", _prevKeys) : "点击设置";
+        CheckShortcutConflict();
+    }
+
+    private void CheckShortcutConflict()
+    {
+        var conflict = _nextKeys.Count > 0 && _prevKeys.Count > 0 && _nextKeys.Intersect(_prevKeys).Any();
+        NextShortcutConflict.Visibility = conflict ? Visibility.Visible : Visibility.Collapsed;
+        PrevShortcutConflict.Visibility = conflict ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void NextShortcutCapture_Click(object sender, RoutedEventArgs e)
+    {
+        _capturingNext = true;
+        _capturingPrev = false;
+        NextShortcutButton.Content = "按下按键...";
+        NextShortcutButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDB, 0xEA, 0xFE));
+        PrevShortcutButton.ClearValue(BackgroundProperty);
+        Focus();
+    }
+
+    private void PrevShortcutCapture_Click(object sender, RoutedEventArgs e)
+    {
+        _capturingPrev = true;
+        _capturingNext = false;
+        PrevShortcutButton.Content = "按下按键...";
+        PrevShortcutButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDB, 0xEA, 0xFE));
+        NextShortcutButton.ClearValue(BackgroundProperty);
+        Focus();
+    }
+
+    private void SettingsDialog_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (!_capturingNext && !_capturingPrev) return;
+
+        var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
+        if (key is System.Windows.Input.Key.LeftCtrl or System.Windows.Input.Key.RightCtrl
+            or System.Windows.Input.Key.LeftAlt or System.Windows.Input.Key.RightAlt
+            or System.Windows.Input.Key.LeftShift or System.Windows.Input.Key.RightShift
+            or System.Windows.Input.Key.LWin or System.Windows.Input.Key.RWin
+            or System.Windows.Input.Key.ImeProcessed or System.Windows.Input.Key.ImeAccept
+            or System.Windows.Input.Key.ImeConvert or System.Windows.Input.Key.ImeNonConvert
+            or System.Windows.Input.Key.ImeModeChange)
+            return;
+
+        var target = _capturingNext ? _nextKeys : _prevKeys;
+
+        if (target.Count >= 3)
+            target.Clear();
+
+        target.Add(key);
+
+        if (_capturingNext)
+        {
+            _capturingNext = false;
+            NextShortcutButton.ClearValue(BackgroundProperty);
+        }
+        else
+        {
+            _capturingPrev = false;
+            PrevShortcutButton.ClearValue(BackgroundProperty);
+        }
+
+        UpdateShortcutButtons();
+        ShortcutsChanged = true;
+        e.Handled = true;
     }
 
     // --- 通用分区 ---
@@ -141,31 +229,29 @@ public partial class SettingsDialog : Window
         Close();
     }
 
-    private void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    // --- 标记分区 ---
+
+    private void BuildColorSwatches()
     {
-        RequestedAction = SettingsAction.CheckUpdate;
-        DialogResult = true;
-        Close();
+        BuildSwatchRow(ColorGroupA, PresetGroupA);
+        BuildSwatchRow(ColorGroupB, PresetGroupB);
     }
 
-    // --- 标签分区 ---
-
-    private void AddColor_Click(object sender, RoutedEventArgs e)
+    private static void BuildSwatchRow(System.Windows.Controls.Panel container, string[] colors)
     {
-        var input = Interaction.InputBox("输入颜色值（如 #FF6B6B）：", "添加颜色", "#");
-        if (string.IsNullOrWhiteSpace(input)) return;
-        input = input.Trim();
-        if (!input.StartsWith("#") || input.Length != 7) return;
-        _colors.Add(input);
-        ColorList.ItemsSource = _colors.ToList();
-    }
-
-    private void RemoveColor_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is System.Windows.Controls.Button btn && btn.Tag is string color)
+        container.Children.Clear();
+        foreach (var color in colors)
         {
-            _colors.Remove(color);
-            ColorList.ItemsSource = _colors.ToList();
+            var border = new Border
+            {
+                Width = 28,
+                Height = 28,
+                CornerRadius = new CornerRadius(6),
+                Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color)),
+                Margin = new Thickness(0, 0, 8, 8),
+                ToolTip = color
+            };
+            container.Children.Add(border);
         }
     }
 
@@ -196,7 +282,7 @@ public partial class SettingsDialog : Window
     private void ResetSettings_Click(object sender, RoutedEventArgs e)
     {
         var result = System.Windows.MessageBox.Show(
-            "确定重置所有设置为默认值吗？\n\n将重置：隐私模式、快捷键、阅读器偏好、标签颜色、密码。\n不会影响数据根目录和数据库。",
+            "确定重置所有设置为默认值吗？\n\n将重置：隐私模式、快捷键、阅读器偏好、密码。\n不会影响数据根目录和数据库。",
             "重置设置",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -205,7 +291,6 @@ public partial class SettingsDialog : Window
         _database.SaveSetting("app.privacy_mode", "0");
         _database.SaveSetting("app.delete_source_password", "0309");
         _database.SaveSetting("app.catalog_delete_source_enabled", "1");
-        _database.SaveSetting("tag.custom_colors", "");
         _database.SaveShortcut("reader.next", "Right,Space");
         _database.SaveShortcut("reader.previous", "Left");
         _database.SaveShortcut("reader.wheelmode", "0");
@@ -236,21 +321,15 @@ public partial class SettingsDialog : Window
         _database.SaveSetting("app.catalog_delete_source_enabled", CatalogDeleteCheckBox.IsChecked == true ? "1" : "0");
 
         // 快捷键
-        var nextText = NextShortcutTextBox.Text.Trim();
-        var prevText = PrevShortcutTextBox.Text.Trim();
-        if (!string.IsNullOrEmpty(nextText) && !string.IsNullOrEmpty(prevText))
+        if (_nextKeys.Count > 0 && _prevKeys.Count > 0)
         {
-            _database.SaveShortcut("reader.next", nextText);
-            _database.SaveShortcut("reader.previous", prevText);
+            _database.SaveShortcut("reader.next", FormatKeys(_nextKeys));
+            _database.SaveShortcut("reader.previous", FormatKeys(_prevKeys));
             ShortcutsChanged = true;
         }
         _database.SaveShortcut("reader.wheelmode", WheelModeComboBox.SelectedIndex.ToString());
         _database.SaveShortcut("reader.qualitymode", QualityModeComboBox.SelectedIndex == 1 ? "Performance" : "Quality");
         _database.SaveShortcut("reader.doublepage.gap", DoublePageGapSlider.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
-
-        // 标签颜色
-        var colorValue = string.Join(";", _colors.OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
-        _database.SaveSetting("tag.custom_colors", colorValue);
 
         // 数据根目录
         if (_pendingDataRoot is not null)
@@ -267,6 +346,21 @@ public partial class SettingsDialog : Window
         DialogResult = false;
         Close();
     }
+
+    // --- 工具方法 ---
+
+    private static List<System.Windows.Input.Key> ParseKeys(string text)
+    {
+        return text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(k => Enum.TryParse<System.Windows.Input.Key>(k, true, out var key) ? key : System.Windows.Input.Key.None)
+            .Where(k => k != System.Windows.Input.Key.None)
+            .ToList();
+    }
+
+    private static string FormatKeys(List<System.Windows.Input.Key> keys)
+    {
+        return string.Join(",", keys);
+    }
 }
 
 public enum SettingsAction
@@ -276,6 +370,5 @@ public enum SettingsAction
     OpenDataFolder,
     CreateBackup,
     OpenDataSafety,
-    CheckUpdate,
     ClearAllBookmarks
 }

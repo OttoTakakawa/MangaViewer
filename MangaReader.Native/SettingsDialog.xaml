@@ -46,7 +46,7 @@
                         <ListBoxItem Content="通用"/>
                         <ListBoxItem Content="阅读"/>
                         <ListBoxItem Content="数据"/>
-                        <ListBoxItem Content="标签"/>
+                        <ListBoxItem Content="标记"/>
                         <ListBoxItem Content="危险"/>
                     </ListBox>
 
@@ -69,10 +69,11 @@
                             <StackPanel x:Name="SectionReading" Visibility="Collapsed">
                                 <StackPanel Margin="0,0,0,16">
                                     <TextBlock Text="下一页快捷键" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                                    <TextBox x:Name="NextShortcutTextBox" Style="{StaticResource AppDialogTextBox}" Text="Right,Space"/>
-                                    <TextBlock Text="多个键用英文逗号分隔，如 Right,Space" Foreground="{StaticResource Brush.TextMuted}" FontSize="11" Margin="0,6,0,16"/>
+                                    <Button x:Name="NextShortcutButton" Content="" Click="NextShortcutCapture_Click" Style="{StaticResource AppDialogTextBox}" HorizontalContentAlignment="Left" Height="44"/>
+                                    <TextBlock x:Name="NextShortcutConflict" Text="与上一页快捷键冲突" Foreground="#EF4444" FontSize="11" Visibility="Collapsed" Margin="0,4,0,12"/>
                                     <TextBlock Text="上一页快捷键" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                                    <TextBox x:Name="PrevShortcutTextBox" Style="{StaticResource AppDialogTextBox}" Text="Left"/>
+                                    <Button x:Name="PrevShortcutButton" Content="" Click="PrevShortcutCapture_Click" Style="{StaticResource AppDialogTextBox}" HorizontalContentAlignment="Left" Height="44"/>
+                                    <TextBlock x:Name="PrevShortcutConflict" Text="与下一页快捷键冲突" Foreground="#EF4444" FontSize="11" Visibility="Collapsed" Margin="0,4,0,0"/>
                                 </StackPanel>
 
                                 <StackPanel Margin="0,0,0,16">
@@ -92,11 +93,16 @@
                                     </ComboBox>
                                 </StackPanel>
 
-                                <StackPanel Margin="0,0,0,16">
-                                    <TextBlock Text="默认双页间距" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                                    <Slider x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" TickPlacement="None"/>
-                                    <TextBlock x:Name="DoublePageGapLabel" Text="8" Foreground="{StaticResource Brush.TextMuted}" FontSize="12" Margin="0,6,0,0"/>
-                                </StackPanel>
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="默认双页间距" Style="{StaticResource AppDialogLabelText}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <Slider x:Name="DoublePageGapSlider" Grid.Column="1" Minimum="0" Maximum="80" Value="8" TickPlacement="None" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="DoublePageGapLabel" Grid.Column="2" Text="8" Foreground="{StaticResource Brush.TextMuted}" FontSize="12" VerticalAlignment="Center" MinWidth="24" TextAlignment="Right"/>
+                                </Grid>
                             </StackPanel>
 
                             <!-- 数据分区 -->
@@ -119,27 +125,18 @@
                                     <Button Content="打开数据目录" Click="OpenDataFolder_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
                                     <Button Content="手动备份" Click="CreateBackup_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
                                     <Button Content="恢复备份" Click="OpenDataSafety_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
-                                    <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
                                 </WrapPanel>
                             </StackPanel>
 
-                            <!-- 标签分区 -->
+                            <!-- 标记分区 -->
                             <StackPanel x:Name="SectionTags" Visibility="Collapsed">
-                                <StackPanel Margin="0,0,0,16">
-                                    <TextBlock Text="自定义标签颜色" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                                    <ItemsControl x:Name="ColorList">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                    <Border Width="28" Height="28" CornerRadius="6" Background="{Binding}" Margin="0,0,12,0"/>
-                                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" Foreground="{StaticResource Brush.TextMuted}" Margin="0,0,12,0"/>
-                                                    <Button Content="删除" Tag="{Binding}" Click="RemoveColor_Click" Style="{StaticResource AppDialogGhostButton}"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Button Content="+ 添加颜色" Click="AddColor_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,8,0,0"/>
-                                </StackPanel>
+                                <TextBlock Text="标记颜色组 A" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,8"/>
+                                <WrapPanel x:Name="ColorGroupA" Margin="0,0,0,16"/>
+
+                                <TextBlock Text="标记颜色组 B" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,8"/>
+                                <WrapPanel x:Name="ColorGroupB" Margin="0,0,0,16"/>
+
+                                <TextBlock Text="一本书的标记超过 12 个后从第一个颜色重新循环" Foreground="{StaticResource Brush.TextMuted}" FontSize="11"/>
                             </StackPanel>
 
                             <!-- 危险分区 -->

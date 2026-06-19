@@ -988,7 +988,7 @@ public partial class MainWindow : Window
         _currentBook.NotifyAll();
         FillMetadataEditors(book);
         ScheduleBookViewRefresh(refreshShelfOverview: false);
-        StatusText.Text = $"已切换《{_currentBook.Title}》的卡片样式：样式 {_currentBook.BookStyleIndex + 1}。";
+        StatusText.Text = $"已切换《{_currentBook.Title}》的卡片样式：{_currentBook.StyleName}。";
     }
 
     private async void IncreaseReadCount_Click(object sender, RoutedEventArgs e)
@@ -2003,9 +2003,6 @@ public partial class MainWindow : Window
             case SettingsAction.OpenDataSafety:
                 DataSafety_Click(sender, e);
                 break;
-            case SettingsAction.CheckUpdate:
-                _ = CheckUpdateAsync(null);
-                break;
             case SettingsAction.ClearAllBookmarks:
                 await Task.Run(() => _database.ClearAllBookmarks());
                 StatusText.Text = "已清除所有标记。";
@@ -2152,7 +2149,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var targetStyle = Math.Clamp(BatchStyleBox?.SelectedIndex ?? 0, 0, 3);
+        var targetStyle = Math.Clamp(BatchStyleBox?.SelectedIndex ?? 0, 0, 2);
         foreach (var book in selectedBooks)
         {
             book.BookStyle = targetStyle;
@@ -2167,7 +2164,7 @@ public partial class MainWindow : Window
 
         ScheduleBookViewRefresh(refreshShelfOverview: false);
         FillCurrentBookIfAffected(selectedBooks);
-        StatusText.Text = $"已批量应用卡片样式 {targetStyle + 1}：{selectedBooks.Count} 本。";
+        StatusText.Text = $"已批量应用卡片样式 {MangaBook.StyleNames[targetStyle]}：{selectedBooks.Count} 本。";
     }
 
     private async void BatchAddTag_Click(object sender, RoutedEventArgs e)
@@ -2870,7 +2867,7 @@ public partial class MainWindow : Window
         ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(book.ImportedAt);
         ReadOnlyTagsText.Text = EmptyAsPlaceholder(book.Tags);
         ReadOnlyCoverPageText.Text = (book.CoverPageIndex + 1).ToString();
-        DetailCoverPageText.Text = $"第 {book.CoverPageIndex + 1} 页 · 卡片样式 {book.BookStyleIndex + 1}";
+        DetailCoverPageText.Text = $"第 {book.CoverPageIndex + 1} 页 · {book.StyleName}";
         ReadOnlyReadCountText.Text = book.ReadCountText;
         ReadOnlySummaryText.Text = EmptyAsPlaceholder(book.Summary);
         HideBookButton.Content = book.IsHidden ? "恢复显示" : "隐藏作品";

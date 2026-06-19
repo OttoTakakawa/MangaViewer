@@ -215,42 +215,37 @@ public sealed class MangaBook : INotifyPropertyChanged
     public string FavoriteStarText => IsFavorite ? "★" : "";
     public string MissingText => IsMissing ? "路径失效" : "";
     public string HiddenText => IsHidden ? "已隐藏" : "";
-    public int BookStyleIndex => BookStyle >= 0 ? BookStyle % 4 : (Id.GetHashCode() & 0x7FFFFFFF) % 4;
+    public static readonly string[] StyleNames = ["漫画卡片", "纯图卡片", "圆角卡片"];
+    public string StyleName => StyleNames[BookStyleIndex];
+    public int BookStyleIndex => BookStyle >= 0 ? BookStyle % 3 : (Id.GetHashCode() & 0x7FFFFFFF) % 3;
     public double BookWidth => BookStyleIndex switch
     {
-        1 => 138,
-        2 => 154,
-        3 => 132,
-        4 => 150,
-        _ => 146
+        0 => 138,
+        1 => 154,
+        2 => 132,
+        _ => 138
     };
     public double BookHeight => BookStyleIndex switch
     {
-        1 => 214,
-        2 => 198,
-        3 => 206,
-        4 => 218,
-        _ => 206
+        0 => 214,
+        1 => 198,
+        2 => 206,
+        _ => 214
     };
     public double SpineWidth => BookStyleIndex switch
     {
-        1 => 10,
-        2 => 28,
-        3 => 0,
-        4 => 14,
-        _ => 18
+        0 => 10,
+        1 => 28,
+        2 => 0,
+        _ => 10
     };
-    public double BookTilt => BookStyleIndex switch
-    {
-        _ => 0
-    };
+    public double BookTilt => 0;
     public string BookAccentColor => BookStyleIndex switch
     {
-        1 => "#D7A86E",
-        2 => "#8DA7BE",
-        3 => "#CDB7A0",
-        4 => "#B7A0CD",
-        _ => "#D8CABA"
+        0 => "#D7A86E",
+        1 => "#8DA7BE",
+        2 => "#CDB7A0",
+        _ => "#D7A86E"
     };
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -280,7 +275,7 @@ public sealed class MangaBook : INotifyPropertyChanged
 
     public void CycleBookStyle()
     {
-        BookStyle = (BookStyleIndex + 1) % 4;
+        BookStyle = (BookStyleIndex + 1) % 3;
         OnPropertyChanged(nameof(BookStyle));
         OnPropertyChanged(nameof(BookStyleIndex));
         OnPropertyChanged(nameof(BookWidth));
