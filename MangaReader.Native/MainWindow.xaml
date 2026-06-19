@@ -2595,7 +2595,7 @@
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                                 <MenuItem Header="从此处开始阅读" Click="StartReadingFromCatalog_Click"/>
                                                 <MenuItem Header="设为封面" Click="SetDetailCatalogPageAsCover_Click"/>
-                                                <MenuItem Header="标记此页" Click="ToggleDetailCatalogBookmark_Click"/>
+                                                <MenuItem Header="{Binding BookmarkMenuHeader}" Click="ToggleDetailCatalogBookmark_Click"/>
                                                 <MenuItem Header="删除源文件（需密码）" Click="DeleteSourceFromCatalog_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
@@ -2617,8 +2617,8 @@
                                                       VerticalAlignment="Top"
                                                       Margin="0,0,6,6"
                                                       Data="M0,0 L20,0 L20,24 L10,18 L0,24 Z"
-                                                      Fill="#EF4444"
-                                                      Stroke="#DC2626"
+                                                      Fill="{Binding BookmarkBrush}"
+                                                      Stroke="#00000033"
                                                       StrokeThickness="1"/>
                                             </Grid>
                                             <TextBlock Grid.Row="1"

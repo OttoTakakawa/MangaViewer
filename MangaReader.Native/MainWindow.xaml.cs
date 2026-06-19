@@ -1370,6 +1370,38 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private static readonly string[] MarkColorGroupA =
+    [
+        "#EF4444", "#F97316", "#EAB308", "#22C55E",
+        "#14B8A6", "#3B82F6", "#6366F1", "#A855F7",
+        "#EC4899", "#F43F5E", "#84CC16", "#06B6D4"
+    ];
+    private static readonly string[] MarkColorGroupB =
+    [
+        "#991B1B", "#9A3412", "#854D0E", "#166534",
+        "#115E59", "#1E3A8A", "#3730A3", "#581C87",
+        "#831843", "#9F1239", "#365314", "#164E63"
+    ];
+
+    private string[] GetActiveMarkColors()
+    {
+        return _database.LoadSetting("mark.color_group", "A") == "B" ? MarkColorGroupB : MarkColorGroupA;
+    }
+
+    private void AssignBookmarkColors(IList<PageCatalogItem> items, HashSet<int> bookmarks)
+    {
+        var colors = GetActiveMarkColors();
+        var sorted = bookmarks.OrderBy(x => x).ToList();
+        foreach (var item in items)
+        {
+            if (item.IsBookmarked)
+            {
+                var colorIndex = sorted.IndexOf(item.PageIndex);
+                item.BookmarkColor = colors[colorIndex >= 0 ? colorIndex % colors.Length : 0];
+            }
+        }
+    }
+
     private void EnsureDetailCatalogItems(MangaBook book)
     {
         var bookmarks = _database.LoadBookmarks(book.Id);
@@ -1380,15 +1412,18 @@ public partial class MainWindow : Window
             {
                 item.IsBookmarked = bookmarks.Contains(item.PageIndex);
             }
+            AssignBookmarkColors(DetailPageCatalogItems, bookmarks);
             return;
         }
 
-        DetailPageCatalogItems.ReplaceRange(book.Pages
+        var items = book.Pages
             .Select((path, index) => new PageCatalogItem(index, path)
             {
                 IsBookmarked = bookmarks.Contains(index)
             })
-            .ToList());
+            .ToList();
+        AssignBookmarkColors(items, bookmarks);
+        DetailPageCatalogItems.ReplaceRange(items);
     }
 
     private void StartDetailCatalogThumbnailLoad()
@@ -1574,6 +1609,11 @@ public partial class MainWindow : Window
                 _database.RemoveBookmark(book.Id, item.PageIndex);
             }
         });
+
+        // 重新分配标记颜色
+        var bookmarks = new HashSet<int>(
+            DetailPageCatalogItems.Where(i => i.IsBookmarked).Select(i => i.PageIndex));
+        AssignBookmarkColors(DetailPageCatalogItems, bookmarks);
 
         StatusText.Text = newState
             ? $"已标记第 {item.PageIndex + 1} 页。"

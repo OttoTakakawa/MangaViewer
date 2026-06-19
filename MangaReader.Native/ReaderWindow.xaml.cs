@@ -2104,6 +2104,7 @@ public partial class ReaderWindow : Window
                 IsBookmarked = _bookmarks.Contains(i)
             });
         }
+        AssignBookmarkColors();
     }
 
     private void ToggleCatalogBookmark_Click(object sender, RoutedEventArgs e)
@@ -2127,6 +2128,34 @@ public partial class ReaderWindow : Window
             _bookmarks.Remove(item.PageIndex);
             _ = Task.Run(() => _database.RemoveBookmark(_book.Id, item.PageIndex));
             StatusCatalogFeedback($"已取消标记第 {item.PageIndex + 1} 页。");
+        }
+        AssignBookmarkColors();
+    }
+
+    private static readonly string[] MarkColorGroupA =
+    [
+        "#EF4444", "#F97316", "#EAB308", "#22C55E",
+        "#14B8A6", "#3B82F6", "#6366F1", "#A855F7",
+        "#EC4899", "#F43F5E", "#84CC16", "#06B6D4"
+    ];
+    private static readonly string[] MarkColorGroupB =
+    [
+        "#991B1B", "#9A3412", "#854D0E", "#166534",
+        "#115E59", "#1E3A8A", "#3730A3", "#581C87",
+        "#831843", "#9F1239", "#365314", "#164E63"
+    ];
+
+    private void AssignBookmarkColors()
+    {
+        var colors = _database.LoadSetting("mark.color_group", "A") == "B" ? MarkColorGroupB : MarkColorGroupA;
+        var sorted = _bookmarks.OrderBy(x => x).ToList();
+        foreach (var item in PageCatalogItems)
+        {
+            if (item.IsBookmarked)
+            {
+                var colorIndex = sorted.IndexOf(item.PageIndex);
+                item.BookmarkColor = colors[colorIndex >= 0 ? colorIndex % colors.Length : 0];
+            }
         }
     }
 

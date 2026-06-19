@@ -8,6 +8,7 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
 {
     private BitmapSource? _thumbnail;
     private bool _isBookmarked;
+    private string _bookmarkColor = "#EF4444";
 
     public PageCatalogItem(int pageIndex, string path)
     {
@@ -36,8 +37,25 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
         {
             _isBookmarked = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(BookmarkMenuHeader));
         }
     }
+
+    public string BookmarkColor
+    {
+        get => _bookmarkColor;
+        set
+        {
+            _bookmarkColor = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(BookmarkBrush));
+        }
+    }
+
+    public System.Windows.Media.SolidColorBrush BookmarkBrush => new(
+        (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_bookmarkColor));
+
+    public string BookmarkMenuHeader => IsBookmarked ? "取消标记" : "标记此页";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
