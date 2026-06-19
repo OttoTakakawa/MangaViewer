@@ -90,6 +90,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _tagManagerSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _authorSearchDebounceTimer = new() { Interval = SearchDebounceInterval };
     private readonly DispatcherTimer _statusLogTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    private DispatcherTimer? _toastTimer;
     private readonly Queue<string> _liveLogLines = new();
     private List<MangaBook> _allBooks = [];
     private CancellationTokenSource _filterCts = new();
@@ -3709,16 +3710,15 @@ public partial class MainWindow : Window
             .ToList();
 
         ReplaceBooks(ContinueReadingBooks, homeBooks
-            .Where(book => book.ReadingStatus == "reading" || book.LastReadPageIndex > 0)
-            .OrderByDescending(book => book.ReadingStatus == "reading")
-            .ThenByDescending(book => book.LastReadPageIndex)
-            .ThenByDescending(book => book.ReadCount)
+            .Where(book => !string.IsNullOrEmpty(book.LastOpenedAt))
+            .OrderByDescending(book => book.LastOpenedAt)
             .Take(3));
 
+        var continueIds = ContinueReadingBooks.Select(b => b.Id).ToHashSet();
         ReplaceBooks(RecentReadingBooks, homeBooks
-            .Where(book => book.LastReadPageIndex > 0 || book.ReadCount > 0)
-            .OrderByDescending(book => book.LastReadPageIndex)
-            .ThenByDescending(book => book.ReadCount)
+            .Where(book => book.ReadingStatus == "reading" && !continueIds.Contains(book.Id))
+            .OrderByDescending(book => book.ReadCount)
+            .ThenByDescending(book => book.LastReadPageIndex)
             .Take(4));
 
         ReplaceBooks(FavoriteShowcaseBooks, homeBooks
@@ -3726,12 +3726,12 @@ public partial class MainWindow : Window
             .OrderByDescending(book => book.ReadingStatus == "reading")
             .ThenByDescending(book => book.ReadCount)
             .ThenBy(book => book.Title)
-            .Take(12));
+            .Take(8));
 
         ReplaceBooks(RecentlyAddedBooks, homeBooks
             .OrderByDescending(book => book.ImportedAt)
             .ThenByDescending(book => book.ProducedAt)
-            .Take(12));
+            .Take(4));
 
         var isLibraryEmpty = homeBooks.Count == 0;
         HomeEmptyState.Visibility = isLibraryEmpty ? Visibility.Visible : Visibility.Collapsed;
@@ -3747,9 +3747,86 @@ public partial class MainWindow : Window
         RecentlyAddedEmptyText.Visibility = RecentlyAddedBooks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private DateTimeOffset _lastHomeRefreshAt = DateTimeOffset.MinValue;
+
+    private void RefreshRecentReading_Click(object sender, RoutedEventArgs e)
+    {
+        if (DateTimeOffset.Now - _lastHomeRefreshAt < TimeSpan.FromSeconds(1))
+        {
+            ShowToast("刷新太快啦，稍后再试");
+            return;
+        }
+        _lastHomeRefreshAt = DateTimeOffset.Now;
+
+        var homeBooks = _allBooks
+            .Where(book => !book.IsHidden && !book.IsMissing && book.Pages.Count > 0)
+            .ToList();
+
+        var continueIds = ContinueReadingBooks.Select(b => b.Id).ToHashSet();
+        var candidates = homeBooks
+            .Where(book => book.ReadingStatus == "reading" && !continueIds.Contains(book.Id))
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            ShowToast("没有更多在读漫画了");
+            return;
+        }
+
+        var random = new Random();
+        var shuffled = candidates.OrderBy(_ => random.Next()).Take(4).ToList();
+        ReplaceBooks(RecentReadingBooks, shuffled);
+        RecentReadingEmptyText.Visibility = RecentReadingBooks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RefreshFavorites_Click(object sender, RoutedEventArgs e)
+    {
+        if (DateTimeOffset.Now - _lastHomeRefreshAt < TimeSpan.FromSeconds(1))
+        {
+            ShowToast("刷新太快啦，稍后再试");
+            return;
+        }
+        _lastHomeRefreshAt = DateTimeOffset.Now;
+
+        var homeBooks = _allBooks
+            .Where(book => !book.IsHidden && !book.IsMissing && book.Pages.Count > 0)
+            .ToList();
+
+        var favorites = homeBooks.Where(book => book.IsFavorite).ToList();
+        if (favorites.Count <= 8)
+        {
+            ShowToast("收藏不足 8 本，无需换一批");
+            return;
+        }
+
+        var random = new Random();
+        var shuffled = favorites
+            .OrderByDescending(book => book.ReadingStatus == "reading")
+            .ThenBy(_ => random.Next())
+            .Take(8)
+            .ToList();
+        ReplaceBooks(FavoriteShowcaseBooks, shuffled);
+        FavoriteShowcaseEmptyText.Visibility = FavoriteShowcaseBooks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private static void ReplaceBooks(RangeObservableCollection<MangaBook> target, IEnumerable<MangaBook> source)
     {
         target.ReplaceRange(source.ToList());
+    }
+
+    private void ShowToast(string message, int durationMs = 1500)
+    {
+        if (ToastPanel is null || ToastText is null) return;
+        ToastText.Text = message;
+        _toastTimer?.Stop();
+        MotionService.ShowWithFade(ToastPanel);
+        _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(durationMs) };
+        _toastTimer.Tick += (_, _) =>
+        {
+            _toastTimer.Stop();
+            MotionService.HideWithFade(ToastPanel);
+        };
+        _toastTimer.Start();
     }
 
     private void OpenBook(MangaBook book)
@@ -3760,6 +3837,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        book.LastOpenedAt = DateTimeOffset.Now.ToString("O");
         AppLogger.Info("reader-open", $"Opening reader: {book.Title}, pages={book.Pages.Count}, folder={book.FolderPath}");
         var reader = new ReaderWindow(
             book,

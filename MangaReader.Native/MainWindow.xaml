@@ -35,7 +35,7 @@
         <Style x:Key="HomeCompactBookCard" TargetType="Border">
             <Setter Property="Width" Value="286"/>
             <Setter Property="Height" Value="104"/>
-            <Setter Property="Margin" Value="0,0,14,0"/>
+            <Setter Property="Margin" Value="0,0,14,12"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
             <Setter Property="Background" Value="#FDFBF8"/>
@@ -992,25 +992,63 @@
                                     CornerRadius="{StaticResource RadiusPanel}"/>
                         </Grid>
                     </Border>
-                    <Border Padding="6,2"
+                    <Border Padding="7,3"
                             CornerRadius="{StaticResource RadiusControl}"
-                            Background="#F8E7B4"
-                            BorderBrush="#E4B95F"
                             BorderThickness="1"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
-                            Margin="48,0,0,0">
+                            Margin="42,0,0,0">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Setter Property="Visibility" Value="Collapsed"/>
+                                <Setter Property="Background" Value="#F3F4F6"/>
+                                <Setter Property="BorderBrush" Value="#D1D5DB"/>
                                 <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasRating}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsFavorite}" Value="True">
                                         <Setter Property="Visibility" Value="Visible"/>
+                                        <Setter Property="Background" Value="#FFEEAA"/>
+                                        <Setter Property="BorderBrush" Value="#E4B95F"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="★" Foreground="#F59E0B" FontSize="12"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding RatingText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Foreground" Value="#6B7280"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasRating}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="★" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Margin" Value="0"/>
+                                        <Setter Property="Foreground" Value="#9CA3AF"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasRating}" Value="True">
+                                                <Setter Property="Margin" Value="3,0,0,0"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                <Setter Property="Foreground" Value="#B45309"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="10,4,0,0">
                         <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="#25211E" TextTrimming="CharacterEllipsis"/>
@@ -1165,7 +1203,10 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="之前读过" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <DockPanel Margin="4,28,0,14">
+                            <Button DockPanel.Dock="Right" Content="换一批" Click="RefreshRecentReading_Click" Style="{StaticResource AppGhostButton}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            <TextBlock Text="之前读过" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
+                        </DockPanel>
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding RecentReadingBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
                                 <ItemsControl.ItemsPanel>
@@ -1177,7 +1218,10 @@
                         </ScrollViewer>
                         <TextBlock x:Name="RecentReadingEmptyText" Text="还没有阅读记录，读过的漫画会出现在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
 
-                        <TextBlock Text="收藏" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <DockPanel Margin="4,28,0,14">
+                            <Button DockPanel.Dock="Right" Content="换一批" Click="RefreshFavorites_Click" Style="{StaticResource AppGhostButton}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            <TextBlock Text="收藏" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
+                        </DockPanel>
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding FavoriteShowcaseBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
                                 <ItemsControl.ItemsPanel>
@@ -1318,7 +1362,7 @@
                 <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,10">
-                            <ComboBox x:Name="WaterfallTagSortBox" DockPanel.Dock="Right" Width="110" Height="32" SelectedIndex="0" SelectionChanged="WaterfallTagSort_Changed" Style="{StaticResource FilterComboBox}" ToolTip="瀑布流 Tag 排序方式">
+                            <ComboBox x:Name="WaterfallTagSortBox" DockPanel.Dock="Right" Width="130" Height="44" SelectedIndex="0" SelectionChanged="WaterfallTagSort_Changed" Style="{StaticResource FilterComboBox}" ToolTip="瀑布流 Tag 排序方式">
                                 <ComboBoxItem Content="默认"/>
                                 <ComboBoxItem Content="按时间"/>
                                 <ComboBoxItem Content="按颜色"/>
@@ -1658,14 +1702,14 @@
                                     <TextBlock Text="至少关联 1 本漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="2" Style="{StaticResource MetricCard}" Margin="0">
+                            <Border Grid.Column="2" Style="{StaticResource MetricCard}">
                                 <StackPanel>
                                     <TextBlock Text="候选标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                                     <TextBlock x:Name="TagManagerStandaloneCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
                                     <TextBlock Text="未关联时只能作为待分配标签" Margin="0,6,0,0" Foreground="#6E645C"/>
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="3" Style="{StaticResource MetricCard}" Margin="0">
+                            <Border Grid.Column="3" Style="{StaticResource MetricCard}">
                                 <StackPanel>
                                     <TextBlock Text="标签组" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
                                     <TextBlock x:Name="TagManagerGroupCountText" Text="0 组" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
@@ -2641,5 +2685,23 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border x:Name="ToastPanel"
+                Grid.ColumnSpan="3"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,40"
+                Padding="20,10"
+                CornerRadius="{StaticResource RadiusControl}"
+                Background="#CC25211E"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"
+                Panel.ZIndex="100">
+            <TextBlock x:Name="ToastText"
+                       Foreground="#FAF5EF"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       TextAlignment="Center"/>
+        </Border>
     </Grid>
 </Window>

@@ -136,6 +136,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "rating", "REAL NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_privacy_cover", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "books", "last_opened_at", "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
         EnsureColumn(connection, "managed_tags", "is_exclusive", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "color", "TEXT NOT NULL DEFAULT ''");
@@ -178,7 +179,7 @@ public sealed class LibraryDatabase
             """
             SELECT id, title, author, tags, folder_path, page_count, cover_page_index,
                    last_read_page_index, is_missing
-                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes, is_privacy_cover, rating
+                 , character_name, produced_at, imported_at, summary, book_style, is_hidden, read_count, reading_status, is_favorite, foreign_name, total_bytes, is_privacy_cover, rating, last_opened_at
             FROM books;
             """;
         using var reader = command.ExecuteReader();
@@ -208,7 +209,8 @@ public sealed class LibraryDatabase
                 ForeignName = reader.GetString(18),
                 TotalBytes = reader.GetInt64(19),
                 IsPrivacyCover = reader.GetInt32(20) == 1,
-                Rating = reader.GetDouble(21)
+                Rating = reader.GetDouble(21),
+                LastOpenedAt = reader.IsDBNull(22) ? "" : reader.GetString(22)
             };
             result[book.FolderPath] = book;
         }
@@ -266,12 +268,14 @@ public sealed class LibraryDatabase
             UPDATE books
             SET last_read_page_index = $lastReadPageIndex,
                 reading_status = $readingStatus,
+                last_opened_at = $lastOpenedAt,
                 updated_at = $updatedAt
             WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$id", book.Id);
         command.Parameters.AddWithValue("$lastReadPageIndex", book.LastReadPageIndex);
         command.Parameters.AddWithValue("$readingStatus", book.ReadingStatus);
+        command.Parameters.AddWithValue("$lastOpenedAt", book.LastOpenedAt);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
     }
@@ -299,6 +303,7 @@ public sealed class LibraryDatabase
                 is_favorite = $isFavorite,
                 rating = $rating,
                 is_privacy_cover = $isPrivacyCover,
+                last_opened_at = $lastOpenedAt,
                 updated_at = $updatedAt
             WHERE id = $id;
             """;
@@ -318,6 +323,7 @@ public sealed class LibraryDatabase
         command.Parameters.AddWithValue("$isFavorite", book.IsFavorite ? 1 : 0);
         command.Parameters.AddWithValue("$rating", Math.Clamp(book.Rating, 0, 5));
         command.Parameters.AddWithValue("$isPrivacyCover", book.IsPrivacyCover ? 1 : 0);
+        command.Parameters.AddWithValue("$lastOpenedAt", book.LastOpenedAt);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
         _lastMetadataBackupAt = DateTimeOffset.Now;

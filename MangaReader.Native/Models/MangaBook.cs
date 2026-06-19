@@ -23,6 +23,7 @@ public sealed class MangaBook : INotifyPropertyChanged
     private bool _isSelectedForBatch;
     private long _totalBytes;
     private double _rating;
+    private string _lastOpenedAt = "";
 
     public string Id { get; set; } = "";
     public string Title { get; set; } = "";
@@ -31,6 +32,15 @@ public sealed class MangaBook : INotifyPropertyChanged
     public string ForeignName { get; set; } = "";
     public string ProducedAt { get; set; } = "";
     public string ImportedAt { get; set; } = "";
+    public string LastOpenedAt
+    {
+        get => _lastOpenedAt;
+        set
+        {
+            _lastOpenedAt = value;
+            OnPropertyChanged();
+        }
+    }
     public string Summary { get; set; } = "";
     public string Tags
     {
