@@ -9,6 +9,8 @@ using WinForms = System.Windows.Forms;
 
 namespace MangaReader.Native;
 
+public sealed record NextBookRecommendations(MangaBook? NextInView, MangaBook? SameAuthor, MangaBook? SimilarTags);
+
 public partial class MainWindow : Window
 {
     public static readonly DependencyProperty IsBatchSelectionModeProperty =
@@ -2715,18 +2717,22 @@ public partial class MainWindow : Window
 
         switch (e.Key)
         {
-            case Key.C when !string.IsNullOrEmpty(box.SelectedText):
-                System.Windows.Clipboard.SetText(box.SelectedText);
+            case Key.C:
+                if (!string.IsNullOrEmpty(box.SelectedText))
+                    System.Windows.Clipboard.SetText(box.SelectedText);
                 e.Handled = true;
                 break;
-            case Key.V when !box.IsReadOnly:
-                if (System.Windows.Clipboard.ContainsText())
+            case Key.V:
+                if (!box.IsReadOnly && System.Windows.Clipboard.ContainsText())
                     box.SelectedText = System.Windows.Clipboard.GetText();
                 e.Handled = true;
                 break;
-            case Key.X when !box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText):
-                System.Windows.Clipboard.SetText(box.SelectedText);
-                box.SelectedText = "";
+            case Key.X:
+                if (!box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText))
+                {
+                    System.Windows.Clipboard.SetText(box.SelectedText);
+                    box.SelectedText = "";
+                }
                 e.Handled = true;
                 break;
             case Key.A:
@@ -3872,7 +3878,7 @@ public partial class MainWindow : Window
             _database,
             _nextKeys,
             _prevKeys,
-            ResolveNextBookInCurrentView,
+            ResolveNextBookRecommendations,
             nextBook => Dispatcher.InvokeAsync(() => OpenBook(nextBook), DispatcherPriority.ApplicationIdle))
         {
             Owner = this
@@ -3899,6 +3905,54 @@ public partial class MainWindow : Window
         }
 
         return visibleBooks[currentIndex + 1];
+    }
+
+    private NextBookRecommendations? ResolveNextBookRecommendations(MangaBook currentBook)
+    {
+        var nextInView = ResolveNextBookInCurrentView(currentBook);
+
+        var candidates = _allBooks
+            .Where(b => !b.IsMissing && b.Pages.Count > 0 && b.Id != currentBook.Id)
+            .ToList();
+
+        if (candidates.Count == 0)
+            return new NextBookRecommendations(nextInView, null, null);
+
+        var random = new Random();
+
+        var sameAuthorBooks = candidates
+            .Where(b => !string.IsNullOrWhiteSpace(b.Author)
+                        && b.Author.Equals(currentBook.Author, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var sameAuthor = sameAuthorBooks.Count > 0
+            ? sameAuthorBooks[random.Next(sameAuthorBooks.Count)]
+            : null;
+
+        var currentTags = TagService.ParseTags(currentBook.Tags).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        MangaBook? similarTags = null;
+        if (currentTags.Count > 0)
+        {
+            var tagScored = candidates
+                .Where(b => b.Id != sameAuthor?.Id)
+                .Select(b =>
+                {
+                    var bookTags = TagService.ParseTags(b.Tags).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    bookTags.IntersectWith(currentTags);
+                    return new { Book = b, Score = bookTags.Count };
+                })
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .ThenBy(_ => random.Next())
+                .FirstOrDefault();
+
+            similarTags = tagScored?.Book;
+        }
+
+        similarTags ??= sameAuthor ?? candidates[random.Next(candidates.Count)];
+
+        return new NextBookRecommendations(nextInView, sameAuthor, similarTags);
     }
 
     private void HomeBook_Click(object sender, MouseButtonEventArgs e)

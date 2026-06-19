@@ -59,7 +59,7 @@ public partial class ReaderWindow : Window
     private readonly LibraryDatabase _database;
     private readonly List<Key> _nextKeys;
     private readonly List<Key> _prevKeys;
-    private readonly Func<MangaBook, MangaBook?>? _nextBookResolver;
+    private readonly Func<MangaBook, NextBookRecommendations?>? _nextBookResolver;
     private readonly Action<MangaBook>? _openBookRequest;
     private int _displayedPageCount = 1;
     private FitMode _fitMode = FitMode.Height;
@@ -85,7 +85,7 @@ public partial class ReaderWindow : Window
     private bool _hasPendingProgressSave;
     private double _pageSlotWidth;
     private double _pageSlotHeight;
-    private MangaBook? _pendingNextBook;
+    private NextBookRecommendations? _pendingRecommendations;
     private CancellationTokenSource? _catalogLoadCancellation;
     private System.Windows.Point? _holdZoomLastPointerInViewport;
     private readonly object _pageCacheLock = new();
@@ -119,7 +119,7 @@ public partial class ReaderWindow : Window
         LibraryDatabase database,
         List<Key> nextKeys,
         List<Key> prevKeys,
-        Func<MangaBook, MangaBook?>? nextBookResolver = null,
+        Func<MangaBook, NextBookRecommendations?>? nextBookResolver = null,
         Action<MangaBook>? openBookRequest = null)
     {
         InitializeComponent();
@@ -213,59 +213,81 @@ public partial class ReaderWindow : Window
 
     private void TryGoToNextBook()
     {
-        if (_isNextBookPromptOpen)
-        {
-            return;
-        }
+        if (_isNextBookPromptOpen) return;
 
-        var nextBook = _nextBookResolver?.Invoke(_book);
-        if (nextBook is null)
+        var recs = _nextBookResolver?.Invoke(_book);
+        if (recs is null || (recs.NextInView is null && recs.SameAuthor is null && recs.SimilarTags is null))
         {
             _boundaryHint = "已经是最后一页";
             UpdateNavigationState();
             return;
         }
 
-        ShowNextBookPrompt(nextBook);
+        ShowNextBookPrompt(recs);
     }
 
-    private void ShowNextBookPrompt(MangaBook nextBook)
+    private void ShowNextBookPrompt(NextBookRecommendations recs)
     {
         _isNextBookPromptOpen = true;
-        _pendingNextBook = nextBook;
+        _pendingRecommendations = recs;
         ReleaseHoldZoom();
         CloseReaderDropdowns();
-        if (NextBookConfirmText is not null)
-        {
-            NextBookConfirmText.Text = $"是否前往当前筛选顺序里的下一本漫画？\n\n下一本：{nextBook.Title}";
-        }
+
+        BindNextBookCard(NextBookCard1, NextBookTitle1, recs.NextInView);
+        BindNextBookCard(NextBookCard2, NextBookTitle2, recs.SameAuthor);
+        BindNextBookCard(NextBookCard3, NextBookTitle3, recs.SimilarTags);
+
         if (NextBookConfirmOverlay is not null)
-        {
             NextBookConfirmOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void BindNextBookCard(Border? card, System.Windows.Controls.TextBlock? title, MangaBook? book)
+    {
+        if (card is null || title is null) return;
+        if (book is null)
+        {
+            card.Visibility = Visibility.Collapsed;
+            return;
+        }
+        card.Visibility = Visibility.Visible;
+        title.Text = book.Title;
+        if (card.Child is System.Windows.Controls.StackPanel sp)
+        {
+            var border = sp.Children.OfType<Border>().FirstOrDefault();
+            if (border?.Child is System.Windows.Controls.Image img && book.CoverImage is not null)
+                img.Source = book.CoverImage;
         }
     }
 
     private void HideNextBookPrompt()
     {
         _isNextBookPromptOpen = false;
-        _pendingNextBook = null;
+        _pendingRecommendations = null;
         if (NextBookConfirmOverlay is not null)
-        {
             NextBookConfirmOverlay.Visibility = Visibility.Collapsed;
-        }
     }
 
-    private void NextBookConfirm_Click(object sender, RoutedEventArgs e)
+    private void OpenBookFromRecommendation(MangaBook? book)
     {
-        var nextBook = _pendingNextBook;
         HideNextBookPrompt();
-        if (nextBook is null)
-        {
-            return;
-        }
-
-        _openBookRequest?.Invoke(nextBook);
+        if (book is null) return;
+        _openBookRequest?.Invoke(book);
         Close();
+    }
+
+    private void NextBookCard1_Click(object sender, MouseButtonEventArgs e)
+        => OpenBookFromRecommendation(_pendingRecommendations?.NextInView);
+
+    private void NextBookCard2_Click(object sender, MouseButtonEventArgs e)
+        => OpenBookFromRecommendation(_pendingRecommendations?.SameAuthor);
+
+    private void NextBookCard3_Click(object sender, MouseButtonEventArgs e)
+        => OpenBookFromRecommendation(_pendingRecommendations?.SimilarTags);
+
+    private void NextBookGoFirst_Click(object sender, RoutedEventArgs e)
+    {
+        HideNextBookPrompt();
+        RequestPageLoad(0);
     }
 
     private void NextBookCancel_Click(object sender, RoutedEventArgs e)
