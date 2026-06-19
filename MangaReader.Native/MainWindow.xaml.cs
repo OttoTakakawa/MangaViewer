@@ -116,6 +116,8 @@ public partial class MainWindow : Window
     private string _lastStatusLogText = "";
     private bool _cachedFavoriteOnly;
     private bool _cachedShowHidden;
+    private bool _cachedOnlyHidden;
+    private bool _onlyHiddenMode;
     private bool _sortDescending;
     private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
@@ -3415,6 +3417,20 @@ public partial class MainWindow : Window
         RefreshLibraryViews(tagManager: false, sort: false);
     }
 
+    private void OnlyHidden_Click(object sender, RoutedEventArgs e)
+    {
+        // 切换只看隐藏模式，并自动勾选显示隐藏作品
+        _onlyHiddenMode = !_onlyHiddenMode;
+        if (_onlyHiddenMode)
+        {
+            ShowHiddenBox.IsChecked = true;
+        }
+        OnlyHiddenButton.Background = _onlyHiddenMode
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1F, 0x29, 0x37))
+            : null;
+        RefreshLibraryViews(tagManager: false, sort: false);
+    }
+
     private void ToggleLibraryChrome_Click(object sender, RoutedEventArgs e)
     {
         SetLibraryChromeCollapsed(!_libraryChromeCollapsed);
@@ -3660,6 +3676,7 @@ public partial class MainWindow : Window
         _cachedAuthorFilter = AuthorFilterBox?.SelectedItem as string ?? "";
         _cachedFavoriteOnly = FavoriteOnlyBox?.IsChecked == true;
         _cachedShowHidden = ShowHiddenBox?.IsChecked == true;
+        _cachedOnlyHidden = _onlyHiddenMode;
         _cachedActiveTagFilters = _activeTagFilters.ToArray();
     }
 
@@ -3799,6 +3816,8 @@ public partial class MainWindow : Window
         StatusFilterBox.SelectedIndex = 0;
         FavoriteOnlyBox.IsChecked = false;
         ShowHiddenBox.IsChecked = false;
+        _onlyHiddenMode = false;
+        OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
         StatusText.Text = "已清空书架筛选。";
     }
@@ -4010,7 +4029,11 @@ public partial class MainWindow : Window
         var visibleCount = Books.Count;
         foreach (var book in _allBooks)
         {
-            if (book.IsHidden && !_cachedShowHidden)
+            if (_cachedOnlyHidden)
+            {
+                if (!book.IsHidden) continue;
+            }
+            else if (book.IsHidden && !_cachedShowHidden)
             {
                 continue;
             }
@@ -4577,6 +4600,8 @@ public partial class MainWindow : Window
         StatusFilterBox.SelectedIndex = 0;
         FavoriteOnlyBox.IsChecked = false;
         ShowHiddenBox.IsChecked = false;
+        _onlyHiddenMode = false;
+        OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
     }
 
