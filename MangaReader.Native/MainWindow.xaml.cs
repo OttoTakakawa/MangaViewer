@@ -44,7 +44,7 @@ public partial class MainWindow : Window
     private const int InitialDetailCatalogThumbnailLimit = 96;
     private const string PrivacyModeSettingKey = "app.privacy_mode";
     private const string CustomTagColorsSettingKey = "tag.custom_colors";
-    private const string DeleteSourcePasswordKey = "app.delete_source_password";
+    private const string DeleteSourcePasswordKey = "app.permission_password";
     private const string DefaultDeleteSourcePassword = "0309";
     private const string CatalogDeleteSourceEnabledKey = "app.catalog_delete_source_enabled";
     private const string TagDragDataFormat = "MangaReader.TagName";
@@ -1971,7 +1971,7 @@ public partial class MainWindow : Window
         StatusText.Text = "重定位完成。";
     }
 
-    private async void Settings_Click(object sender, RoutedEventArgs e)
+    private void Settings_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SettingsDialog(_storage, _database) { Owner = this };
         if (dialog.ShowDialog() != true)
@@ -2002,10 +2002,6 @@ public partial class MainWindow : Window
                 break;
             case SettingsAction.OpenDataSafety:
                 DataSafety_Click(sender, e);
-                break;
-            case SettingsAction.ClearAllBookmarks:
-                await Task.Run(() => _database.ClearAllBookmarks());
-                StatusText.Text = "已清除所有标记。";
                 break;
         }
 

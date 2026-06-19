@@ -14,15 +14,29 @@ public partial class SettingsDialog : Window
     public bool NeedsRestart { get; private set; }
     public bool PrivacyModeChanged { get; private set; }
     public bool ShortcutsChanged { get; private set; }
+    public bool WaterfallRightClickChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
 
     private string? _pendingDataRoot;
+    private bool _hasChanges;
+    private bool _forceClose;
 
-    // 快捷键捕获
-    private List<System.Windows.Input.Key> _nextKeys = new();
-    private List<System.Windows.Input.Key> _prevKeys = new();
-    private bool _capturingNext;
-    private bool _capturingPrev;
+    // 快捷键：5个功能 × 3个槽位
+    private readonly System.Windows.Input.Key[,] _keySlots = new System.Windows.Input.Key[5, 3];
+    private bool _capturing;
+    private int _captureRow;
+    private int _captureCol;
+    private System.Windows.Controls.Button? _captureButton;
+
+    // 快捷键功能名
+    private static readonly string[] KeyFunctionNames = ["next", "prev", "fullscreen", "hideui", "pagination"];
+    private static readonly string[] KeySettingKeys = [
+        "reader.key.next", "reader.key.prev", "reader.key.fullscreen",
+        "reader.key.hideui", "reader.key.pagination"
+    ];
+    private static readonly string[] KeyDefaultValues = [
+        "Right,Space", "Left", "W", "D", "S"
+    ];
 
     // 标记颜色预设
     private static readonly string[] PresetGroupA =
@@ -33,9 +47,9 @@ public partial class SettingsDialog : Window
     ];
     private static readonly string[] PresetGroupB =
     [
-        "#FB923C", "#FBBF24", "#4ADE80", "#2DD4BF",
-        "#60A5FA", "#818CF8", "#C084FC", "#F472B6",
-        "#FB7185", "#A3E635", "#22D3EE", "#E879F9"
+        "#991B1B", "#9A3412", "#854D0E", "#166534",
+        "#115E59", "#1E3A8A", "#3730A3", "#581C87",
+        "#831843", "#9F1239", "#365314", "#164E63"
     ];
 
     public SettingsDialog(AppStorage storage, LibraryDatabase database)
@@ -53,14 +67,20 @@ public partial class SettingsDialog : Window
         // 通用
         PrivacyModeCheckBox.IsChecked = _database.LoadSetting("app.privacy_mode") == "1";
         CatalogDeleteCheckBox.IsChecked = _database.LoadSetting("app.catalog_delete_source_enabled", "1") == "1";
+        WaterfallRightClickCheckBox.IsChecked = _database.LoadSetting("app.waterfall_right_click", "0") == "1";
 
-        // 阅读
+        // 快捷键
+        for (var i = 0; i < 5; i++)
+        {
+            var saved = _database.LoadSetting(KeySettingKeys[i], KeyDefaultValues[i]);
+            var keys = ParseKeys(saved);
+            for (var j = 0; j < 3; j++)
+                _keySlots[i, j] = j < keys.Count ? keys[j] : System.Windows.Input.Key.None;
+        }
+        RefreshAllKeyButtons();
+
+        // 阅读偏好
         var shortcuts = _database.LoadShortcuts();
-        if (shortcuts.TryGetValue("reader.next", out var next))
-            _nextKeys = ParseKeys(next);
-        if (shortcuts.TryGetValue("reader.previous", out var prev))
-            _prevKeys = ParseKeys(prev);
-        UpdateShortcutButtons();
         if (shortcuts.TryGetValue("reader.wheelmode", out var wheel) && int.TryParse(wheel, out var wheelIdx))
             WheelModeComboBox.SelectedIndex = Math.Clamp(wheelIdx, 0, 2);
         if (shortcuts.TryGetValue("reader.qualitymode", out var quality))
@@ -72,9 +92,35 @@ public partial class SettingsDialog : Window
         // 数据
         DataRootTextBox.Text = _storage.Root;
 
-        // 标记颜色
-        BuildColorSwatches();
+        // 标记颜色组
+        var savedGroup = _database.LoadSetting("mark.color_group", "A");
+        ColorGroupBRadio.IsChecked = savedGroup == "B";
+        ColorGroupARadio.IsChecked = savedGroup != "B";
+        RefreshColorSwatches();
+
+        _hasChanges = false;
+        UnsavedHint.Visibility = Visibility.Collapsed;
     }
+
+    private void MarkChanged()
+    {
+        _hasChanges = true;
+        UnsavedHint.Visibility = Visibility.Visible;
+    }
+
+    // --- 关闭守卫 ---
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_forceClose || !_hasChanges) return;
+        var result = System.Windows.MessageBox.Show(
+            "有未保存的更改，确定放弃吗？", "放弃更改",
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes)
+            e.Cancel = true;
+    }
+
+    // --- 导航 ---
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -86,51 +132,66 @@ public partial class SettingsDialog : Window
         SectionDanger.Visibility = NavList.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (DoublePageGapLabel is not null)
-            DoublePageGapLabel.Text = ((int)e.NewValue).ToString();
-    }
-
     // --- 快捷键捕获 ---
 
-    private void UpdateShortcutButtons()
+    private void RefreshAllKeyButtons()
     {
-        NextShortcutButton.Content = _nextKeys.Count > 0 ? string.Join(" + ", _nextKeys) : "点击设置";
-        PrevShortcutButton.Content = _prevKeys.Count > 0 ? string.Join(" + ", _prevKeys) : "点击设置";
-        CheckShortcutConflict();
+        for (var i = 0; i < 5; i++)
+        {
+            var buttons = GetKeyButtons(i);
+            for (var j = 0; j < 3; j++)
+            {
+                var key = _keySlots[i, j];
+                buttons[j].Content = key == System.Windows.Input.Key.None ? "—" : FormatKeyName(key);
+            }
+        }
+        CheckKeyConflicts();
     }
 
-    private void CheckShortcutConflict()
+    private System.Windows.Controls.Button[] GetKeyButtons(int row) => row switch
     {
-        var conflict = _nextKeys.Count > 0 && _prevKeys.Count > 0 && _nextKeys.Intersect(_prevKeys).Any();
-        NextShortcutConflict.Visibility = conflict ? Visibility.Visible : Visibility.Collapsed;
-        PrevShortcutConflict.Visibility = conflict ? Visibility.Visible : Visibility.Collapsed;
-    }
+        0 => [NextKey1, NextKey2, NextKey3],
+        1 => [PrevKey1, PrevKey2, PrevKey3],
+        2 => [FsKey1, FsKey2, FsKey3],
+        3 => [HideKey1, HideKey2, HideKey3],
+        4 => [PagKey1, PagKey2, PagKey3],
+        _ => []
+    };
 
-    private void NextShortcutCapture_Click(object sender, RoutedEventArgs e)
+    private void KeySlot_Click(object sender, RoutedEventArgs e)
     {
-        _capturingNext = true;
-        _capturingPrev = false;
-        NextShortcutButton.Content = "按下按键...";
-        NextShortcutButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDB, 0xEA, 0xFE));
-        PrevShortcutButton.ClearValue(BackgroundProperty);
-        Focus();
-    }
+        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string tag) return;
+        var parts = tag.Split(',');
+        var row = Array.IndexOf(KeyFunctionNames, parts[0]);
+        var col = int.Parse(parts[1]);
+        if (row < 0) return;
 
-    private void PrevShortcutCapture_Click(object sender, RoutedEventArgs e)
-    {
-        _capturingPrev = true;
-        _capturingNext = false;
-        PrevShortcutButton.Content = "按下按键...";
-        PrevShortcutButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDB, 0xEA, 0xFE));
-        NextShortcutButton.ClearValue(BackgroundProperty);
-        Focus();
+        // 如果正在捕获同一个按钮，清除它
+        if (_capturing && _captureRow == row && _captureCol == col)
+        {
+            _keySlots[row, col] = System.Windows.Input.Key.None;
+            _capturing = false;
+            _captureButton?.ClearValue(BackgroundProperty);
+            _captureButton = null;
+            RefreshAllKeyButtons();
+            MarkChanged();
+            return;
+        }
+
+        // 清除之前的捕获状态
+        _captureButton?.ClearValue(BackgroundProperty);
+
+        _capturing = true;
+        _captureRow = row;
+        _captureCol = col;
+        _captureButton = btn;
+        btn.Content = "按下按键...";
+        btn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDB, 0xEA, 0xFE));
     }
 
     private void SettingsDialog_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (!_capturingNext && !_capturingPrev) return;
+        if (!_capturing) return;
 
         var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
         if (key is System.Windows.Input.Key.LeftCtrl or System.Windows.Input.Key.RightCtrl
@@ -142,34 +203,80 @@ public partial class SettingsDialog : Window
             or System.Windows.Input.Key.ImeModeChange)
             return;
 
-        var target = _capturingNext ? _nextKeys : _prevKeys;
-
-        if (target.Count >= 3)
-            target.Clear();
-
-        target.Add(key);
-
-        if (_capturingNext)
+        // Escape 取消捕获
+        if (key == System.Windows.Input.Key.Escape)
         {
-            _capturingNext = false;
-            NextShortcutButton.ClearValue(BackgroundProperty);
-        }
-        else
-        {
-            _capturingPrev = false;
-            PrevShortcutButton.ClearValue(BackgroundProperty);
+            _capturing = false;
+            _captureButton?.ClearValue(BackgroundProperty);
+            _captureButton = null;
+            RefreshAllKeyButtons();
+            e.Handled = true;
+            return;
         }
 
-        UpdateShortcutButtons();
-        ShortcutsChanged = true;
+        _keySlots[_captureRow, _captureCol] = key;
+        _capturing = false;
+        _captureButton?.ClearValue(BackgroundProperty);
+        _captureButton = null;
+        RefreshAllKeyButtons();
+        MarkChanged();
         e.Handled = true;
+    }
+
+    private void CheckKeyConflicts()
+    {
+        var allKeys = new List<(System.Windows.Input.Key key, int row, int col)>();
+        for (var i = 0; i < 5; i++)
+            for (var j = 0; j < 3; j++)
+                if (_keySlots[i, j] != System.Windows.Input.Key.None)
+                    allKeys.Add((_keySlots[i, j], i, j));
+
+        var hasConflict = false;
+        for (var a = 0; a < allKeys.Count; a++)
+            for (var b = a + 1; b < allKeys.Count; b++)
+                if (allKeys[a].key == allKeys[b].key && allKeys[a].row != allKeys[b].row)
+                    hasConflict = true;
+
+        KeyConflictWarning.Visibility = hasConflict ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // --- 标记颜色 ---
+
+    private void ColorGroup_Checked(object sender, RoutedEventArgs e)
+    {
+        RefreshColorSwatches();
+        MarkChanged();
+    }
+
+    private void RefreshColorSwatches()
+    {
+        var colors = ColorGroupBRadio.IsChecked == true ? PresetGroupB : PresetGroupA;
+        ColorSwatchPanel.Children.Clear();
+        foreach (var color in colors)
+        {
+            var border = new Border
+            {
+                Width = 32,
+                Height = 32,
+                CornerRadius = new CornerRadius(6),
+                Background = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color)),
+                Margin = new Thickness(0, 0, 8, 8),
+                ToolTip = color
+            };
+            ColorSwatchPanel.Children.Add(border);
+        }
     }
 
     // --- 通用分区 ---
 
+    private void PrivacyModeCheckBox_Changed(object sender, RoutedEventArgs e) => MarkChanged();
+    private void CatalogDeleteCheckBox_Changed(object sender, RoutedEventArgs e) => MarkChanged();
+    private void WaterfallRightClickCheckBox_Changed(object sender, RoutedEventArgs e) => MarkChanged();
+
     private void ChangePassword_Click(object sender, RoutedEventArgs e)
     {
-        var current = _database.LoadSetting("app.delete_source_password", "0309");
+        var current = _database.LoadSetting("app.permission_password", "0309");
         var oldInput = Interaction.InputBox("请输入当前密码：", "验证旧密码", "");
         if (oldInput != current)
         {
@@ -177,11 +284,8 @@ public partial class SettingsDialog : Window
             return;
         }
         var newInput = Interaction.InputBox("请输入新密码：", "设置新密码", "");
-        if (string.IsNullOrEmpty(newInput))
-        {
-            return;
-        }
-        _database.SaveSetting("app.delete_source_password", newInput);
+        if (string.IsNullOrEmpty(newInput)) return;
+        _database.SaveSetting("app.permission_password", newInput);
         System.Windows.MessageBox.Show("密码已更新。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -199,11 +303,13 @@ public partial class SettingsDialog : Window
         DataRootTextBox.Text = selected;
         _pendingDataRoot = selected;
         NeedsRestart = true;
+        MarkChanged();
     }
 
     private void OpenBackupFolder_Click(object sender, RoutedEventArgs e)
     {
         RequestedAction = SettingsAction.OpenBackupFolder;
+        _forceClose = true;
         DialogResult = true;
         Close();
     }
@@ -211,6 +317,7 @@ public partial class SettingsDialog : Window
     private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
     {
         RequestedAction = SettingsAction.OpenDataFolder;
+        _forceClose = true;
         DialogResult = true;
         Close();
     }
@@ -218,6 +325,7 @@ public partial class SettingsDialog : Window
     private void CreateBackup_Click(object sender, RoutedEventArgs e)
     {
         RequestedAction = SettingsAction.CreateBackup;
+        _forceClose = true;
         DialogResult = true;
         Close();
     }
@@ -225,80 +333,34 @@ public partial class SettingsDialog : Window
     private void OpenDataSafety_Click(object sender, RoutedEventArgs e)
     {
         RequestedAction = SettingsAction.OpenDataSafety;
+        _forceClose = true;
         DialogResult = true;
         Close();
-    }
-
-    // --- 标记分区 ---
-
-    private void BuildColorSwatches()
-    {
-        BuildSwatchRow(ColorGroupA, PresetGroupA);
-        BuildSwatchRow(ColorGroupB, PresetGroupB);
-    }
-
-    private static void BuildSwatchRow(System.Windows.Controls.Panel container, string[] colors)
-    {
-        container.Children.Clear();
-        foreach (var color in colors)
-        {
-            var border = new Border
-            {
-                Width = 28,
-                Height = 28,
-                CornerRadius = new CornerRadius(6),
-                Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color)),
-                Margin = new Thickness(0, 0, 8, 8),
-                ToolTip = color
-            };
-            container.Children.Add(border);
-        }
     }
 
     // --- 危险分区 ---
-
-    private void ClearAllBookmarks_Click(object sender, RoutedEventArgs e)
-    {
-        var result = System.Windows.MessageBox.Show(
-            "确定清除所有书籍的页标记吗？此操作不可恢复。",
-            "清除标记",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (result != MessageBoxResult.Yes) return;
-
-        var input = Interaction.InputBox("请输入密码以确认：", "密码确认", "");
-        var password = _database.LoadSetting("app.delete_source_password", "0309");
-        if (input != password)
-        {
-            System.Windows.MessageBox.Show("密码不正确。", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        RequestedAction = SettingsAction.ClearAllBookmarks;
-        DialogResult = true;
-        Close();
-    }
 
     private void ResetSettings_Click(object sender, RoutedEventArgs e)
     {
         var result = System.Windows.MessageBox.Show(
             "确定重置所有设置为默认值吗？\n\n将重置：隐私模式、快捷键、阅读器偏好、密码。\n不会影响数据根目录和数据库。",
-            "重置设置",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            "重置设置", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;
 
         _database.SaveSetting("app.privacy_mode", "0");
-        _database.SaveSetting("app.delete_source_password", "0309");
+        _database.SaveSetting("app.permission_password", "0309");
         _database.SaveSetting("app.catalog_delete_source_enabled", "1");
-        _database.SaveShortcut("reader.next", "Right,Space");
-        _database.SaveShortcut("reader.previous", "Left");
+        _database.SaveSetting("app.waterfall_right_click", "0");
+        _database.SaveSetting("mark.color_group", "A");
+        for (var i = 0; i < 5; i++)
+            _database.SaveSetting(KeySettingKeys[i], KeyDefaultValues[i]);
         _database.SaveShortcut("reader.wheelmode", "0");
         _database.SaveShortcut("reader.qualitymode", "Quality");
         _database.SaveShortcut("reader.doublepage.gap", "8");
 
         PrivacyModeChanged = true;
         ShortcutsChanged = true;
+        WaterfallRightClickChanged = true;
 
         System.Windows.MessageBox.Show("所有设置已重置为默认值。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         LoadCurrentSettings();
@@ -320,34 +382,58 @@ public partial class SettingsDialog : Window
         // 目录删除开关
         _database.SaveSetting("app.catalog_delete_source_enabled", CatalogDeleteCheckBox.IsChecked == true ? "1" : "0");
 
-        // 快捷键
-        if (_nextKeys.Count > 0 && _prevKeys.Count > 0)
+        // 瀑布流右键
+        var newWrc = WaterfallRightClickCheckBox.IsChecked == true;
+        var oldWrc = _database.LoadSetting("app.waterfall_right_click", "0") == "1";
+        if (newWrc != oldWrc)
         {
-            _database.SaveShortcut("reader.next", FormatKeys(_nextKeys));
-            _database.SaveShortcut("reader.previous", FormatKeys(_prevKeys));
-            ShortcutsChanged = true;
+            _database.SaveSetting("app.waterfall_right_click", newWrc ? "1" : "0");
+            WaterfallRightClickChanged = true;
         }
+
+        // 快捷键
+        for (var i = 0; i < 5; i++)
+        {
+            var keys = new List<System.Windows.Input.Key>();
+            for (var j = 0; j < 3; j++)
+                if (_keySlots[i, j] != System.Windows.Input.Key.None)
+                    keys.Add(_keySlots[i, j]);
+            _database.SaveSetting(KeySettingKeys[i], FormatKeys(keys));
+        }
+        ShortcutsChanged = true;
+
+        // 阅读偏好
         _database.SaveShortcut("reader.wheelmode", WheelModeComboBox.SelectedIndex.ToString());
         _database.SaveShortcut("reader.qualitymode", QualityModeComboBox.SelectedIndex == 1 ? "Performance" : "Quality");
         _database.SaveShortcut("reader.doublepage.gap", DoublePageGapSlider.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
 
+        // 标记颜色组
+        _database.SaveSetting("mark.color_group", ColorGroupBRadio.IsChecked == true ? "B" : "A");
+
         // 数据根目录
         if (_pendingDataRoot is not null)
-        {
             AppStorage.SaveCustomRoot(_pendingDataRoot);
-        }
 
+        _hasChanges = false;
+        _forceClose = true;
         DialogResult = true;
         Close();
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
+        _forceClose = true;
         DialogResult = false;
         Close();
     }
 
     // --- 工具方法 ---
+
+    private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (DoublePageGapLabel is not null)
+            DoublePageGapLabel.Text = ((int)e.NewValue).ToString();
+    }
 
     private static List<System.Windows.Input.Key> ParseKeys(string text)
     {
@@ -361,6 +447,18 @@ public partial class SettingsDialog : Window
     {
         return string.Join(",", keys);
     }
+
+    private static string FormatKeyName(System.Windows.Input.Key key) => key switch
+    {
+        System.Windows.Input.Key.Space => "Space",
+        System.Windows.Input.Key.Left => "←",
+        System.Windows.Input.Key.Right => "→",
+        System.Windows.Input.Key.Up => "↑",
+        System.Windows.Input.Key.Down => "↓",
+        System.Windows.Input.Key.OemComma => ",",
+        System.Windows.Input.Key.OemPeriod => ".",
+        _ => key.ToString()
+    };
 }
 
 public enum SettingsAction
@@ -369,6 +467,5 @@ public enum SettingsAction
     OpenBackupFolder,
     OpenDataFolder,
     CreateBackup,
-    OpenDataSafety,
-    ClearAllBookmarks
+    OpenDataSafety
 }
