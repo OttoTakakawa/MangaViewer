@@ -2629,7 +2629,7 @@ public partial class MainWindow : Window
         var title = _currentBook.Title ?? "";
         try
         {
-            System.Windows.Clipboard.SetText(title);
+            SafeSetClipboard(title);
             StatusText.Text = string.IsNullOrEmpty(title) ? "标题为空，已复制空字符串。" : $"已复制标题：{title}";
         }
         catch
@@ -2723,18 +2723,19 @@ public partial class MainWindow : Window
             {
                 case Key.C:
                     if (!string.IsNullOrEmpty(box.SelectedText))
-                        System.Windows.Clipboard.SetText(box.SelectedText);
+                        SafeSetClipboard(box.SelectedText);
                     e.Handled = true;
                     break;
                 case Key.V:
-                    if (!box.IsReadOnly && System.Windows.Clipboard.ContainsText())
-                        box.SelectedText = System.Windows.Clipboard.GetText();
+                    var clipText = SafeGetClipboard();
+                    if (!box.IsReadOnly && clipText != null)
+                        box.SelectedText = clipText;
                     e.Handled = true;
                     break;
                 case Key.X:
                     if (!box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText))
                     {
-                        System.Windows.Clipboard.SetText(box.SelectedText);
+                        SafeSetClipboard(box.SelectedText);
                         box.SelectedText = "";
                     }
                     e.Handled = true;
@@ -2749,6 +2750,46 @@ public partial class MainWindow : Window
         {
             AppLogger.Error("keyboard", ex, "PreviewKeyDown handler error");
         }
+    }
+
+    /// <summary>
+    /// 安全写入剪贴板，带重试（中文输入法组合期间剪贴板可能被锁定）
+    /// </summary>
+    private static void SafeSetClipboard(string text)
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            try
+            {
+                System.Windows.Clipboard.SetDataObject(text, true);
+                return;
+            }
+            catch (System.Runtime.InteropServices.COMException) when (i < 2)
+            {
+                System.Threading.Thread.Sleep(30);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 安全读取剪贴板文本，失败返回 null
+    /// </summary>
+    private static string? SafeGetClipboard()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            try
+            {
+                return System.Windows.Clipboard.ContainsText()
+                    ? System.Windows.Clipboard.GetText()
+                    : null;
+            }
+            catch (System.Runtime.InteropServices.COMException) when (i < 2)
+            {
+                System.Threading.Thread.Sleep(30);
+            }
+        }
+        return null;
     }
 
     private static string EmptyAsPlaceholder(string value)
