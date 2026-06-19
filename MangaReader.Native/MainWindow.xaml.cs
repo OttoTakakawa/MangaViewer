@@ -777,6 +777,69 @@ public partial class MainWindow : Window
         }
     }
 
+    private void BookCard_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_database.LoadSetting("app.waterfall_right_click", "0") != "1") return;
+        if (sender is not FrameworkElement fe || fe.DataContext is not MangaBook book) return;
+
+        // 阻止 ListBox 选中和详情页导航
+        e.Handled = true;
+
+        var menu = new System.Windows.Controls.ContextMenu();
+
+        // 切换卡片样式
+        var styleItem = new System.Windows.Controls.MenuItem { Header = $"切换卡片样式（当前：{book.StyleName}）" };
+        styleItem.Click += (_, _) =>
+        {
+            book.CycleBookStyle();
+            _ = Task.Run(() => _database.SaveMetadata(book));
+            book.NotifyAll();
+            ScheduleBookViewRefresh(refreshShelfOverview: false);
+            StatusText.Text = $"已切换《{book.Title}》的卡片样式：{book.StyleName}。";
+        };
+        menu.Items.Add(styleItem);
+
+        // 隐藏/取消隐藏
+        var hideItem = new System.Windows.Controls.MenuItem { Header = book.IsHidden ? "取消隐藏" : "隐藏作品" };
+        hideItem.Click += (_, _) =>
+        {
+            book.IsHidden = !book.IsHidden;
+            _ = Task.Run(() => _database.SaveMetadata(book));
+            book.NotifyAll();
+            StatusText.Text = book.IsHidden ? $"已隐藏《{book.Title}》。" : $"已取消隐藏《{book.Title}》。";
+        };
+        menu.Items.Add(hideItem);
+
+        // 隐私封面
+        var privacyItem = new System.Windows.Controls.MenuItem { Header = book.IsPrivacyCover ? "取消隐私封面" : "保持隐私封面" };
+        privacyItem.Click += (_, _) =>
+        {
+            book.IsPrivacyCover = !book.IsPrivacyCover;
+            _ = Task.Run(() => _database.SaveMetadata(book));
+            book.NotifyAll();
+            StatusText.Text = book.IsPrivacyCover ? $"已设置《{book.Title}》为隐私封面。" : $"已取消《{book.Title}》的隐私封面。";
+        };
+        menu.Items.Add(privacyItem);
+
+        menu.Items.Add(new System.Windows.Controls.Separator());
+
+        // 打开源文件夹
+        var openItem = new System.Windows.Controls.MenuItem { Header = "打开源文件夹" };
+        openItem.Click += (_, _) =>
+        {
+            if (Directory.Exists(book.FolderPath))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = book.FolderPath,
+                    UseShellExecute = true
+                });
+        };
+        menu.Items.Add(openItem);
+
+        menu.PlacementTarget = fe;
+        menu.IsOpen = true;
+    }
+
     private bool _isRubberBanding;
     private System.Windows.Point _rubberStart;
     private bool _rubberSubtract;

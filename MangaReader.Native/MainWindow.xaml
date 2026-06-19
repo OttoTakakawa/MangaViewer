@@ -666,6 +666,7 @@
                     MouseLeave="BookCard_MouseLeave"
                     PreviewMouseLeftButtonDown="BookCard_PreviewMouseLeftButtonDown"
                     PreviewMouseLeftButtonUp="BookCard_PreviewMouseLeftButtonUp"
+                    PreviewMouseRightButtonDown="BookCard_PreviewMouseRightButtonDown"
                     Loaded="BookCoverHost_Loaded"
                     Unloaded="BookCoverHost_Unloaded">
                 <Border.RenderTransform>
