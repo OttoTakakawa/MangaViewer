@@ -2708,6 +2708,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control) return;
+        if (sender is not System.Windows.Controls.TextBox box) return;
+
+        switch (e.Key)
+        {
+            case Key.C when !string.IsNullOrEmpty(box.SelectedText):
+                System.Windows.Clipboard.SetText(box.SelectedText);
+                e.Handled = true;
+                break;
+            case Key.V when !box.IsReadOnly:
+                if (System.Windows.Clipboard.ContainsText())
+                    box.SelectedText = System.Windows.Clipboard.GetText();
+                e.Handled = true;
+                break;
+            case Key.X when !box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText):
+                System.Windows.Clipboard.SetText(box.SelectedText);
+                box.SelectedText = "";
+                e.Handled = true;
+                break;
+            case Key.A:
+                box.SelectAll();
+                e.Handled = true;
+                break;
+        }
+    }
+
     private static string EmptyAsPlaceholder(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "未填写" : value;
