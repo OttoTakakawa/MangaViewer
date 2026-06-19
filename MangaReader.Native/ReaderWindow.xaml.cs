@@ -618,11 +618,13 @@ public partial class ReaderWindow : Window
 
     private void ReaderWindow_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (HandleFixedShortcut(e.Key))
+        if (Keyboard.Modifiers == ModifierKeys.None && HandleFixedShortcut(e.Key))
         {
             e.Handled = true;
             return;
         }
+
+        if (Keyboard.Modifiers != ModifierKeys.None) return;
 
         if (_nextKeys.Contains(e.Key))
         {
