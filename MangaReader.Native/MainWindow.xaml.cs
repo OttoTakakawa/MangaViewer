@@ -3414,6 +3414,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 取消显示隐藏时，同步退出只看隐藏模式
+        if (ShowHiddenBox?.IsChecked != true && _onlyHiddenMode)
+        {
+            _onlyHiddenMode = false;
+            OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+        }
+
         RefreshLibraryViews(tagManager: false, sort: false);
     }
 
