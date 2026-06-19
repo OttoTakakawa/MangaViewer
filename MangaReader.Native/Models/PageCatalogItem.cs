@@ -7,6 +7,7 @@ namespace MangaReader.Native.Models;
 public sealed class PageCatalogItem : INotifyPropertyChanged
 {
     private BitmapSource? _thumbnail;
+    private bool _isBookmarked;
 
     public PageCatalogItem(int pageIndex, string path)
     {
@@ -24,6 +25,16 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
         set
         {
             _thumbnail = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsBookmarked
+    {
+        get => _isBookmarked;
+        set
+        {
+            _isBookmarked = value;
             OnPropertyChanged();
         }
     }

@@ -1,6 +1,8 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
+using Microsoft.VisualBasic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -42,6 +44,9 @@ public partial class MainWindow : Window
     private const int InitialDetailCatalogThumbnailLimit = 96;
     private const string PrivacyModeSettingKey = "app.privacy_mode";
     private const string CustomTagColorsSettingKey = "tag.custom_colors";
+    private const string DeleteSourcePasswordKey = "app.delete_source_password";
+    private const string DefaultDeleteSourcePassword = "0309";
+    private const string CatalogDeleteSourceEnabledKey = "app.catalog_delete_source_enabled";
     private const string TagDragDataFormat = "MangaReader.TagName";
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
@@ -1112,15 +1117,151 @@ public partial class MainWindow : Window
             return;
         }
 
-        await Task.Run(() => _database.DeleteBook(book));
-        _allBooks.Remove(book);
-        Books.Remove(book);
-        _currentBook = null;
-        BooksList.SelectedItem = null;
-        SetDetailVisible(false);
-        RefreshLibraryViews(tagManager: false, authors: true);
-        RefreshHomeShelves();
-        StatusText.Text = $"已删除《{book.Title}》的库记录，源文件未删除。";
+        try
+        {
+            await Task.Run(() => _database.DeleteBook(book));
+            _allBooks.Remove(book);
+            _currentBook = null;
+            BooksList.SelectedItem = null;
+            SetDetailVisible(false);
+            RefreshLibraryViews(tagManager: false, authors: true);
+            RefreshHomeShelves();
+            StatusText.Text = $"已删除《{book.Title}》的库记录，源文件未删除。";
+            AppLogger.Info("delete-book", $"Deleted library record: {book.Title}, folder={book.FolderPath}");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"删除库记录失败：{ex.Message}";
+            AppLogger.Error("delete-book", ex, $"Failed to delete library record: {book.Title}");
+        }
+    }
+
+    private async void DeleteSourceFiles_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentBook is null) return;
+        var book = _currentBook;
+
+        if (!IsSafeFolderPathForDeletion(book.FolderPath, _storage.Root))
+        {
+            StatusText.Text = "源文件夹路径不合法或为空，已取消删除。";
+            AppLogger.Warn("delete-source", $"Rejected unsafe folder path: {book.FolderPath}");
+            return;
+        }
+
+        var first = System.Windows.MessageBox.Show(
+            $"确定永久删除《{book.Title}》的源文件夹及其所有内容吗？\n\n" +
+            $"路径：{book.FolderPath}\n\n" +
+            "此操作不可恢复！",
+            "删除源文件",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (first != MessageBoxResult.Yes) return;
+
+        var input = Interaction.InputBox(
+            "请输入密码以确认删除源文件：",
+            "密码确认",
+            "");
+
+        var password = _database.LoadSetting(DeleteSourcePasswordKey, DefaultDeleteSourcePassword);
+
+        if (string.IsNullOrEmpty(input) || input != password)
+        {
+            StatusText.Text = "密码不正确，已取消。";
+            return;
+        }
+
+        await DeleteSourceFilesAsync();
+    }
+
+    private async Task DeleteSourceFilesAsync()
+    {
+        var book = _currentBook!;
+        var folderPath = book.FolderPath;
+        var title = book.Title;
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                if (Directory.Exists(folderPath))
+                {
+                    Directory.Delete(folderPath, recursive: true);
+                }
+
+                _database.DeleteBook(book);
+            });
+
+            _allBooks.Remove(book);
+            _currentBook = null;
+            BooksList.SelectedItem = null;
+            SetDetailVisible(false);
+            RefreshLibraryViews(tagManager: false, authors: true);
+            RefreshHomeShelves();
+            StatusText.Text = $"已删除《{title}》的源文件夹及库记录。";
+            AppLogger.Info("delete-source", $"Deleted source files and record: {title}, folder={folderPath}");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"删除失败：{ex.Message}";
+            AppLogger.Error("delete-source", ex, $"Failed to delete source files: {title}, folder={folderPath}");
+        }
+    }
+
+    private static bool IsSafeFolderPathForDeletion(string folderPath, string appDataRoot)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath))
+            return false;
+
+        if (!Path.IsPathFullyQualified(folderPath))
+            return false;
+
+        string normalized;
+        try
+        {
+            normalized = Path.GetFullPath(folderPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var root = Path.GetPathRoot(normalized);
+        if (string.Equals(root, normalized, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var systemDirs = new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            Environment.GetFolderPath(Environment.SpecialFolder.System),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+        }
+        .Where(d => !string.IsNullOrEmpty(d))
+        .Select(d => Path.GetFullPath(d).TrimEnd(Path.DirectorySeparatorChar))
+        .ToList();
+
+        foreach (var sysDir in systemDirs)
+        {
+            if (normalized.Equals(sysDir, StringComparison.OrdinalIgnoreCase) ||
+                normalized.StartsWith(sysDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        try
+        {
+            var appRoot = Path.GetFullPath(appDataRoot)
+                .TrimEnd(Path.DirectorySeparatorChar);
+            if (normalized.Equals(appRoot, StringComparison.OrdinalIgnoreCase) ||
+                normalized.StartsWith(appRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+        catch
+        {
+        }
+
+        return true;
     }
 
     private void ToggleEditMode_Click(object sender, RoutedEventArgs e)
@@ -1231,14 +1372,22 @@ public partial class MainWindow : Window
 
     private void EnsureDetailCatalogItems(MangaBook book)
     {
+        var bookmarks = _database.LoadBookmarks(book.Id);
         if (DetailPageCatalogItems.Count == book.Pages.Count
             && DetailPageCatalogItems.Select(item => item.Path).SequenceEqual(book.Pages, StringComparer.OrdinalIgnoreCase))
         {
+            foreach (var item in DetailPageCatalogItems)
+            {
+                item.IsBookmarked = bookmarks.Contains(item.PageIndex);
+            }
             return;
         }
 
         DetailPageCatalogItems.ReplaceRange(book.Pages
-            .Select((path, index) => new PageCatalogItem(index, path))
+            .Select((path, index) => new PageCatalogItem(index, path)
+            {
+                IsBookmarked = bookmarks.Contains(index)
+            })
             .ToList());
     }
 
@@ -1382,6 +1531,97 @@ public partial class MainWindow : Window
         FillMetadataEditors(book);
         ScheduleBookViewRefresh(refreshShelfOverview: false);
         StatusText.Text = $"已将第 {item.PageIndex + 1} 页设为封面。";
+    }
+
+    private void StartReadingFromCatalog_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detailCatalogBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var book = _detailCatalogBook;
+        if (item.PageIndex < 0 || item.PageIndex >= book.Pages.Count)
+        {
+            return;
+        }
+
+        HideDetailCatalog();
+        book.LastReadPageIndex = item.PageIndex;
+        _ = Task.Run(() => _database.SaveProgress(book));
+        OpenBook(book);
+    }
+
+    private void ToggleDetailCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detailCatalogBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var book = _detailCatalogBook;
+        var newState = !item.IsBookmarked;
+        item.IsBookmarked = newState;
+
+        _ = Task.Run(() =>
+        {
+            if (newState)
+            {
+                _database.AddBookmark(book.Id, item.PageIndex);
+            }
+            else
+            {
+                _database.RemoveBookmark(book.Id, item.PageIndex);
+            }
+        });
+
+        StatusText.Text = newState
+            ? $"已标记第 {item.PageIndex + 1} 页。"
+            : $"已取消标记第 {item.PageIndex + 1} 页。";
+    }
+
+    private async void DeleteSourceFromCatalog_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detailCatalogBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var enabled = _database.LoadSetting(CatalogDeleteSourceEnabledKey, "1");
+        if (enabled != "1")
+        {
+            StatusText.Text = "目录中删除源文件功能已禁用。";
+            return;
+        }
+
+        var book = _detailCatalogBook;
+        if (!IsSafeFolderPathForDeletion(book.FolderPath, _storage.Root))
+        {
+            StatusText.Text = "源文件夹路径不合法，已取消。";
+            return;
+        }
+
+        var first = System.Windows.MessageBox.Show(
+            $"确定永久删除《{book.Title}》的源文件夹及其所有内容吗？\n\n路径：{book.FolderPath}\n\n此操作不可恢复！",
+            "删除源文件",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (first != MessageBoxResult.Yes) return;
+
+        var input = Interaction.InputBox(
+            "请输入密码以确认删除源文件：",
+            "密码确认",
+            "");
+        var password = _database.LoadSetting(DeleteSourcePasswordKey, DefaultDeleteSourcePassword);
+        if (string.IsNullOrEmpty(input) || input != password)
+        {
+            StatusText.Text = "密码不正确，已取消。";
+            return;
+        }
+
+        HideDetailCatalog();
+        _currentBook = book;
+        await DeleteSourceFilesAsync();
     }
 
     private async void ManualBackup_Click(object sender, RoutedEventArgs e)
@@ -2012,6 +2252,147 @@ public partial class MainWindow : Window
         RefreshLibraryViews(authors: false, sort: false);
         FillCurrentBookIfAffected(selectedBooks);
         StatusText.Text = $"已批量移除 Tag：{tag}，影响 {updates.Count} 本。";
+    }
+
+    private async void BatchDeleteRecords_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBooks = GetSelectedBatchBooks();
+        if (selectedBooks.Count == 0)
+        {
+            StatusText.Text = "请先勾选需要批量处理的漫画。";
+            return;
+        }
+
+        var result = System.Windows.MessageBox.Show(
+            $"确定从书库中删除选中的 {selectedBooks.Count} 本记录吗？\n\n这不会删除硬盘里的漫画文件，只会删除软件内的作者、Tag、进度、封面页等记录。",
+            "批量删除库记录",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+
+        var input = Interaction.InputBox(
+            $"请输入密码以确认批量删除 {selectedBooks.Count} 本库记录：",
+            "密码确认",
+            "");
+        var password = _database.LoadSetting(DeleteSourcePasswordKey, DefaultDeleteSourcePassword);
+        if (string.IsNullOrEmpty(input) || input != password)
+        {
+            StatusText.Text = "密码不正确，已取消。";
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                foreach (var book in selectedBooks)
+                {
+                    _database.DeleteBook(book);
+                }
+            });
+
+            foreach (var book in selectedBooks)
+            {
+                _allBooks.Remove(book);
+            }
+
+            if (_currentBook is not null && selectedBooks.Contains(_currentBook))
+            {
+                _currentBook = null;
+                BooksList.SelectedItem = null;
+                SetDetailVisible(false);
+            }
+
+            RefreshLibraryViews(tagManager: false, authors: true);
+            RefreshHomeShelves();
+            UpdateBatchSelectionState();
+            StatusText.Text = $"已批量删除 {selectedBooks.Count} 本库记录，源文件未删除。";
+            AppLogger.Info("batch-delete-records", $"Batch deleted {selectedBooks.Count} library records.");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"批量删除库记录失败：{ex.Message}";
+            AppLogger.Error("batch-delete-records", ex, $"Failed to batch delete {selectedBooks.Count} records.");
+        }
+    }
+
+    private async void BatchDeleteSourceFiles_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBooks = GetSelectedBatchBooks();
+        if (selectedBooks.Count == 0)
+        {
+            StatusText.Text = "请先勾选需要批量处理的漫画。";
+            return;
+        }
+
+        var safeBooks = selectedBooks
+            .Where(b => IsSafeFolderPathForDeletion(b.FolderPath, _storage.Root))
+            .ToList();
+        if (safeBooks.Count == 0)
+        {
+            StatusText.Text = "没有可安全删除的源文件夹。";
+            return;
+        }
+
+        var skipped = selectedBooks.Count - safeBooks.Count;
+
+        var first = System.Windows.MessageBox.Show(
+            $"确定永久删除选中 {safeBooks.Count} 本的源文件夹及所有内容吗？" +
+            (skipped > 0 ? $"\n\n（{skipped} 本路径不合法已跳过）" : "") +
+            "\n\n此操作不可恢复！",
+            "批量删除源文件",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (first != MessageBoxResult.Yes) return;
+
+        var input = Interaction.InputBox(
+            $"请输入密码以确认批量删除 {safeBooks.Count} 本源文件：",
+            "密码确认",
+            "");
+        var password = _database.LoadSetting(DeleteSourcePasswordKey, DefaultDeleteSourcePassword);
+        if (string.IsNullOrEmpty(input) || input != password)
+        {
+            StatusText.Text = "密码不正确，已取消。";
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                foreach (var book in safeBooks)
+                {
+                    if (Directory.Exists(book.FolderPath))
+                    {
+                        Directory.Delete(book.FolderPath, recursive: true);
+                    }
+                    _database.DeleteBook(book);
+                }
+            });
+
+            foreach (var book in safeBooks)
+            {
+                _allBooks.Remove(book);
+            }
+
+            if (_currentBook is not null && safeBooks.Contains(_currentBook))
+            {
+                _currentBook = null;
+                BooksList.SelectedItem = null;
+                SetDetailVisible(false);
+            }
+
+            RefreshLibraryViews(tagManager: false, authors: true);
+            RefreshHomeShelves();
+            UpdateBatchSelectionState();
+            StatusText.Text = $"已批量删除 {safeBooks.Count} 本的源文件夹及库记录。";
+            AppLogger.Info("batch-delete-source", $"Batch deleted {safeBooks.Count} source files and records.");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"批量删除源文件失败：{ex.Message}";
+            AppLogger.Error("batch-delete-source", ex, $"Failed to batch delete source files.");
+        }
     }
 
     private void TagSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -2691,6 +3072,7 @@ public partial class MainWindow : Window
 
         EditModeButton.Content = "编辑";
         EditModeButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+        DeleteSourceButton.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         EditModeHintText.Text = enabled ? "编辑模式：修改后点击“保存信息”" : "只读模式：点击“编辑”后修改信息";
         ReadOnlyInfoPanel.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         EditFormPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
@@ -2712,44 +3094,23 @@ public partial class MainWindow : Window
 
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        try
-        {
-            if (Keyboard.Modifiers != ModifierKeys.Control) return;
-            var focused = System.Windows.Input.Keyboard.FocusedElement;
+        // 仅处理 Ctrl+X（Ctrl+C/V/A 交给 WPF 原生命令路由）
+        if (Keyboard.Modifiers != ModifierKeys.Control) return;
+        var key = e.Key == Key.ImeProcessed ? e.ImeProcessedKey : e.Key;
+        if (key != Key.X) return;
+        if (Keyboard.FocusedElement is not System.Windows.Controls.TextBox box) return;
+        if (box.IsReadOnly || string.IsNullOrEmpty(box.SelectedText)) return;
 
-            if (focused is not System.Windows.Controls.TextBox box) return;
-
-            switch (e.Key)
-            {
-                case Key.C:
-                    if (!string.IsNullOrEmpty(box.SelectedText))
-                        SafeSetClipboard(box.SelectedText);
-                    e.Handled = true;
-                    break;
-                case Key.V:
-                    var clipText = SafeGetClipboard();
-                    if (!box.IsReadOnly && clipText != null)
-                        box.SelectedText = clipText;
-                    e.Handled = true;
-                    break;
-                case Key.X:
-                    if (!box.IsReadOnly && !string.IsNullOrEmpty(box.SelectedText))
-                    {
-                        SafeSetClipboard(box.SelectedText);
-                        box.SelectedText = "";
-                    }
-                    e.Handled = true;
-                    break;
-                case Key.A:
-                    box.SelectAll();
-                    e.Handled = true;
-                    break;
-            }
-        }
-        catch (Exception ex)
+        // 延迟到按键事件处理完毕后再执行剪切，避免 IME 干扰文本删除
+        var text = box.SelectedText;
+        var start = box.SelectionStart;
+        e.Handled = true;
+        Dispatcher.BeginInvoke(() =>
         {
-            AppLogger.Error("keyboard", ex, "PreviewKeyDown handler error");
-        }
+            try { System.Windows.Clipboard.SetText(text); } catch { }
+            box.Text = box.Text.Remove(start, text.Length);
+            box.Select(start, 0);
+        }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
     /// <summary>
@@ -2769,27 +3130,6 @@ public partial class MainWindow : Window
                 System.Threading.Thread.Sleep(30);
             }
         }
-    }
-
-    /// <summary>
-    /// 安全读取剪贴板文本，失败返回 null
-    /// </summary>
-    private static string? SafeGetClipboard()
-    {
-        for (var i = 0; i < 3; i++)
-        {
-            try
-            {
-                return System.Windows.Clipboard.ContainsText()
-                    ? System.Windows.Clipboard.GetText()
-                    : null;
-            }
-            catch (System.Runtime.InteropServices.COMException) when (i < 2)
-            {
-                System.Threading.Thread.Sleep(30);
-            }
-        }
-        return null;
     }
 
     private static string EmptyAsPlaceholder(string value)

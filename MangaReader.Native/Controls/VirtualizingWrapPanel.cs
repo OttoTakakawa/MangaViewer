@@ -271,13 +271,25 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
         {
             var generatorPosition = new GeneratorPosition(childIndex, 0);
             var itemIndex = generator.IndexFromGeneratorPosition(generatorPosition);
+            if (itemIndex < 0)
+            {
+                RemoveInternalChildRange(childIndex, 1);
+                continue;
+            }
+
             if (itemIndex >= firstIndex && itemIndex <= lastIndex)
             {
                 continue;
             }
 
             RemoveInternalChildRange(childIndex, 1);
-            generator.Remove(generatorPosition, 1);
+            try
+            {
+                generator.Remove(generatorPosition, 1);
+            }
+            catch
+            {
+            }
         }
     }
 

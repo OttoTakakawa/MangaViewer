@@ -6,6 +6,7 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <DropShadowEffect x:Key="ToolbarShadow" Color="#000000" BlurRadius="26" ShadowDepth="8" Opacity="0.28"/>
         <Style TargetType="Button">
             <Setter Property="MinHeight" Value="34"/>
@@ -371,6 +372,7 @@
               Panel.ZIndex="16"
               Background="#99000000"
               Visibility="Collapsed"
+              MouseLeftButtonDown="PageCatalogOverlay_MouseLeftButtonDown"
               PreviewMouseWheel="PageCatalogOverlay_PreviewMouseWheel">
             <Border Margin="42"
                     Padding="20"
@@ -378,7 +380,8 @@
                     Background="#F0080A0E"
                     BorderBrush="#22FFFFFF"
                     BorderThickness="1"
-                    Effect="{StaticResource ToolbarShadow}">
+                    Effect="{StaticResource ToolbarShadow}"
+                    MouseLeftButtonDown="PageCatalogContent_MouseLeftButtonDown">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -447,6 +450,7 @@
                                     <Border.ContextMenu>
                                         <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                             <MenuItem Header="设为封面" Click="SetCatalogPageAsCover_Click"/>
+                                            <MenuItem Header="标记此页" Click="ToggleCatalogBookmark_Click"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Grid>
@@ -454,13 +458,23 @@
                                             <RowDefinition Height="*"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
-                                        <Border CornerRadius="{StaticResource RadiusControl}"
-                                                Background="#0F172A"
-                                                ClipToBounds="True">
-                                            <Image Source="{Binding Thumbnail}"
-                                                   Stretch="Uniform"
-                                                   RenderOptions.BitmapScalingMode="LowQuality"/>
-                                        </Border>
+                                        <Grid>
+                                            <Border CornerRadius="{StaticResource RadiusControl}"
+                                                    Background="#0F172A"
+                                                    ClipToBounds="True">
+                                                <Image Source="{Binding Thumbnail}"
+                                                       Stretch="Uniform"
+                                                       RenderOptions.BitmapScalingMode="LowQuality"/>
+                                            </Border>
+                                            <Path Visibility="{Binding IsBookmarked, Converter={StaticResource BoolToVisibility}}"
+                                                  HorizontalAlignment="Right"
+                                                  VerticalAlignment="Top"
+                                                  Margin="0,0,6,6"
+                                                  Data="M0,0 L20,0 L20,24 L10,18 L0,24 Z"
+                                                  Fill="#EF4444"
+                                                  Stroke="#DC2626"
+                                                  StrokeThickness="1"/>
+                                        </Grid>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding PageText}"
                                                    Margin="0,8,0,0"
@@ -536,9 +550,8 @@
                     <Button x:Name="BackgroundButton" Content="背景" Click="CycleBackgroundButton_Click"/>
                     <Button x:Name="CatalogButton" Content="目录" Click="CatalogButton_Click"/>
                 </StackPanel>
-                <Slider Grid.Column="1" x:Name="ZoomSlider" Minimum="0.05" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="ZoomSlider_ValueChanged" Margin="0,0,14,0"/>
                 <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
-                <Slider Grid.Column="3" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" TickFrequency="2" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
+                <Slider Grid.Column="3" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
                 <StackPanel Grid.Column="4" Orientation="Horizontal">
                     <ComboBox x:Name="WheelModeBox" Width="112" SelectionChanged="WheelModeBox_SelectionChanged">
                         <ComboBoxItem Content="滚轮翻页" IsSelected="True"/>
@@ -549,7 +562,7 @@
                         <ComboBoxItem Content="单页" IsSelected="True"/>
                         <ComboBoxItem Content="双页"/>
                     </ComboBox>
-                    <ComboBox x:Name="DirectionBox" Width="104" SelectionChanged="ReadingModeBox_SelectionChanged">
+                    <ComboBox x:Name="DirectionBox" Width="118" SelectionChanged="ReadingModeBox_SelectionChanged">
                         <ComboBoxItem Content="从左到右" IsSelected="True"/>
                         <ComboBoxItem Content="从右到左"/>
                     </ComboBox>

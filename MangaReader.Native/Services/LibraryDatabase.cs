@@ -116,11 +116,20 @@ public sealed class LibraryDatabase
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS book_bookmarks (
+                book_id TEXT NOT NULL,
+                page_index INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (book_id, page_index),
+                FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+            );
+
             CREATE INDEX IF NOT EXISTS idx_books_author ON books(author);
             CREATE INDEX IF NOT EXISTS idx_books_reading_status ON books(reading_status);
             CREATE INDEX IF NOT EXISTS idx_books_is_favorite ON books(is_favorite);
             CREATE INDEX IF NOT EXISTS idx_books_is_hidden ON books(is_hidden);
             CREATE INDEX IF NOT EXISTS idx_books_folder_path ON books(folder_path);
+            CREATE INDEX IF NOT EXISTS idx_book_bookmarks_book_id ON book_bookmarks(book_id);
             """;
         command.ExecuteNonQuery();
         EnsureColumn(connection, "books", "character_name", "TEXT NOT NULL DEFAULT ''");
@@ -556,10 +565,20 @@ public sealed class LibraryDatabase
     {
         BackupDatabase("before-delete-book", force: true);
         using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM books WHERE id = $id;";
-        command.Parameters.AddWithValue("$id", book.Id);
-        command.ExecuteNonQuery();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM books WHERE id = $id;";
+            command.Parameters.AddWithValue("$id", book.Id);
+            command.ExecuteNonQuery();
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public void UpdateFolderPath(MangaBook book)
@@ -602,6 +621,56 @@ public sealed class LibraryDatabase
             result[reader.GetString(0)] = reader.GetString(1);
         }
         return result;
+    }
+
+    public HashSet<int> LoadBookmarks(string bookId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT page_index FROM book_bookmarks WHERE book_id = $bookId ORDER BY page_index ASC;";
+        command.Parameters.AddWithValue("$bookId", bookId);
+        using var reader = command.ExecuteReader();
+        var result = new HashSet<int>();
+        while (reader.Read())
+        {
+            result.Add(reader.GetInt32(0));
+        }
+        return result;
+    }
+
+    public void AddBookmark(string bookId, int pageIndex)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO book_bookmarks(book_id, page_index, created_at)
+            VALUES ($bookId, $pageIndex, $createdAt)
+            ON CONFLICT(book_id, page_index) DO NOTHING;
+            """;
+        command.Parameters.AddWithValue("$bookId", bookId);
+        command.Parameters.AddWithValue("$pageIndex", pageIndex);
+        command.Parameters.AddWithValue("$createdAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void RemoveBookmark(string bookId, int pageIndex)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM book_bookmarks WHERE book_id = $bookId AND page_index = $pageIndex;";
+        command.Parameters.AddWithValue("$bookId", bookId);
+        command.Parameters.AddWithValue("$pageIndex", pageIndex);
+        command.ExecuteNonQuery();
+    }
+
+    public void RemoveAllBookmarks(string bookId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM book_bookmarks WHERE book_id = $bookId;";
+        command.Parameters.AddWithValue("$bookId", bookId);
+        command.ExecuteNonQuery();
     }
 
     public string LoadSetting(string key, string defaultValue = "")
@@ -951,6 +1020,7 @@ public sealed class LibraryDatabase
 
 
 public sealed record ManagedTagRecord(string Name, string Category, bool IsExclusive, string UpdatedAt, string Color = "");
+public sealed record BookmarkRecord(string BookId, int PageIndex, string CreatedAt);
 
     private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
     {

@@ -154,15 +154,15 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="AppTagChipText" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="#263238"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="DetailHeroTagChipBorder" TargetType="Border" BasedOn="{StaticResource AppTagChipBorder}">
-            <Setter Property="MinHeight" Value="32"/>
-            <Setter Property="Padding" Value="11,0"/>
-            <Setter Property="Margin" Value="0,0,7,8"/>
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="BatchActionButton" TargetType="Button" BasedOn="{StaticResource TinyButton}">
@@ -173,6 +173,12 @@
             <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+        </Style>
+        <Style x:Key="BatchDangerActionButton" TargetType="Button" BasedOn="{StaticResource AppDangerButton}">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
         <Style x:Key="HeaderActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="Height" Value="40"/>
@@ -1354,6 +1360,8 @@
                                 <Button Content="应用" Click="BatchApplyStyle_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="+ Tag" Click="BatchAddTag_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="- Tag" Click="BatchRemoveTag_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
+                                <Button Content="删库记录" Click="BatchDeleteRecords_Click" Style="{StaticResource BatchDangerActionButton}" Margin="0,0,6,0"/>
+                                <Button Content="删源文件" Click="BatchDeleteSourceFiles_Click" Style="{StaticResource BatchDangerActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="退出" Click="ExitBatchSelectionMode_Click" Style="{StaticResource BatchActionButton}"/>
                             </WrapPanel>
                         </Border>
@@ -2477,7 +2485,7 @@
                                             <TextBlock Text="危险操作" Style="{StaticResource DetailSectionTitleText}" Margin="0,0,0,8"/>
                                             <StackPanel Orientation="Horizontal">
                                                 <Button x:Name="PrivacyCoverButtonEdit"
-                                                        Content="保持隐私封面"
+                                                        Content="隐私封面"
                                                         Click="ToggleBookPrivacyCover_Click"
                                                         Style="{StaticResource DetailFileActionButton}"/>
                                                 <Button x:Name="HideBookButtonEdit"
@@ -2487,20 +2495,32 @@
                                                 <Button Content="删除库记录"
                                                         Click="DeleteBook_Click"
                                                         Style="{StaticResource DetailDangerInlineButton}"/>
+                                                <Button x:Name="DeleteSourceButton"
+                                                        Content="删除源文件"
+                                                        Click="DeleteSourceFiles_Click"
+                                                        Style="{StaticResource DetailDangerInlineButton}"
+                                                        Visibility="Collapsed"/>
                                             </StackPanel>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1"
                                                     Orientation="Horizontal"
                                                     VerticalAlignment="Bottom"
-                                                    Margin="18,0,0,0">
+                                                    Margin="24,0,0,0">
                                             <Button Content="取消"
                                                     Click="ToggleEditMode_Click"
                                                     Style="{StaticResource DetailHeroSecondaryButton}"
+                                                    Height="38"
+                                                    MinHeight="38"
+                                                    Padding="18,0"
                                                     Margin="0,0,10,0"/>
                                             <Button x:Name="SaveMetadataButton"
                                                     Content="保存信息"
                                                     Click="SaveMetadata_Click"
-                                                    Style="{StaticResource DetailHeroPrimaryButton}"/>
+                                                    Style="{StaticResource DetailHeroPrimaryButton}"
+                                                    Height="38"
+                                                    MinHeight="38"
+                                                    Padding="18,0"
+                                                    MinWidth="0"/>
                                         </StackPanel>
                                     </Grid>
 
@@ -2562,6 +2582,8 @@
                                        Text="目录"
                                        FontSize="24"
                                        FontWeight="Black"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="900"
                                        Foreground="{StaticResource Brush.TextPrimary}"/>
                         </StackPanel>
                         <Button Grid.Column="1"
@@ -2617,7 +2639,10 @@
                                             MouseLeftButtonDown="DetailCatalogItem_MouseLeftButtonDown">
                                         <Border.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="从此处开始阅读" Click="StartReadingFromCatalog_Click"/>
                                                 <MenuItem Header="设为封面" Click="SetDetailCatalogPageAsCover_Click"/>
+                                                <MenuItem Header="标记此页" Click="ToggleDetailCatalogBookmark_Click"/>
+                                                <MenuItem Header="删除源文件（需密码）" Click="DeleteSourceFromCatalog_Click"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Grid>
@@ -2625,13 +2650,23 @@
                                                 <RowDefinition Height="*"/>
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
-                                            <Border CornerRadius="{StaticResource RadiusControl}"
-                                                    Background="#111827"
-                                                    ClipToBounds="True">
-                                                <Image Source="{Binding Thumbnail}"
-                                                       Stretch="Uniform"
-                                                       RenderOptions.BitmapScalingMode="LowQuality"/>
-                                            </Border>
+                                            <Grid>
+                                                <Border CornerRadius="{StaticResource RadiusControl}"
+                                                        Background="#111827"
+                                                        ClipToBounds="True">
+                                                    <Image Source="{Binding Thumbnail}"
+                                                           Stretch="Uniform"
+                                                           RenderOptions.BitmapScalingMode="LowQuality"/>
+                                                </Border>
+                                                <Path Visibility="{Binding IsBookmarked, Converter={StaticResource BoolToVisibility}}"
+                                                      HorizontalAlignment="Right"
+                                                      VerticalAlignment="Top"
+                                                      Margin="0,0,6,6"
+                                                      Data="M0,0 L20,0 L20,24 L10,18 L0,24 Z"
+                                                      Fill="#EF4444"
+                                                      Stroke="#DC2626"
+                                                      StrokeThickness="1"/>
+                                            </Grid>
                                             <TextBlock Grid.Row="1"
                                                        Text="{Binding PageText}"
                                                        Margin="0,7,0,0"

@@ -71,6 +71,9 @@ public partial class ReaderWindow : Window
     private WindowStyle _previousWindowStyle;
     private WindowState _previousWindowState;
     private double _holdZoomBaseValue = 1;
+    private const double ZoomMin = 0.05;
+    private const double ZoomMax = 3;
+    private double _currentZoom = 1;
     private int _pageLoadRequestId;
     private int _requestedPageIndex;
     private int? _queuedPageIndex;
@@ -87,6 +90,7 @@ public partial class ReaderWindow : Window
     private double _pageSlotHeight;
     private NextBookRecommendations? _pendingRecommendations;
     private CancellationTokenSource? _catalogLoadCancellation;
+    private HashSet<int> _bookmarks = [];
     private System.Windows.Point? _holdZoomLastPointerInViewport;
     private readonly object _pageCacheLock = new();
     private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _pageCache = new(StringComparer.OrdinalIgnoreCase);
@@ -338,7 +342,7 @@ public partial class ReaderWindow : Window
             RestoreOriginalReaderSources();
             NormalizeDisplayedImageSizing();
             ApplyDoublePageGap();
-            ZoomSlider.Value = 1;
+            ApplyZoom(1);
             return;
         }
 
@@ -423,7 +427,7 @@ public partial class ReaderWindow : Window
         var availableWidth = GetAvailableContentWidth();
         if (width > 0 && availableWidth > 0)
         {
-            ZoomSlider.Value = Math.Clamp(availableWidth / width, ZoomSlider.Minimum, ZoomSlider.Maximum);
+            ApplyZoom(Math.Clamp(availableWidth / width, ZoomMin, ZoomMax));
         }
     }
 
@@ -438,7 +442,7 @@ public partial class ReaderWindow : Window
         var availableHeight = GetAvailableContentHeight();
         if (height > 0 && availableHeight > 0)
         {
-            ZoomSlider.Value = Math.Clamp(availableHeight / height, ZoomSlider.Minimum, ZoomSlider.Maximum);
+            ApplyZoom(Math.Clamp(availableHeight / height, ZoomMin, ZoomMax));
         }
     }
 
@@ -462,11 +466,11 @@ public partial class ReaderWindow : Window
             return false;
         }
 
-        var scale = Math.Clamp(available / source, ZoomSlider.Minimum, ZoomSlider.Maximum);
+        var scale = Math.Clamp(available / source, ZoomMin, ZoomMax);
         if (scale >= 0.93)
         {
             CancelQualityFitRequest();
-            ZoomSlider.Value = scale;
+            ApplyZoom(scale);
             return true;
         }
 
@@ -481,11 +485,11 @@ public partial class ReaderWindow : Window
         if (TryGetQualityFitCache(cacheKey, out var cached))
         {
             ApplyFittedReaderSources(cached);
-            ZoomSlider.Value = 1;
+            ApplyZoom(1);
             return true;
         }
 
-        ZoomSlider.Value = scale;
+        ApplyZoom(scale);
         StartQualityFitRequest(cacheKey, left, right, scale, mode, _requestedPageIndex);
         return true;
     }
@@ -541,7 +545,7 @@ public partial class ReaderWindow : Window
 
             AddQualityFitCache(cacheKey, result.Page, result.ByteSize);
             ApplyFittedReaderSources(result.Page);
-            ZoomSlider.Value = 1;
+            ApplyZoom(1);
             AppLogger.Info(
                 "reader-quality-fit",
                 $"{_book.Title} page={pageIndex + 1}, mode={mode}, scale={scale:0.###}, bytes={result.ByteSize / 1024 / 1024}MB, sharpen={result.SharpenAmount:0.###}, elapsed={result.ElapsedMs}ms, cache={_qualityFitCacheBytes / 1024 / 1024}MB");
@@ -584,11 +588,12 @@ public partial class ReaderWindow : Window
         button.Foreground = active ? FitActiveFg : FitInactiveFg;
     }
 
-    private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void ApplyZoom(double value)
     {
+        _currentZoom = Math.Clamp(value, ZoomMin, ZoomMax);
         if (ImageScale is null) return;
-        ImageScale.ScaleX = e.NewValue;
-        ImageScale.ScaleY = e.NewValue;
+        ImageScale.ScaleX = _currentZoom;
+        ImageScale.ScaleY = _currentZoom;
     }
 
     private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -732,9 +737,53 @@ public partial class ReaderWindow : Window
             case Key.A:
                 CycleBackground();
                 return true;
+            case Key.OemComma:
+                GoToPreviousBookmark();
+                return true;
+            case Key.OemPeriod:
+                GoToNextBookmark();
+                return true;
             default:
                 return false;
         }
+    }
+
+    private void GoToPreviousBookmark()
+    {
+        if (_bookmarks.Count == 0)
+        {
+            StatusCatalogFeedback("没有书签。");
+            return;
+        }
+
+        var prev = _bookmarks.Where(b => b < _requestedPageIndex).DefaultIfEmpty(-1).Max();
+        if (prev < 0)
+        {
+            StatusCatalogFeedback("已经是第一个书签。");
+            return;
+        }
+
+        RequestPageLoad(prev, immediate: true);
+        StatusCatalogFeedback($"跳转到书签：第 {prev + 1} 页");
+    }
+
+    private void GoToNextBookmark()
+    {
+        if (_bookmarks.Count == 0)
+        {
+            StatusCatalogFeedback("没有书签。");
+            return;
+        }
+
+        var next = _bookmarks.Where(b => b > _requestedPageIndex).DefaultIfEmpty(-1).Min();
+        if (next < 0)
+        {
+            StatusCatalogFeedback("已经是最后一个书签。");
+            return;
+        }
+
+        RequestPageLoad(next, immediate: true);
+        StatusCatalogFeedback($"跳转到书签：第 {next + 1} 页");
     }
 
     private void RequestPageLoad(int pageIndex, bool immediate = false, bool forceReload = false)
@@ -1481,7 +1530,7 @@ public partial class ReaderWindow : Window
             viewport = 960;
         }
 
-        var zoom = ZoomSlider?.Value ?? 1.0;
+        var zoom = _currentZoom;
         var perPage = isDoublePage ? viewport / 2.0 : viewport;
         var decoded = perPage * zoom * 1.2;
         return (int)Math.Clamp(decoded, 800, 3200);
@@ -1602,10 +1651,7 @@ public partial class ReaderWindow : Window
         switch (WheelModeBox.SelectedIndex)
         {
             case 1:
-                ZoomSlider.Value = Math.Clamp(
-                    ZoomSlider.Value + (e.Delta > 0 ? WheelZoomStep : -WheelZoomStep),
-                    ZoomSlider.Minimum,
-                    ZoomSlider.Maximum);
+                ApplyZoom(_currentZoom + (e.Delta > 0 ? WheelZoomStep : -WheelZoomStep));
                 e.Handled = true;
                 break;
             case 2:
@@ -1718,10 +1764,10 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        var targetZoom = Math.Clamp(_holdZoomBaseValue * HoldZoomFactor, ZoomSlider.Minimum, ZoomSlider.Maximum);
-        if (Math.Abs(ZoomSlider.Value - targetZoom) > 0.001)
+        var targetZoom = Math.Clamp(_holdZoomBaseValue * HoldZoomFactor, ZoomMin, ZoomMax);
+        if (Math.Abs(_currentZoom - targetZoom) > 0.001)
         {
-            ZoomSlider.Value = targetZoom;
+            ApplyZoom(targetZoom);
         }
 
         Dispatcher.InvokeAsync(
@@ -1732,7 +1778,7 @@ public partial class ReaderWindow : Window
     private void BeginHoldZoom(MouseButtonEventArgs e)
     {
         _isHoldZoomActive = true;
-        _holdZoomBaseValue = ZoomSlider.Value;
+        _holdZoomBaseValue = _currentZoom;
         _holdZoomLastPointerInViewport = null;
         try
         {
@@ -1795,7 +1841,7 @@ public partial class ReaderWindow : Window
 
         _isHoldZoomActive = false;
         _holdZoomLastPointerInViewport = null;
-        ZoomSlider.Value = _holdZoomBaseValue;
+        ApplyZoom(_holdZoomBaseValue);
         if (Mouse.Captured == ReaderRoot)
         {
             Mouse.Capture(null);
@@ -2031,6 +2077,17 @@ public partial class ReaderWindow : Window
         e.Handled = false;
     }
 
+    private void PageCatalogOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        HidePageCatalog();
+        e.Handled = true;
+    }
+
+    private void PageCatalogContent_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+    }
+
     private void EnsurePageCatalogItems()
     {
         if (PageCatalogItems.Count == _book.Pages.Count)
@@ -2038,10 +2095,38 @@ public partial class ReaderWindow : Window
             return;
         }
 
+        _bookmarks = _database.LoadBookmarks(_book.Id);
         PageCatalogItems.Clear();
         for (var i = 0; i < _book.Pages.Count; i++)
         {
-            PageCatalogItems.Add(new PageCatalogItem(i, _book.Pages[i]));
+            PageCatalogItems.Add(new PageCatalogItem(i, _book.Pages[i])
+            {
+                IsBookmarked = _bookmarks.Contains(i)
+            });
+        }
+    }
+
+    private void ToggleCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var newState = !item.IsBookmarked;
+        item.IsBookmarked = newState;
+
+        if (newState)
+        {
+            _bookmarks.Add(item.PageIndex);
+            _ = Task.Run(() => _database.AddBookmark(_book.Id, item.PageIndex));
+            StatusCatalogFeedback($"已标记第 {item.PageIndex + 1} 页。");
+        }
+        else
+        {
+            _bookmarks.Remove(item.PageIndex);
+            _ = Task.Run(() => _database.RemoveBookmark(_book.Id, item.PageIndex));
+            StatusCatalogFeedback($"已取消标记第 {item.PageIndex + 1} 页。");
         }
     }
 
