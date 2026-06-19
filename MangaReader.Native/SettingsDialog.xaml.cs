@@ -244,12 +244,14 @@ public partial class SettingsDialog : Window
 
     private void ColorGroup_Checked(object sender, RoutedEventArgs e)
     {
+        if (ColorSwatchPanel is null) return;
         RefreshColorSwatches();
         MarkChanged();
     }
 
     private void RefreshColorSwatches()
     {
+        if (ColorSwatchPanel is null) return;
         var colors = ColorGroupBRadio.IsChecked == true ? PresetGroupB : PresetGroupA;
         ColorSwatchPanel.Children.Clear();
         foreach (var color in colors)
@@ -270,9 +272,9 @@ public partial class SettingsDialog : Window
 
     // --- 通用分区 ---
 
-    private void PrivacyModeCheckBox_Changed(object sender, RoutedEventArgs e) => MarkChanged();
-    private void CatalogDeleteCheckBox_Changed(object sender, RoutedEventArgs e) => MarkChanged();
-    private void WaterfallRightClickCheckBox_Changed(object sender, RoutedEventArgs e) => MarkChanged();
+    private void PrivacyModeCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void CatalogDeleteCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void WaterfallRightClickCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
 
     private void ChangePassword_Click(object sender, RoutedEventArgs e)
     {
