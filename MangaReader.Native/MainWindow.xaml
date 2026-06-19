@@ -2385,66 +2385,36 @@
 
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="3*"/>
+                                                <ColumnDefinition Width="14"/>
+                                                <ColumnDefinition Width="2*"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBox x:Name="TagsBox" Visibility="Collapsed"/>
-                                                <Border Height="74"
-                                                        Padding="10,8"
+                                            <TextBox x:Name="TagsBox" Visibility="Collapsed"/>
+                                            <DockPanel Grid.Column="0">
+                                                <TextBlock DockPanel.Dock="Top" Text="Tag 管理" Style="{StaticResource LabelText}" Margin="0,0,0,6"/>
+                                                <Border Padding="10,8"
                                                         CornerRadius="{StaticResource RadiusField}"
                                                         Background="{StaticResource Brush.Surface}"
                                                         BorderBrush="{StaticResource Brush.BorderStrong}"
                                                         BorderThickness="1">
-                                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                                  HorizontalScrollBarVisibility="Disabled"
-                                                                  PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
-                                                        <Grid>
+                                                    <Grid>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="*"/>
+                                                        </Grid.RowDefinitions>
+                                                        <Grid Grid.Row="0" Margin="0,0,0,8">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="1"/>
-                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="12"/>
+                                                                <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
-                                                            <Grid Grid.Column="0" Margin="0,0,12,0">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="140"/>
-                                                                    <ColumnDefinition Width="*"/>
-                                                                </Grid.ColumnDefinitions>
-                                                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                                                    <TextBlock Text="Tag 搜索" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
-                                                                    <TextBox x:Name="EditTagSearchBox"
-                                                                             Height="34"
-                                                                             Padding="12,4"
-                                                                             TextChanged="EditTagSearchBox_TextChanged"
-                                                                             ToolTip="输入关键词搜索已有 Tag"/>
-                                                                </StackPanel>
-                                                                <StackPanel Grid.Column="1">
-                                                                    <TextBlock Text="已选 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
-                                                                    <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                                        <ItemsControl.ItemsPanel>
-                                                                            <ItemsPanelTemplate>
-                                                                                <WrapPanel/>
-                                                                            </ItemsPanelTemplate>
-                                                                        </ItemsControl.ItemsPanel>
-                                                                        <ItemsControl.ItemTemplate>
-                                                                            <DataTemplate DataType="{x:Type models:TagChip}">
-                                                                                <Border Style="{StaticResource AppTagChipBorder}"
-                                                                                        Background="{Binding Color}"
-                                                                                        MouseLeftButtonDown="EditTagRemove_Click"
-                                                                                        ToolTip="点击移除">
-                                                                                    <StackPanel Orientation="Horizontal">
-                                                                                        <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                                                        <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
-                                                                                    </StackPanel>
-                                                                                </Border>
-                                                                            </DataTemplate>
-                                                                        </ItemsControl.ItemTemplate>
-                                                                    </ItemsControl>
-                                                                </StackPanel>
-                                                            </Grid>
-                                                            <Border Grid.Column="1" Background="{StaticResource Brush.BorderSubtle}"/>
-                                                            <StackPanel Grid.Column="2" Margin="12,0,0,0">
-                                                                <TextBlock Text="可添加 Tag" Style="{StaticResource LabelText}" Margin="0,0,0,4"/>
-                                                                <ItemsControl ItemsSource="{Binding EditTagOptions, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                            <TextBox x:Name="EditTagSearchBox"
+                                                                     Padding="12,4"
+                                                                     TextChanged="EditTagSearchBox_TextChanged"
+                                                                     ToolTip="输入关键词搜索已有 Tag"/>
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
+                                                                <TextBlock Text="已选" VerticalAlignment="Center" Foreground="#8D8177" FontSize="12" Margin="0,0,6,0"/>
+                                                                <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
                                                                             <WrapPanel/>
@@ -2454,27 +2424,53 @@
                                                                         <DataTemplate DataType="{x:Type models:TagChip}">
                                                                             <Border Style="{StaticResource AppTagChipBorder}"
                                                                                     Background="{Binding Color}"
-                                                                                    Opacity="0.72"
-                                                                                    MouseLeftButtonDown="EditTagOption_Click"
-                                                                                    ToolTip="点击添加">
-                                                                                <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                                                    Margin="0,0,4,0"
+                                                                                    MouseLeftButtonDown="EditTagRemove_Click"
+                                                                                    ToolTip="点击移除">
+                                                                                <StackPanel Orientation="Horizontal">
+                                                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
+                                                                                </StackPanel>
                                                                             </Border>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
                                                             </StackPanel>
                                                         </Grid>
-                                                    </ScrollViewer>
+                                                        <ScrollViewer Grid.Row="1"
+                                                                      VerticalScrollBarVisibility="Auto"
+                                                                      HorizontalScrollBarVisibility="Disabled"
+                                                                      PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                                                            <ItemsControl ItemsSource="{Binding EditTagOptions, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <WrapPanel/>
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate DataType="{x:Type models:TagChip}">
+                                                                        <Border Style="{StaticResource AppTagChipBorder}"
+                                                                                Background="{Binding Color}"
+                                                                                Opacity="0.72"
+                                                                                MouseLeftButtonDown="EditTagOption_Click"
+                                                                                ToolTip="点击添加">
+                                                                            <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                                                                        </Border>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </ScrollViewer>
+                                                    </Grid>
                                                 </Border>
-                                            </StackPanel>
+                                            </DockPanel>
+                                            <DockPanel Grid.Column="2">
+                                                <TextBlock DockPanel.Dock="Top" Text="简介" Style="{StaticResource LabelText}" Margin="0,0,0,6"/>
+                                                <TextBox x:Name="SummaryBox"
+                                                         TextWrapping="Wrap"
+                                                         AcceptsReturn="True"
+                                                         VerticalScrollBarVisibility="Auto"/>
+                                            </DockPanel>
                                         </Grid>
-
-                                        <TextBlock Text="简介" Style="{StaticResource LabelText}"/>
-                                        <TextBox x:Name="SummaryBox"
-                                                 Height="76"
-                                                 TextWrapping="Wrap"
-                                                 AcceptsReturn="True"
-                                                 VerticalScrollBarVisibility="Auto"/>
                                     </StackPanel>
 
                                     <Grid Margin="0,18,0,0">
