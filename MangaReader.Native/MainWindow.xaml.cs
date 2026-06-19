@@ -3606,6 +3606,7 @@ public partial class MainWindow : Window
         var authorFilter = _cachedAuthorFilter;
         var favoriteOnly = _cachedFavoriteOnly;
         var showHidden = _cachedShowHidden;
+        var onlyHidden = _cachedOnlyHidden;
         var activeTags = _cachedActiveTagFilters.ToArray();
         var token = _filterCts.Token;
 
@@ -3618,6 +3619,7 @@ public partial class MainWindow : Window
             authorFilter,
             favoriteOnly,
             showHidden,
+            onlyHidden,
             activeTags,
             refreshShelf,
             ensureLibrary,
@@ -3633,6 +3635,7 @@ public partial class MainWindow : Window
         string authorFilter,
         bool favoriteOnly,
         bool showHidden,
+        bool onlyHidden,
         string[] activeTags,
         bool refreshShelfOverview,
         bool ensureLibraryView,
@@ -3651,6 +3654,7 @@ public partial class MainWindow : Window
                     authorFilter,
                     favoriteOnly,
                     showHidden,
+                    onlyHidden,
                     activeTags,
                     token),
                 token);
@@ -3885,13 +3889,18 @@ public partial class MainWindow : Window
         string authorFilter,
         bool favoriteOnly,
         bool showHidden,
+        bool onlyHidden,
         string[] activeTags,
         CancellationToken token)
     {
         var filtered = allBooks.Where(book =>
         {
             token.ThrowIfCancellationRequested();
-            if (book.IsHidden && !showHidden)
+            if (onlyHidden)
+            {
+                if (!book.IsHidden) return false;
+            }
+            else if (book.IsHidden && !showHidden)
             {
                 return false;
             }

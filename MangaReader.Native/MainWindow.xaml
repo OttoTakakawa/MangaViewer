@@ -1355,7 +1355,7 @@
                             </ComboBox>
                             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                                 <CheckBox x:Name="ShowHiddenBox" Content="显示隐藏作品" Margin="0,0,6,0" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
-                                <Button x:Name="OnlyHiddenButton" Content="只看隐藏" Click="OnlyHidden_Click" Style="{StaticResource FilterActionButton}" Height="28" Margin="0,0,10,0"/>
+                                <Button x:Name="OnlyHiddenButton" Content="只看隐藏作品" Click="OnlyHidden_Click" Style="{StaticResource FilterActionButton}" Height="28" Margin="0,0,10,0"/>
                                 <TextBlock x:Name="ActiveTagSummaryText" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="#8D8177"/>
                             </StackPanel>
                         </DockPanel>
