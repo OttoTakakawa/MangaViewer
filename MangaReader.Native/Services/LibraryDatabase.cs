@@ -673,6 +673,14 @@ public sealed class LibraryDatabase
         command.ExecuteNonQuery();
     }
 
+    public void ClearAllBookmarks()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM book_bookmarks;";
+        command.ExecuteNonQuery();
+    }
+
     public string LoadSetting(string key, string defaultValue = "")
     {
         using var connection = Open();

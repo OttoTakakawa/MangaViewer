@@ -1971,32 +1971,60 @@ public partial class MainWindow : Window
         StatusText.Text = "重定位完成。";
     }
 
-    private async void SaveShortcuts_Click(object sender, RoutedEventArgs e)
+    private async void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var next = ParseKeys(NextShortcutBox.Text);
-        var prev = ParseKeys(PrevShortcutBox.Text);
-        if (next.Count == 0 || prev.Count == 0)
+        var dialog = new SettingsDialog(_storage, _database) { Owner = this };
+        if (dialog.ShowDialog() != true)
         {
-            StatusText.Text = "快捷键不能为空。示例：Right,Space";
             return;
         }
 
-        if (next.Intersect(prev).Any())
+        if (dialog.PrivacyModeChanged)
         {
-            StatusText.Text = "快捷键冲突：上一页和下一页不能使用相同按键。";
-            return;
+            LoadPrivacyMode();
         }
 
-        _nextKeys = next;
-        _prevKeys = prev;
-        var nextText = NextShortcutBox.Text.Trim();
-        var prevText = PrevShortcutBox.Text.Trim();
-        await Task.Run(() =>
+        if (dialog.ShortcutsChanged)
         {
-            _database.SaveShortcut("reader.next", nextText);
-            _database.SaveShortcut("reader.previous", prevText);
-        });
-        StatusText.Text = "快捷键已保存。";
+            LoadShortcuts();
+        }
+
+        switch (dialog.RequestedAction)
+        {
+            case SettingsAction.OpenBackupFolder:
+                OpenBackupFolder();
+                break;
+            case SettingsAction.OpenDataFolder:
+                OpenDataFolder();
+                break;
+            case SettingsAction.CreateBackup:
+                _ = CreateManualBackupAsync();
+                break;
+            case SettingsAction.OpenDataSafety:
+                DataSafety_Click(sender, e);
+                break;
+            case SettingsAction.CheckUpdate:
+                _ = CheckUpdateAsync(null);
+                break;
+            case SettingsAction.ClearAllBookmarks:
+                await Task.Run(() => _database.ClearAllBookmarks());
+                StatusText.Text = "已清除所有书签。";
+                break;
+        }
+
+        if (dialog.NeedsRestart)
+        {
+            var result = System.Windows.MessageBox.Show(
+                "数据目录已更改，需要重启软件生效，是否现在重启？",
+                "重启软件",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question,
+                MessageBoxResult.Yes);
+            if (result == MessageBoxResult.Yes)
+            {
+                RestartCurrentProcess();
+            }
+        }
     }
 
     private async void AddTag_Click(object sender, RoutedEventArgs e)
@@ -3142,12 +3170,10 @@ public partial class MainWindow : Window
         var shortcuts = _database.LoadShortcuts();
         if (shortcuts.TryGetValue("reader.next", out var next))
         {
-            NextShortcutBox.Text = next;
             _nextKeys = ParseKeys(next);
         }
         if (shortcuts.TryGetValue("reader.previous", out var previous))
         {
-            PrevShortcutBox.Text = previous;
             _prevKeys = ParseKeys(previous);
         }
     }
@@ -3155,26 +3181,6 @@ public partial class MainWindow : Window
     private void LoadPrivacyMode()
     {
         IsPrivacyMode = string.Equals(_database.LoadSetting(PrivacyModeSettingKey), "1", StringComparison.Ordinal);
-        UpdatePrivacyModeButton();
-    }
-
-    private void TogglePrivacyMode_Click(object sender, RoutedEventArgs e)
-    {
-        IsPrivacyMode = !IsPrivacyMode;
-        _database.SaveSetting(PrivacyModeSettingKey, IsPrivacyMode ? "1" : "0");
-        UpdatePrivacyModeButton();
-        StatusText.Text = IsPrivacyMode ? "隐私模式已开启：所有作品封面已隐藏。" : "隐私模式已关闭：封面显示已恢复。";
-    }
-
-    private void UpdatePrivacyModeButton()
-    {
-        if (PrivacyModeButton is null)
-        {
-            return;
-        }
-
-        PrivacyModeButton.Tag = IsPrivacyMode ? "active" : "";
-        PrivacyModeButton.ToolTip = IsPrivacyMode ? "当前不会显示任何作品封面" : "点击后隐藏所有作品封面";
     }
 
     private void RefreshVisibleTags()

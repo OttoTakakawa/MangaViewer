@@ -1123,12 +1123,7 @@
                                            FontWeight="Bold"/>
                             </Border>
                             <StackPanel Width="132" HorizontalAlignment="Center">
-                                <Button Content="指定数据" Click="ChooseDataFolder_Click" Style="{StaticResource SidebarActionButton}"/>
-                                <Button Content="备份数据" Click="DataSafety_Click" Style="{StaticResource SidebarActionButton}"/>
-                                <Button x:Name="PrivacyModeButton"
-                                        Content="隐私模式"
-                                        Click="TogglePrivacyMode_Click"
-                                        Style="{StaticResource SidebarToggleButton}"/>
+                                <Button Content="设置" Click="Settings_Click" Style="{StaticResource SidebarActionButton}"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -2526,9 +2521,6 @@
 
                                     <Border Visibility="Collapsed">
                                         <StackPanel>
-                                            <TextBox x:Name="NextShortcutBox" Text="Right,Space"/>
-                                            <TextBox x:Name="PrevShortcutBox" Text="Left"/>
-                                            <Button Content="保存快捷键" Click="SaveShortcuts_Click"/>
                                             <TextBox x:Name="CoverPageBox"/>
                                             <TextBox x:Name="ReadCountBox"/>
                                             <ComboBox x:Name="ReadingStatusBox" SelectedIndex="0">
