@@ -416,12 +416,11 @@
                              ItemsSource="{Binding PageCatalogItems}"
                              Background="Transparent"
                              BorderThickness="0"
-                             ScrollViewer.CanContentScroll="True"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <controls:VirtualizingWrapPanel ItemWidth="142" ItemHeight="210" HorizontalSpacing="14" VerticalSpacing="14" IsVirtualizing="True" VirtualizationMode="Recycling" CacheLength="2"/>
+                                <WrapPanel/>
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
@@ -444,6 +443,7 @@
                             <DataTemplate>
                                 <Border Width="142"
                                         Height="210"
+                                        Margin="7"
                                         Padding="8"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Background="{DynamicResource Brush.Reader.CatalogItemBg}"

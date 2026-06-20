@@ -459,12 +459,9 @@
                                 <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckRoot" Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
-                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
-                                <Setter TargetName="CheckMark" Property="Background" Value="{DynamicResource Brush.Surface}"/>
-                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="{DynamicResource Brush.Surface}"/>
+                                <Setter TargetName="CheckMark" Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible"/>
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -2408,12 +2405,11 @@
                                  ItemsSource="{Binding DetailPageCatalogItems}"
                                  Background="Transparent"
                                  BorderThickness="0"
-                                 ScrollViewer.CanContentScroll="True"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListBox.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <controls:VirtualizingWrapPanel ItemWidth="118" ItemHeight="176" HorizontalSpacing="12" VerticalSpacing="12" IsVirtualizing="True" VirtualizationMode="Recycling" CacheLength="2"/>
+                                    <WrapPanel/>
                                 </ItemsPanelTemplate>
                             </ListBox.ItemsPanel>
                             <ListBox.ItemContainerStyle>
@@ -2436,6 +2432,7 @@
                                 <DataTemplate DataType="{x:Type models:PageCatalogItem}">
                                     <Border Width="118"
                                             Height="176"
+                                            Margin="6"
                                             Padding="7"
                                             CornerRadius="{StaticResource RadiusControl}"
                                             Background="{DynamicResource Brush.SurfaceMuted}"
