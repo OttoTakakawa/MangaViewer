@@ -191,11 +191,21 @@ public partial class MainWindow : Window
         try
         {
             await Task.Run(() => _database.Initialize());
-            LoadManagedTags();
-            LoadCustomTagColors();
-            LoadManagedAuthors();
-            LoadShortcuts();
-            LoadPrivacyMode();
+
+            var managedTagsTask = Task.Run(() => _database.LoadManagedTags());
+            var suppressedTagsTask = Task.Run(() => _database.LoadSuppressedTags());
+            var customTagColorsTask = Task.Run(() => _database.LoadSetting(CustomTagColorsSettingKey));
+            var managedAuthorsTask = Task.Run(() => _database.LoadManagedAuthors());
+            var shortcutsTask = Task.Run(() => _database.LoadShortcuts());
+            var privacyModeTask = Task.Run(() => _database.LoadSetting(PrivacyModeSettingKey));
+
+            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask);
+
+            ApplyManagedTags(managedTagsTask.Result, suppressedTagsTask.Result);
+            ApplyCustomTagColors(customTagColorsTask.Result);
+            ApplyManagedAuthors(managedAuthorsTask.Result);
+            ApplyShortcuts(shortcutsTask.Result);
+            IsPrivacyMode = string.Equals(privacyModeTask.Result, "1", StringComparison.Ordinal);
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
@@ -644,6 +654,7 @@ public partial class MainWindow : Window
 
             RefreshLibraryViews(sort: true, ensureLibraryView: true);
             RefreshHomeShelves();
+            _coverCache.SweepStaleCovers(_allBooks.Select(b => b.Id));
             StatusText.Text = $"扫描完成：{_allBooks.Count} 本漫画。";
         }
         catch (OperationCanceledException)
@@ -2138,12 +2149,13 @@ public partial class MainWindow : Window
 
         if (dialog.PrivacyModeChanged)
         {
-            LoadPrivacyMode();
+            IsPrivacyMode = string.Equals(_database.LoadSetting(PrivacyModeSettingKey), "1", StringComparison.Ordinal);
         }
 
         if (dialog.ShortcutsChanged)
         {
-            LoadShortcuts();
+            var shortcuts = _database.LoadShortcuts();
+            ApplyShortcuts(shortcuts);
         }
 
         switch (dialog.RequestedAction)
@@ -3312,25 +3324,7 @@ public partial class MainWindow : Window
 
     private static string EmptyAsPlaceholder(string value)
     {
-        return string.IsNullOrWhiteSpace(value) ? "未填写" : value;
-    }
-
-    private void LoadShortcuts()
-    {
-        var shortcuts = _database.LoadShortcuts();
-        if (shortcuts.TryGetValue("reader.next", out var next))
-        {
-            _nextKeys = ParseKeys(next);
-        }
-        if (shortcuts.TryGetValue("reader.previous", out var previous))
-        {
-            _prevKeys = ParseKeys(previous);
-        }
-    }
-
-    private void LoadPrivacyMode()
-    {
-        IsPrivacyMode = string.Equals(_database.LoadSetting(PrivacyModeSettingKey), "1", StringComparison.Ordinal);
+        return string.IsNullOrWhiteSpace(value) ? "—" : value;
     }
 
     private void RefreshVisibleTags()
@@ -4917,15 +4911,17 @@ public partial class MainWindow : Window
         if (!tagItemsMatch)
         {
             book.TagItems.Clear();
+            var newTagChips = new List<TagChip>(tags.Count);
             foreach (var tag in tags)
             {
-                book.TagItems.Add(new TagChip
+                newTagChips.Add(new TagChip
                 {
                     Name = tag,
                     Category = TagCategory(tag),
                     Color = TagColor(tag)
                 });
             }
+            book.TagItems.AddRange(newTagChips);
         }
 
         if (!cardTagItemsMatch)
@@ -4954,16 +4950,18 @@ public partial class MainWindow : Window
     {
         var current = book.CardTagItems.ToList();
         book.CardTagItems.Clear();
+        var newCardChips = new List<TagChip>(current.Count);
         foreach (var item in current)
         {
             var isSummary = IsCardTagSummary(item.Name);
-            book.CardTagItems.Add(new TagChip
+            newCardChips.Add(new TagChip
             {
                 Name = item.Name,
                 Category = isSummary ? item.Category : TagCategory(item.Name),
                 Color = isSummary ? "#E5E7EB" : TagColor(item.Name)
             });
         }
+        book.CardTagItems.AddRange(newCardChips);
     }
 
     private static bool IsCardTagSummary(string value)
@@ -5042,14 +5040,60 @@ public partial class MainWindow : Window
         }
     }
 
-    private void LoadCustomTagColors()
+    private void ApplyManagedTags(IReadOnlyList<LibraryDatabase.ManagedTagRecord> tags, IReadOnlyList<string> suppressedTags)
+    {
+        _tagGroupFilterOptionsDirty = true;
+        _managedTags.Clear();
+        _managedTagCategories.Clear();
+        _managedTagIsExclusive.Clear();
+        _managedTagUpdatedAt.Clear();
+        _managedTagColors.Clear();
+        foreach (var tag in tags.Where(tag => !string.IsNullOrWhiteSpace(tag.Name)))
+        {
+            _managedTags.Add(tag.Name);
+            _managedTagCategories[tag.Name] = tag.Category;
+            _managedTagIsExclusive[tag.Name] = tag.IsExclusive;
+            _managedTagUpdatedAt[tag.Name] = tag.UpdatedAt;
+            if (!string.IsNullOrWhiteSpace(tag.Color))
+            {
+                _managedTagColors[tag.Name] = tag.Color;
+            }
+        }
+        _suppressedTags.Clear();
+        foreach (var tag in suppressedTags.Where(tag => !string.IsNullOrWhiteSpace(tag)))
+        {
+            _suppressedTags.Add(tag);
+        }
+    }
+
+    private void ApplyCustomTagColors(string raw)
     {
         _customTagColors.Clear();
-        foreach (var color in _database.LoadSetting(CustomTagColorsSettingKey)
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        foreach (var color in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(IsValidHexColor))
         {
             _customTagColors.Add(color);
+        }
+    }
+
+    private void ApplyManagedAuthors(IReadOnlyList<string> authors)
+    {
+        _managedAuthors.Clear();
+        foreach (var author in authors.Select(author => author.Trim()).Where(author => !string.IsNullOrWhiteSpace(author)))
+        {
+            _managedAuthors.Add(author);
+        }
+    }
+
+    private void ApplyShortcuts(Dictionary<string, string> shortcuts)
+    {
+        if (shortcuts.TryGetValue("reader.next", out var next))
+        {
+            _nextKeys = ParseKeys(next);
+        }
+        if (shortcuts.TryGetValue("reader.previous", out var previous))
+        {
+            _prevKeys = ParseKeys(previous);
         }
     }
 
@@ -5078,15 +5122,6 @@ public partial class MainWindow : Window
         }
 
         return value.Skip(1).All(Uri.IsHexDigit);
-    }
-
-    private void LoadManagedAuthors()
-    {
-        _managedAuthors.Clear();
-        foreach (var author in _database.LoadManagedAuthors().Select(author => author.Trim()).Where(author => !string.IsNullOrWhiteSpace(author)))
-        {
-            _managedAuthors.Add(author);
-        }
     }
 
     private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null, string? color = null)

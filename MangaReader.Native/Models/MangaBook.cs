@@ -137,8 +137,8 @@ public sealed class MangaBook : INotifyPropertyChanged
         }
     }
     public List<string> Pages { get; } = [];
-    public ObservableCollection<TagChip> TagItems { get; } = [];
-    public ObservableCollection<TagChip> CardTagItems { get; } = [];
+    public RangeObservableCollection<TagChip> TagItems { get; } = [];
+    public RangeObservableCollection<TagChip> CardTagItems { get; } = [];
 
     public int LastReadPageIndex
     {
@@ -291,14 +291,16 @@ public sealed class MangaBook : INotifyPropertyChanged
         CardTagItems.Clear();
 
         var tags = TagService.ParseTags(_tags).ToList();
+        var tagChips = new List<TagChip>(tags.Count);
         foreach (var tag in tags)
         {
-            TagItems.Add(new TagChip
+            tagChips.Add(new TagChip
             {
                 Name = tag,
                 Color = TagColor(tag)
             });
         }
+        TagItems.AddRange(tagChips);
 
         RefreshCardTagItems(tags);
         OnPropertyChanged(nameof(CardTagItems));
@@ -339,10 +341,12 @@ public sealed class MangaBook : INotifyPropertyChanged
             }
         }
 
+        var visibleChips = new List<TagChip>(visible.Count);
         foreach (var item in visible)
         {
-            CardTagItems.Add(item.Chip);
+            visibleChips.Add(item.Chip);
         }
+        CardTagItems.AddRange(visibleChips);
 
         if (hiddenCount > 0)
         {

@@ -61,4 +61,22 @@ public sealed class CoverCache
         using var stream = File.Create(cachePath);
         encoder.Save(stream);
     }
+
+    public void SweepStaleCovers(IEnumerable<string> validBookIds)
+    {
+        var validSet = new HashSet<string>(validBookIds, StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(_storage.CoverCachePath, "*.png"))
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                var bookId = fileName.Split('_')[0];
+                if (!validSet.Contains(bookId))
+                {
+                    try { File.Delete(file); } catch { }
+                }
+            }
+        }
+        catch { }
+    }
 }

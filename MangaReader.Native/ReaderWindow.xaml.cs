@@ -105,7 +105,7 @@ public partial class ReaderWindow : Window
     private CancellationTokenSource? _qualityFitCancellation;
     private int _qualityFitRequestId;
 
-    public ObservableCollection<PageCatalogItem> PageCatalogItems { get; } = [];
+    public RangeObservableCollection<PageCatalogItem> PageCatalogItems { get; } = [];
 
     private enum FitMode
     {
@@ -2118,13 +2118,15 @@ public partial class ReaderWindow : Window
 
         _bookmarks = _database.LoadBookmarks(_book.Id);
         PageCatalogItems.Clear();
+        var catalogItems = new List<PageCatalogItem>(_book.Pages.Count);
         for (var i = 0; i < _book.Pages.Count; i++)
         {
-            PageCatalogItems.Add(new PageCatalogItem(i, _book.Pages[i])
+            catalogItems.Add(new PageCatalogItem(i, _book.Pages[i])
             {
                 IsBookmarked = _bookmarks.Contains(i)
             });
         }
+        PageCatalogItems.AddRange(catalogItems);
         AssignBookmarkColors();
     }
 

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace MangaReader.Native.Models;
@@ -9,6 +10,7 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
     private BitmapSource? _thumbnail;
     private bool _isBookmarked;
     private string _bookmarkColor = "#EF4444";
+    private SolidColorBrush? _bookmarkBrushCache;
 
     public PageCatalogItem(int pageIndex, string path)
     {
@@ -47,13 +49,32 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
         set
         {
             _bookmarkColor = value;
+            _bookmarkBrushCache = null;
             OnPropertyChanged();
             OnPropertyChanged(nameof(BookmarkBrush));
         }
     }
 
-    public System.Windows.Media.SolidColorBrush BookmarkBrush => new(
-        (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_bookmarkColor));
+    public System.Windows.Media.Brush BookmarkBrush
+    {
+        get
+        {
+            if (_bookmarkBrushCache is null || _bookmarkBrushCache.Color.ToString() != _bookmarkColor)
+            {
+                try
+                {
+                    var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_bookmarkColor);
+                    _bookmarkBrushCache = new System.Windows.Media.SolidColorBrush(color);
+                    _bookmarkBrushCache.Freeze();
+                }
+                catch
+                {
+                    _bookmarkBrushCache = System.Windows.Media.Brushes.Transparent;
+                }
+            }
+            return _bookmarkBrushCache;
+        }
+    }
 
     public string BookmarkMenuHeader => IsBookmarked ? "取消标记" : "标记此页";
 
