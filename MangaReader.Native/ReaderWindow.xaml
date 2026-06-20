@@ -1,4 +1,4 @@
-<Window x:Class="MangaReader.Native.ReaderWindow"
+﻿<Window x:Class="MangaReader.Native.ReaderWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:MangaReader.Native.Controls"
@@ -170,10 +170,10 @@
                         <Grid>
                             <Track x:Name="PART_Track" VerticalAlignment="Center" Height="22">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="{StaticResource Brush.Reader.SliderTrack}" BorderThickness="0">
+                                    <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="{DynamicResource Brush.Reader.SliderTrack}" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="{StaticResource Brush.Reader.SliderTrack}"/>
+                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="{DynamicResource Brush.Reader.SliderTrack}"/>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>

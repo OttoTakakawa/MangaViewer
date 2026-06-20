@@ -8,26 +8,26 @@
         mc:Ignorable="d"
         PreviewKeyDown="MainWindow_PreviewKeyDown"
         Title="漫画库" Height="900" Width="1500" MinHeight="760" MinWidth="1180"
-        Background="{StaticResource Brush.AppBackground}" WindowStartupLocation="CenterScreen">
+        Background="{DynamicResource Brush.AppBackground}" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-        <DropShadowEffect x:Key="BookShadow" Color="#111827" BlurRadius="18" ShadowDepth="6" Opacity="0.14"/>
-        <DropShadowEffect x:Key="PanelShadow" Color="#111827" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
+        <DropShadowEffect x:Key="BookShadow" Color="{DynamicResource Color.TextPrimary}" BlurRadius="18" ShadowDepth="6" Opacity="0.14"/>
+        <DropShadowEffect x:Key="PanelShadow" Color="{DynamicResource Color.TextPrimary}" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
 
         <Style TargetType="Button" BasedOn="{StaticResource AppButton}"/>
         <Style x:Key="HomeWideBookCard" TargetType="Border">
             <Setter Property="Height" Value="208"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
-            <Setter Property="Background" Value="#26201B"/>
-            <Setter Property="BorderBrush" Value="#22FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="ClipToBounds" Value="True"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="#F6E7D6"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.SurfaceHover}"/>
                     <Setter Property="Effect" Value="{StaticResource PanelShadow}"/>
                     <Setter Property="Opacity" Value="0.96"/>
                 </Trigger>
@@ -39,15 +39,15 @@
             <Setter Property="Margin" Value="0,0,14,12"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
-            <Setter Property="Background" Value="#FDFBF8"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FFFFFF"/>
-                    <Setter Property="BorderBrush" Value="#D8C7B8"/>
+                    <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                     <Setter Property="Effect" Value="{StaticResource PanelShadow}"/>
                 </Trigger>
             </Style.Triggers>
@@ -55,14 +55,14 @@
         <Style x:Key="HomeBookActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Background" Value="#F6E7D6"/>
-            <Setter Property="Foreground" Value="#1D1714"/>
-            <Setter Property="BorderBrush" Value="#D8C7B8"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceHover}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
         <Style x:Key="PrivacyCoverOverlay" TargetType="Border">
-            <Setter Property="Background" Value="#F1111827"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="Visibility" Value="Collapsed"/>
             <Style.Triggers>
@@ -77,14 +77,14 @@
         <Style x:Key="FilterActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="18,10"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Root"
                                 Background="{TemplateBinding Background}"
-                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusField}"
                                 Padding="{TemplateBinding Padding}">
@@ -92,7 +92,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#F3F4F6"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.ScrollTrack}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -127,7 +127,7 @@
         <Style x:Key="AppTagChipText" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#263238"/>
+            <Setter Property="Foreground" Value="#111827"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="DetailHeroTagChipBorder" TargetType="Border" BasedOn="{StaticResource TagChipLg}"/>
@@ -136,9 +136,9 @@
             <Setter Property="Height" Value="32"/>
             <Setter Property="Padding" Value="12,5"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
         </Style>
         <Style x:Key="BatchDangerActionButton" TargetType="Button" BasedOn="{StaticResource AppDangerButton}">
             <Setter Property="MinHeight" Value="32"/>
@@ -150,16 +150,16 @@
             <Setter Property="Height" Value="40"/>
             <Setter Property="MinHeight" Value="40"/>
             <Setter Property="Padding" Value="16,7"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <Style x:Key="SlimProgressBar" TargetType="ProgressBar">
             <Setter Property="Height" Value="10"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
-            <Setter Property="Background" Value="{StaticResource Brush.BorderSubtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -179,39 +179,17 @@
         <Style x:Key="FilterTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="16,6"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{StaticResource RadiusField}">
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#D1D5DB"/>
-                            </Trigger>
-                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#9CA3AF"/>
-                                <Setter TargetName="Root" Property="Background" Value="#FFFFFF"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="MinHeight" Value="40"/>
             <Setter Property="Padding" Value="13,5"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -225,11 +203,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#C4CCD7"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#9CA3AF"/>
-                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface}"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Dim}"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Surface}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -240,10 +218,10 @@
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="MinHeight" Value="42"/>
             <Setter Property="Padding" Value="12,5"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -268,7 +246,7 @@
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
                                     <Grid Grid.Column="1">
                                         <Path Data="M 0 0 L 4 4 L 8 0"
-                                              Stroke="#6B7280"
+                                              Stroke="{DynamicResource Brush.TextMuted}"
                                               StrokeThickness="1.8"
                                               StrokeStartLineCap="Round"
                                               StrokeEndLineCap="Round"
@@ -290,8 +268,8 @@
                                    PopupAnimation="Slide">
                                 <Border Margin="0,6,0,0"
                                         Width="{Binding ActualWidth, ElementName=ComboRoot}"
-                                        Background="{StaticResource Brush.Surface}"
-                                        BorderBrush="{StaticResource Brush.BorderStrong}"
+                                        Background="{DynamicResource Brush.Surface}"
+                                        BorderBrush="{DynamicResource Brush.BorderStrong}"
                                         BorderThickness="1"
                                         CornerRadius="{StaticResource RadiusField}"
                                         Effect="{StaticResource PanelShadow}">
@@ -304,10 +282,10 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#C4CCD7"/>
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#9CA3AF"/>
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.Dim}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -318,8 +296,8 @@
             <EventSetter Event="PreviewMouseLeftButtonDown" Handler="FilterComboBox_PreviewMouseLeftButtonDown"/>
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Padding" Value="16,6"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -343,12 +321,12 @@
                                             Width="28"
                                             Height="28"
                                             Margin="0,0,10,0"
-                                            Background="#EEF2F7"
+                                            Background="{DynamicResource Brush.ScrollTrack}"
                                             CornerRadius="{StaticResource RadiusControl}"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Center">
                                         <Path Data="M 0 0 L 5 5 L 10 0"
-                                              Stroke="#6B7280"
+                                              Stroke="{DynamicResource Brush.TextMuted}"
                                               StrokeThickness="1.8"
                                               StrokeStartLineCap="Round"
                                               StrokeEndLineCap="Round"
@@ -375,8 +353,8 @@
                                    PopupAnimation="Slide">
                                 <Border Margin="0,8,0,0"
                                         Width="{Binding ActualWidth, ElementName=ComboRoot}"
-                                        Background="{StaticResource Brush.Surface}"
-                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                        Background="{DynamicResource Brush.Surface}"
+                                        BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                         BorderThickness="1"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Effect="{StaticResource PanelShadow}">
@@ -388,11 +366,11 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#D1D5DB"/>
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#9CA3AF"/>
-                                <Setter TargetName="ComboBorder" Property="Background" Value="#FFFFFF"/>
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.Dim}"/>
+                                <Setter TargetName="ComboBorder" Property="Background" Value="{DynamicResource Brush.Surface}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -402,7 +380,7 @@
         <Style TargetType="ComboBoxItem">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -419,10 +397,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#F3F4F6"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.ScrollTrack}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#E5E7EB"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.BorderSubtle}"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                             <MultiTrigger>
@@ -430,7 +408,7 @@
                                     <Condition Property="IsSelected" Value="True"/>
                                     <Condition Property="IsHighlighted" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#DDE3EA"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.BorderStrong}"/>
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -439,7 +417,7 @@
         </Style>
         <Style TargetType="CheckBox">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -450,8 +428,8 @@
                         <Border x:Name="CheckRoot"
                                 MinHeight="36"
                                 Padding="12,7"
-                                Background="{StaticResource Brush.SurfaceMuted}"
-                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                Background="{DynamicResource Brush.SurfaceMuted}"
+                                BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -459,13 +437,13 @@
                                         Width="18"
                                         Height="18"
                                         Margin="0,0,8,0"
-                                        Background="#FFFFFF"
-                                        BorderBrush="#CBD5E1"
+                                        Background="{DynamicResource Brush.Surface}"
+                                        BorderBrush="{DynamicResource Brush.ScrollThumb}"
                                         BorderThickness="1"
                                         CornerRadius="{StaticResource RadiusClip}">
                                     <Path x:Name="CheckGlyph"
                                           Data="M 4 9 L 7 12 L 14 5"
-                                          Stroke="#FFFFFF"
+                                          Stroke="{DynamicResource Brush.Surface}"
                                           StrokeThickness="2"
                                           StrokeStartLineCap="Round"
                                           StrokeEndLineCap="Round"
@@ -477,16 +455,16 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="CheckRoot" Property="Background" Value="#F1F5F9"/>
-                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#D1D5DB"/>
+                                <Setter TargetName="CheckRoot" Property="Background" Value="{DynamicResource Brush.ScrollTrack}"/>
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckRoot" Property="Background" Value="#EEF2FF"/>
-                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="#C7D2FE"/>
-                                <Setter TargetName="CheckMark" Property="Background" Value="#111827"/>
-                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="#111827"/>
+                                <Setter TargetName="CheckRoot" Property="Background" Value="{DynamicResource Brush.Accent}"/>
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                                <Setter TargetName="CheckMark" Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible"/>
-                                <Setter Property="Foreground" Value="#111827"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -505,13 +483,13 @@
                         <Border x:Name="SelectRoot"
                                 Width="22"
                                 Height="22"
-                                Background="#E6F8FAFC"
-                                BorderBrush="#CBD5E1"
+                                Background="{DynamicResource Brush.SurfaceMuted}"
+                                BorderBrush="{DynamicResource Brush.ScrollThumb}"
                                 BorderThickness="1"
                                 CornerRadius="6">
                             <Path x:Name="SelectGlyph"
                                   Data="M 4 8 L 7 11 L 12 5"
-                                  Stroke="#FFFFFF"
+                                  Stroke="{DynamicResource Brush.Surface}"
                                   StrokeThickness="1.7"
                                   StrokeStartLineCap="Round"
                                   StrokeEndLineCap="Round"
@@ -521,12 +499,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="SelectRoot" Property="Background" Value="#F1F5F9"/>
-                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#94A3B8"/>
+                                <Setter TargetName="SelectRoot" Property="Background" Value="{DynamicResource Brush.ScrollTrack}"/>
+                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="{DynamicResource Brush.ScrollThumbHover}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="SelectRoot" Property="Background" Value="#1F2937"/>
-                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="#1F2937"/>
+                                <Setter TargetName="SelectRoot" Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter TargetName="SelectRoot" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
                                 <Setter TargetName="SelectGlyph" Property="Visibility" Value="Visible"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -535,7 +513,7 @@
             </Setter>
         </Style>
         <Style x:Key="LabelText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,0,0,6"/>
@@ -543,8 +521,8 @@
         <Style x:Key="MetricCard" TargetType="Border">
             <Setter Property="Padding" Value="18"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Margin" Value="0,0,12,0"/>
         </Style>
@@ -553,12 +531,20 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="Height" Value="32"/>
             <Setter Property="MinHeight" Value="32"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Padding" Value="12,5"/>
             <Setter Property="Margin" Value="0,0,0,6"/>
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="active">
+                    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="SidebarActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -566,13 +552,13 @@
             <Setter Property="Margin" Value="0,0,0,8"/>
             <Setter Property="Height" Value="32"/>
             <Setter Property="MinHeight" Value="32"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
         </Style>
         <Style x:Key="SidebarToggleButton" TargetType="Button" BasedOn="{StaticResource SidebarActionButton}">
             <Style.Triggers>
                 <Trigger Property="Tag" Value="active">
-                    <Setter Property="Background" Value="#1F2937"/>
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Surface}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -582,7 +568,7 @@
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
         </Style>
         <Style x:Key="LibraryListItemStyle" TargetType="ListBoxItem">
             <Setter Property="Width" Value="214"/>
@@ -595,22 +581,22 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="SelectionFrame" Padding="4" Background="{StaticResource Brush.SurfaceMuted}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" CornerRadius="{StaticResource RadiusPanel}">
+                        <Border x:Name="SelectionFrame" Padding="4" Background="{DynamicResource Brush.SurfaceMuted}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" CornerRadius="{StaticResource RadiusPanel}">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="{StaticResource Brush.SurfaceHover}"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="{DynamicResource Brush.SurfaceHover}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="{StaticResource Brush.SurfaceSelected}"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="{DynamicResource Brush.SurfaceSelected}"/>
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="True"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="{StaticResource Brush.SurfaceSelected}"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="{DynamicResource Brush.SurfaceSelected}"/>
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -703,7 +689,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Grid.Style>
-                                <Border Background="#FAFFFFFF" CornerRadius="{StaticResource RadiusProgress}" Padding="7">
+                                <Border Background="{DynamicResource Brush.Surface}" CornerRadius="{StaticResource RadiusProgress}" Padding="7">
                                     <Border CornerRadius="{StaticResource RadiusClip}" ClipToBounds="True" Background="Transparent">
                                         <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
                                     </Border>
@@ -714,7 +700,7 @@
                                 <TextBlock Text="隐私模式"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Foreground="#E5E7EB"
+                                           Foreground="{DynamicResource Brush.BorderSubtle}"
                                            FontSize="13"
                                            FontWeight="Black"/>
                             </Border>
@@ -738,10 +724,10 @@
                     </Grid>
 
                     <StackPanel Margin="0,10,0,0">
-                        <TextBlock Text="{Binding Title}" FontWeight="Black" FontSize="14" Foreground="#25211E" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
-                        <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="#81756B" FontSize="12" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
-                        <TextBlock Text="{Binding LibraryMetaText}" Margin="0,7,0,0" Foreground="#7E6A58" FontSize="12" FontWeight="SemiBold" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding MissingText}" Foreground="#B44A36" FontWeight="SemiBold">
+                        <TextBlock Text="{Binding Title}" FontWeight="Black" FontSize="14" Foreground="{DynamicResource Brush.TextPrimary}" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                        <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                        <TextBlock Text="{Binding LibraryMetaText}" Margin="0,7,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding MissingText}" Foreground="{DynamicResource Brush.StatusMissing}" FontWeight="SemiBold">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="0,6,0,0"/>
@@ -754,7 +740,7 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock Text="{Binding HiddenText}" Foreground="#9A6F25" FontWeight="SemiBold">
+                        <TextBlock Text="{Binding HiddenText}" Foreground="{DynamicResource Brush.StatusHidden}" FontWeight="SemiBold">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="0,6,0,0"/>
@@ -809,8 +795,8 @@
                 <Grid>
                     <Grid.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#2D241E" Offset="0"/>
-                            <GradientStop Color="#171310" Offset="1"/>
+                            <GradientStop Color="{DynamicResource Color.TextPrimary}" Offset="0"/>
+                            <GradientStop Color="{DynamicResource Color.TextPrimary}" Offset="1"/>
                         </LinearGradientBrush>
                     </Grid.Background>
                     <Grid>
@@ -820,9 +806,9 @@
                     <Rectangle>
                         <Rectangle.Fill>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#E61C1713" Offset="0"/>
-                                <GradientStop Color="#B8191512" Offset="0.52"/>
-                                <GradientStop Color="#33110D0A" Offset="1"/>
+                                <GradientStop Color="{DynamicResource Color.TextPrimary}" Offset="0"/>
+                                <GradientStop Color="{DynamicResource Color.TextPrimary}" Offset="0.52"/>
+                                <GradientStop Color="{DynamicResource Color.TextPrimary}" Offset="1"/>
                             </LinearGradientBrush>
                         </Rectangle.Fill>
                     </Rectangle>
@@ -846,10 +832,10 @@
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Text="继续阅读" Foreground="#CFB9A6" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Row="1" Text="{Binding Title}" Margin="0,10,0,0" Foreground="#FAF5EF" FontSize="22" FontWeight="Black" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Grid.Row="2" Text="{Binding Author}" Margin="0,7,0,0" Foreground="#D6C7BA" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Grid.Row="3" Text="{Binding ReadingMetaText}" Margin="0,12,0,0" Foreground="#F0E5DA" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="继续阅读" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Row="1" Text="{Binding Title}" Margin="0,10,0,0" Foreground="{DynamicResource Brush.Surface}" FontSize="22" FontWeight="Black" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Row="2" Text="{Binding Author}" Margin="0,7,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Row="3" Text="{Binding ReadingMetaText}" Margin="0,12,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                             <Button Grid.Row="4"
                                     Content="查看详情"
                                     Margin="0,10,0,0"
@@ -860,8 +846,8 @@
                     </Grid>
                     <Border Padding="9,5"
                             CornerRadius="{StaticResource RadiusControl}"
-                            Background="#F8E7B4"
-                            BorderBrush="#E4B95F"
+                            Background="{DynamicResource Brush.Favorite}"
+                            BorderBrush="{DynamicResource Brush.Favorite}"
                             BorderThickness="1"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
@@ -876,7 +862,7 @@
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="★" Foreground="#F59E0B" FontSize="14"/>
+                        <TextBlock Text="★" Foreground="{DynamicResource Brush.Accent}" FontSize="14"/>
                     </Border>
                 </Grid>
             </Border>
@@ -907,9 +893,9 @@
                         <ContentControl ContentTemplate="{StaticResource RatingBadgeTemplate}" Content="{Binding}"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="10,4,0,0">
-                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="#25211E" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="#7B7068" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding ReadingMetaText}" Margin="0,6,0,0" Foreground="#9A5A36" FontSize="12" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding ReadingMetaText}" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -919,9 +905,9 @@
     <Grid>
         <Grid.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#F8FAFC" Offset="0"/>
-                <GradientStop Color="#F3F4F6" Offset="0.55"/>
-                <GradientStop Color="#EEF2F7" Offset="1"/>
+                <GradientStop Color="{DynamicResource Color.SurfaceMuted}" Offset="0"/>
+                <GradientStop Color="{DynamicResource Color.ScrollTrack}" Offset="0.55"/>
+                <GradientStop Color="{DynamicResource Color.ScrollTrack}" Offset="1"/>
             </LinearGradientBrush>
         </Grid.Background>
 
@@ -931,7 +917,7 @@
             <ColumnDefinition x:Name="DetailColumn" Width="0"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Margin="18" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Effect="{StaticResource PanelShadow}">
+        <Border Grid.Column="0" Margin="18" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Effect="{StaticResource PanelShadow}">
             <DockPanel LastChildFill="True">
                 <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
@@ -942,17 +928,17 @@
                                 </Border.Background>
                             </Border>
                             <StackPanel Margin="12,2,0,0">
-                                <TextBlock Text="漫画库" FontSize="21" FontWeight="Black" Foreground="#25211E"/>
-                                <TextBlock x:Name="VersionText" FontSize="11" Foreground="#9CA3AF" Margin="0,2,0,0"/>
+                                <TextBlock Text="漫画库" FontSize="21" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                <TextBlock x:Name="VersionText" FontSize="11" Foreground="{DynamicResource Brush.Dim}" Margin="0,2,0,0"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,18">
-                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
                                 <TextBlock Text="浏览"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Foreground="{StaticResource Brush.TextMuted}"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
                                            FontSize="12"
                                            FontWeight="Bold"/>
                             </Border>
@@ -963,11 +949,11 @@
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,18">
-                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
                                 <TextBlock Text="工具"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Foreground="{StaticResource Brush.TextMuted}"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
                                            FontSize="12"
                                            FontWeight="Bold"/>
                             </Border>
@@ -977,11 +963,11 @@
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,8">
-                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{StaticResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
                                 <TextBlock Text="调试"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Foreground="{StaticResource Brush.TextMuted}"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
                                            FontSize="12"
                                            FontWeight="Bold"/>
                             </Border>
@@ -1010,15 +996,15 @@
                               HorizontalScrollBarVisibility="Disabled"
                               PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
                     <StackPanel Margin="8,0,22,12">
-                        <Border x:Name="HomeEmptyState" Padding="26" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" Effect="{StaticResource PanelShadow}" Visibility="Collapsed">
+                        <Border x:Name="HomeEmptyState" Padding="26" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Effect="{StaticResource PanelShadow}" Visibility="Collapsed">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="先导入一本漫画" FontSize="30" FontWeight="Black" Foreground="#111827"/>
-                                    <TextBlock x:Name="HomeIntroText" Text="首页只有在有内容时才应该存在。现在先导入一本漫画，后面才会出现继续阅读、收藏和最近加入。" Margin="0,10,0,0" Foreground="#6B7280" FontSize="15" TextWrapping="Wrap"/>
+                                    <TextBlock Text="先导入一本漫画" FontSize="30" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                    <TextBlock x:Name="HomeIntroText" Text="首页只有在有内容时才应该存在。现在先导入一本漫画，后面才会出现继续阅读、收藏和最近加入。" Margin="0,10,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="15" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
                                     <Button Content="导入漫画" Click="ChooseLibrary_Click" Margin="0,0,10,0"/>
@@ -1030,12 +1016,12 @@
                         <StackPanel x:Name="HomeSectionsPanel">
                         <Border Padding="18"
                                 CornerRadius="{StaticResource RadiusPanel}"
-                                Background="#FFFFFF"
-                                BorderBrush="#E5E7EB"
+                                Background="{DynamicResource Brush.Surface}"
+                                BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                 BorderThickness="1"
                                 Effect="{StaticResource PanelShadow}">
                             <StackPanel>
-                                <TextBlock Text="继续阅读" Margin="4,0,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                                <TextBlock Text="继续阅读" Margin="4,0,0,14" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
                                 <ItemsControl ItemsSource="{Binding ContinueReadingBooks}" ItemTemplate="{StaticResource HomeWideBookTemplate}">
                                     <ItemsControl.ItemContainerStyle>
                                         <Style TargetType="ContentPresenter">
@@ -1050,13 +1036,13 @@
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>
-                                <TextBlock x:Name="ContinueReadingEmptyText" Text="还没有可继续阅读的漫画，先打开一本书，主页就会把它放在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                                <TextBlock x:Name="ContinueReadingEmptyText" Text="还没有可继续阅读的漫画，先打开一本书，主页就会把它放在这里。" Margin="4,10,0,0" Foreground="{DynamicResource Brush.TextMuted}" Visibility="Collapsed"/>
                             </StackPanel>
                         </Border>
 
                         <DockPanel Margin="4,28,0,14">
                             <Button DockPanel.Dock="Right" Content="换一批" Click="RefreshRecentReading_Click" Style="{StaticResource AppGhostButton}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            <TextBlock Text="之前读过" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
+                            <TextBlock Text="之前读过" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" VerticalAlignment="Center"/>
                         </DockPanel>
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding RecentReadingBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
@@ -1067,11 +1053,11 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                         </ScrollViewer>
-                        <TextBlock x:Name="RecentReadingEmptyText" Text="还没有阅读记录，读过的漫画会出现在这里。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                        <TextBlock x:Name="RecentReadingEmptyText" Text="还没有阅读记录，读过的漫画会出现在这里。" Margin="4,10,0,0" Foreground="{DynamicResource Brush.TextMuted}" Visibility="Collapsed"/>
 
                         <DockPanel Margin="4,28,0,14">
                             <Button DockPanel.Dock="Right" Content="换一批" Click="RefreshFavorites_Click" Style="{StaticResource AppGhostButton}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            <TextBlock Text="收藏" FontSize="28" FontWeight="Black" Foreground="#25211E" VerticalAlignment="Center"/>
+                            <TextBlock Text="收藏" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" VerticalAlignment="Center"/>
                         </DockPanel>
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding FavoriteShowcaseBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
@@ -1082,9 +1068,9 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                         </ScrollViewer>
-                        <TextBlock x:Name="FavoriteShowcaseEmptyText" Text="还没有收藏作品，先在书库里挑几本真正想反复回看的漫画。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                        <TextBlock x:Name="FavoriteShowcaseEmptyText" Text="还没有收藏作品，先在书库里挑几本真正想反复回看的漫画。" Margin="4,10,0,0" Foreground="{DynamicResource Brush.TextMuted}" Visibility="Collapsed"/>
 
-                        <TextBlock Text="最近加入" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
+                        <TextBlock Text="最近加入" Margin="4,28,0,14" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
                         <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="HorizontalShelfScrollViewer_PreviewMouseWheel">
                             <ItemsControl ItemsSource="{Binding RecentlyAddedBooks}" ItemTemplate="{StaticResource HomeCompactBookTemplate}">
                                 <ItemsControl.ItemsPanel>
@@ -1094,7 +1080,7 @@
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>
                         </ScrollViewer>
-                        <TextBlock x:Name="RecentlyAddedEmptyText" Text="这里还没有新加入的漫画，导入书库后会自动出现。" Margin="4,10,0,0" Foreground="#8A7F77" Visibility="Collapsed"/>
+                        <TextBlock x:Name="RecentlyAddedEmptyText" Text="这里还没有新加入的漫画，导入书库后会自动出现。" Margin="4,10,0,0" Foreground="{DynamicResource Brush.TextMuted}" Visibility="Collapsed"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
@@ -1115,7 +1101,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border x:Name="LibraryFilterPanel" Grid.Row="0" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border x:Name="LibraryFilterPanel" Grid.Row="0" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1127,32 +1113,32 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="FilterSummaryText" Text="当前显示全部漫画" VerticalAlignment="Center" Foreground="#B45309" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="FilterSummaryText" Text="当前显示全部漫画" VerticalAlignment="Center" Foreground="{DynamicResource Brush.Accent}" FontSize="12" FontWeight="SemiBold"/>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <StackPanel x:Name="LibraryMetricPanel" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
                                     <Border Padding="4,0" Background="Transparent" BorderThickness="0" Margin="0,0,14,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="当前" Foreground="#8D8177" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,0"/>
-                                            <TextBlock x:Name="VisibleBookCountText" Text="0 本" Foreground="#25211E" FontSize="13" FontWeight="Black"/>
-                                            <TextBlock x:Name="TotalBookCountText" Text=" / 共 0 本" Foreground="#8D8177" FontSize="12" Margin="4,0,0,0"/>
+                                            <TextBlock Text="当前" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                                            <TextBlock x:Name="VisibleBookCountText" Text="0 本" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="13" FontWeight="Black"/>
+                                            <TextBlock x:Name="TotalBookCountText" Text=" / 共 0 本" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="4,0,0,0"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Padding="4,0" Background="Transparent" BorderThickness="0" Margin="0,0,14,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="收藏" Foreground="#9A5A36" FontSize="12" Margin="0,0,6,0"/>
-                                            <TextBlock x:Name="FavoriteCountText" Text="0 本" Foreground="#25211E" FontSize="13" FontWeight="Black"/>
+                                            <TextBlock Text="收藏" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,0,6,0"/>
+                                            <TextBlock x:Name="FavoriteCountText" Text="0 本" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="13" FontWeight="Black"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Padding="4,0" Background="Transparent" BorderThickness="0" Margin="0,0,14,0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="在读" Foreground="#447154" FontSize="12" Margin="0,0,6,0"/>
-                                            <TextBlock x:Name="ReadingNowCountText" Text="0 本" Foreground="#25211E" FontSize="13" FontWeight="Black"/>
+                                            <TextBlock Text="在读" Foreground="{DynamicResource Brush.StatusReading}" FontSize="12" Margin="0,0,6,0"/>
+                                            <TextBlock x:Name="ReadingNowCountText" Text="0 本" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="13" FontWeight="Black"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Padding="4,0" Background="Transparent" BorderThickness="0">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="读过" Foreground="#6B7280" FontSize="12" Margin="0,0,6,0"/>
-                                            <TextBlock x:Name="ReadCountBookText" Text="0 本" Foreground="#25211E" FontSize="13" FontWeight="Black"/>
+                                            <TextBlock Text="读过" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,0,6,0"/>
+                                            <TextBlock x:Name="ReadCountBookText" Text="0 本" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="13" FontWeight="Black"/>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -1186,10 +1172,10 @@
                             <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterActionButton}" Height="44" Margin="0,0,10,0"/>
                             <Button Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterActionButton}" Height="44"/>
                         </WrapPanel>
-                        <Border x:Name="BatchManageShell" Grid.Row="2" Margin="0,10,0,0" Padding="8" CornerRadius="{StaticResource RadiusPanel}" Background="#EEF2F7" BorderBrush="#DDE4EE" BorderThickness="1" Visibility="Collapsed">
+                        <Border x:Name="BatchManageShell" Grid.Row="2" Margin="0,10,0,0" Padding="8" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.ScrollTrack}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Visibility="Collapsed">
                             <WrapPanel x:Name="BatchManagePanel" VerticalAlignment="Center" ItemHeight="32">
-                                <Border Padding="10,5" CornerRadius="{StaticResource RadiusControl}" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,6,0">
-                                    <TextBlock x:Name="BatchSelectionText" Text="0 本" Foreground="#111827" FontSize="12" FontWeight="Black" VerticalAlignment="Center"/>
+                                <Border Padding="10,5" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Margin="0,0,6,0">
+                                    <TextBlock x:Name="BatchSelectionText" Text="0 本" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="12" FontWeight="Black" VerticalAlignment="Center"/>
                                 </Border>
                                 <Button Content="全选" Click="SelectVisibleBooks_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="清空" Click="ClearBatchSelection_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
@@ -1209,7 +1195,7 @@
                     </Grid>
                 </Border>
 
-                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,10">
                             <ComboBox x:Name="WaterfallTagSortBox" DockPanel.Dock="Right" Width="130" Height="44" SelectedIndex="0" SelectionChanged="WaterfallTagSort_Changed" Style="{StaticResource FilterComboBox}" ToolTip="瀑布流 Tag 排序方式">
@@ -1221,7 +1207,7 @@
                             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                                 <CheckBox x:Name="FavoriteOnlyBox" Content="只看收藏" Margin="0,0,6,0" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
                                 <CheckBox x:Name="OnlyHiddenBox" Content="只看隐藏作品" Margin="0,0,10,0" Checked="OnlyHidden_Changed" Unchecked="OnlyHidden_Changed"/>
-                                <TextBlock x:Name="ActiveTagSummaryText" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="#8D8177"/>
+                                <TextBlock x:Name="ActiveTagSummaryText" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}"/>
                             </StackPanel>
                         </DockPanel>
                         <ItemsControl x:Name="ActiveTagFilterList" ItemsSource="{Binding ActiveTagFilters}" Visibility="Collapsed" Margin="0,0,0,12">
@@ -1236,7 +1222,7 @@
                                             Margin="0,0,8,8"
                                             Padding="11,6"
                                             Background="{Binding Color}"
-                                            BorderBrush="#111827"
+                                            BorderBrush="{DynamicResource Brush.TextPrimary}"
                                             MouseLeftButtonDown="ActiveTagChip_Click">
                                         <Border.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
@@ -1248,7 +1234,7 @@
                                         </Border.ContextMenu>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                            <TextBlock Text=" ×" Foreground="#475569" FontSize="12" FontWeight="Bold"/>
+                                            <TextBlock Text=" ×" Foreground="#111827" FontSize="12" FontWeight="Bold"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -1299,10 +1285,10 @@
                                                 <TextBlock Text="{Binding Category}" FontSize="11" Margin="0,0,5,0">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                                            <Setter Property="Foreground" Value="#6B7280"/>
+                                                            <Setter Property="Foreground" Value="#111827"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                    <Setter Property="Foreground" Value="#94A3B8"/>
+                                                                    <Setter Property="Foreground" Value="#111827"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1311,10 +1297,10 @@
                                                 <TextBlock Text="{Binding Name}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                                            <Setter Property="Foreground" Value="#25211E"/>
+                                                            <Setter Property="Foreground" Value="#111827"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                    <Setter Property="Foreground" Value="#64748B"/>
+                                                                    <Setter Property="Foreground" Value="#111827"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1367,19 +1353,19 @@
                     </ListBox>
                     <Canvas x:Name="RubberBandLayer" IsHitTestVisible="False" Margin="8,0,24,0">
                         <Rectangle x:Name="RubberBandRect"
-                                   Stroke="#3B82F6"
+                                   Stroke="{DynamicResource Brush.Accent}"
                                    StrokeThickness="1"
                                    StrokeDashArray="3,2"
-                                   Fill="#223B82F6"
+                                   Fill="{DynamicResource Brush.Accent}"
                                    RadiusX="3"
                                    RadiusY="3"
                                    Visibility="Collapsed"/>
                     </Canvas>
 
-                    <Border x:Name="ShelfEmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28" CornerRadius="{StaticResource RadiusPanel}" Background="#EFFFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1">
+                    <Border x:Name="ShelfEmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                         <StackPanel Width="320">
-                            <TextBlock Text="当前漫画列表是空的" FontSize="26" FontWeight="Black" Foreground="#25211E" TextAlignment="Center"/>
-                            <TextBlock x:Name="ShelfEmptyHintText" Text="可以先清空筛选，或者导入新的漫画文件夹。" Margin="0,12,0,0" TextWrapping="Wrap" Foreground="#6E645C" TextAlignment="Center" LineHeight="22"/>
+                            <TextBlock Text="当前漫画列表是空的" FontSize="26" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" TextAlignment="Center"/>
+                            <TextBlock x:Name="ShelfEmptyHintText" Text="可以先清空筛选，或者导入新的漫画文件夹。" Margin="0,12,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" TextAlignment="Center" LineHeight="22"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -1390,15 +1376,15 @@
                         IsHitTestVisible="False"
                         Margin="8,0,22,12"
                         CornerRadius="{StaticResource RadiusPanel}"
-                        Background="#BDF8FAFC"
-                        BorderBrush="#E5E7EB"
+                        Background="{DynamicResource Brush.SurfaceMuted}"
+                        BorderBrush="{DynamicResource Brush.BorderSubtle}"
                         BorderThickness="1"
                         Panel.ZIndex="34">
                     <Border Width="520"
                             Padding="28"
                             CornerRadius="{StaticResource RadiusPanel}"
-                            Background="#FFFFFF"
-                            BorderBrush="#E5E7EB"
+                            Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.BorderSubtle}"
                             BorderThickness="1"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -1408,7 +1394,7 @@
                                        Text="正在加载漫画库"
                                        FontSize="26"
                                        FontWeight="Black"
-                                       Foreground="#111827"
+                                       Foreground="{DynamicResource Brush.TextPrimary}"
                                        TextAlignment="Center"/>
                             <ProgressBar x:Name="LibraryLoadProgressBar"
                                          Style="{StaticResource SlimProgressBar}"
@@ -1420,7 +1406,7 @@
                                        Text="准备扫描..."
                                        Margin="0,14,0,0"
                                        FontSize="13"
-                                       Foreground="#475569"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"/>
                         </StackPanel>
@@ -1433,15 +1419,15 @@
                         IsHitTestVisible="False"
                         Margin="8,0,22,12"
                         CornerRadius="{StaticResource RadiusPanel}"
-                        Background="#BDF8FAFC"
-                        BorderBrush="#E5E7EB"
+                        Background="{DynamicResource Brush.SurfaceMuted}"
+                        BorderBrush="{DynamicResource Brush.BorderSubtle}"
                         BorderThickness="1"
                         Panel.ZIndex="35">
                     <Border Width="520"
                             Padding="28"
                             CornerRadius="{StaticResource RadiusPanel}"
-                            Background="#FFFFFF"
-                            BorderBrush="#E5E7EB"
+                            Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.BorderSubtle}"
                             BorderThickness="1"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -1451,7 +1437,7 @@
                                        Text="正在导入"
                                        FontSize="26"
                                        FontWeight="Black"
-                                       Foreground="#111827"
+                                       Foreground="{DynamicResource Brush.TextPrimary}"
                                        TextAlignment="Center"/>
                             <ProgressBar x:Name="ImportProgressBar"
                                          Style="{StaticResource SlimProgressBar}"
@@ -1463,7 +1449,7 @@
                                        Text="准备中..."
                                        Margin="0,14,0,0"
                                        FontSize="13"
-                                       Foreground="#475569"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"/>
                         </StackPanel>
@@ -1476,16 +1462,16 @@
                         IsHitTestVisible="False"
                         Margin="8,0,22,12"
                         CornerRadius="{StaticResource RadiusPanel}"
-                        Background="#D9111827"
-                        BorderBrush="#A7F3D0"
+                        Background="{DynamicResource Brush.TextPrimary}"
+                        BorderBrush="{DynamicResource Brush.StatusReading}"
                         BorderThickness="2"
                         Panel.ZIndex="40">
                     <Grid>
                         <Border Width="520"
                                 Padding="34"
                                 CornerRadius="{StaticResource RadiusPanel}"
-                                Background="#F8FFFC"
-                                BorderBrush="#BBF7D0"
+                                Background="{DynamicResource Brush.Surface}"
+                                BorderBrush="{DynamicResource Brush.StatusReading}"
                                 BorderThickness="1"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center">
@@ -1494,13 +1480,13 @@
                                            Text="松开以导入漫画文件夹"
                                            FontSize="30"
                                            FontWeight="Black"
-                                           Foreground="#111827"
+                                           Foreground="{DynamicResource Brush.TextPrimary}"
                                            TextAlignment="Center"/>
                                 <TextBlock x:Name="ImportDropHint"
                                            Text="会按作者文件夹识别子目录，并在导入前弹出确认列表。"
                                            Margin="0,12,0,0"
                                            FontSize="14"
-                                           Foreground="#475569"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"/>
                             </StackPanel>
@@ -1516,14 +1502,14 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="8,0,22,0">
-                        <Border Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                        <Border Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="标签管理" FontSize="30" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="标签管理" FontSize="30" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
                                     <Button Content="去书库" Click="NavLibrary_Click" Style="{StaticResource AppGhostButton}"/>
@@ -1541,35 +1527,35 @@
                     </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Style="{StaticResource MetricCard}">
                                 <StackPanel>
-                                    <TextBlock Text="全部标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="TagManagerTotalCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                                    <TextBlock Text="包含内置和用户标签" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                    <TextBlock Text="全部标签" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerTotalCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                    <TextBlock Text="包含内置和用户标签" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource MetricCard}">
                                 <StackPanel>
-                                    <TextBlock Text="正在使用" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="TagManagerUsedCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                                    <TextBlock Text="至少关联 1 本漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                    <TextBlock Text="正在使用" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerUsedCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                    <TextBlock Text="至少关联 1 本漫画" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="2" Style="{StaticResource MetricCard}">
                                 <StackPanel>
-                                    <TextBlock Text="候选标签" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="TagManagerStandaloneCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                                    <TextBlock Text="未关联时只能作为待分配标签" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                    <TextBlock Text="候选标签" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerStandaloneCountText" Text="0 个" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                    <TextBlock Text="未关联时只能作为待分配标签" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="3" Style="{StaticResource MetricCard}">
                                 <StackPanel>
-                                    <TextBlock Text="标签组" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="TagManagerGroupCountText" Text="0 组" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                                    <TextBlock Text="按分组统一颜色" Margin="0,6,0,0" Foreground="#6E645C"/>
+                                    <TextBlock Text="标签组" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TagManagerGroupCountText" Text="0 组" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                    <TextBlock Text="按分组统一颜色" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                                 </StackPanel>
                             </Border>
                 </Grid>
 
-                <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1615,7 +1601,7 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:TagChip}">
-                                    <Border Margin="0,0,0,10" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" HorizontalAlignment="Stretch">
+                                    <Border Margin="0,0,0,10" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" HorizontalAlignment="Stretch">
                                         <Border.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                                 <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
@@ -1633,21 +1619,21 @@
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal">
                                                     <Border Background="{Binding Color}" CornerRadius="{StaticResource RadiusControl}" Padding="10,5" Margin="0,0,10,0">
-                                                        <TextBlock Text="{Binding Category}" Foreground="#25211E" FontSize="11" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding Category}" Foreground="#111827" FontSize="11" FontWeight="SemiBold"/>
                                                     </Border>
-                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="#25211E"/>
+                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource Brush.TextPrimary}"/>
                                                 </StackPanel>
                                                 <WrapPanel Margin="0,8,0,0"
                                                            Cursor="Hand"
                                                            ToolTip="点击查看关联漫画"
                                                            MouseLeftButtonDown="TagUsage_MouseLeftButtonDown">
-                                                    <TextBlock Text="已关联 " Foreground="#6B7280"/>
-                                                    <TextBlock Text="{Binding UsageCount}" Foreground="#6B7280"/>
-                                                    <TextBlock Text=" 本漫画" Foreground="#6B7280"/>
-                                                    <TextBlock Text=" · " Foreground="#6B7280"/>
-                                                    <TextBlock Text="{Binding SourceText}" Foreground="#6B7280"/>
-                                                    <TextBlock Text=" · " Foreground="#6B7280"/>
-                                                    <TextBlock Text="{Binding TypeText, Mode=OneWay}" Foreground="#6B7280"/>
+                                                    <TextBlock Text="已关联 " Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                    <TextBlock Text="{Binding UsageCount}" Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                    <TextBlock Text=" 本漫画" Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                    <TextBlock Text=" · " Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                    <TextBlock Text="{Binding SourceText}" Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                    <TextBlock Text=" · " Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                    <TextBlock Text="{Binding TypeText, Mode=OneWay}" Foreground="{DynamicResource Brush.TextMuted}"/>
                                                 </WrapPanel>
                                             </StackPanel>
                                         </DockPanel>
@@ -1655,9 +1641,9 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <Border Grid.Row="2" x:Name="TagManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="#F8FAFC">
+                        <Border Grid.Row="2" x:Name="TagManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.SurfaceMuted}">
                             <TextBlock Text="当前没有命中的标签，可以换个关键词，或者新建一个新的标签。"
-                                       Foreground="#6B7280"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
                                        TextWrapping="Wrap"/>
                         </Border>
                     </Grid>
@@ -1671,14 +1657,14 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="8,0,22,0">
-                        <Border Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                        <Border Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="作者管理" FontSize="30" FontWeight="Black" Foreground="#25211E"/>
+                                    <TextBlock Text="作者管理" FontSize="30" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
                                     <Button Content="新增作者" Click="CreateAuthor_Click" Style="{StaticResource HeaderActionButton}" Margin="0,0,10,0"/>
@@ -1695,21 +1681,21 @@
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Style="{StaticResource MetricCard}">
                         <StackPanel>
-                            <TextBlock Text="全部作者" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="AuthorTotalText" Text="0 位" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                            <TextBlock Text="去重计数" Margin="0,6,0,0" Foreground="#6E645C"/>
+                            <TextBlock Text="全部作者" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="AuthorTotalText" Text="0 位" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                            <TextBlock Text="去重计数" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="1" Style="{StaticResource MetricCard}" Margin="0">
                         <StackPanel>
-                            <TextBlock Text="关联书籍" Foreground="#6B7280" FontSize="12" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="AuthorBookTotalText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="#25211E"/>
-                            <TextBlock Text="已指定作者的漫画" Margin="0,6,0,0" Foreground="#6E645C"/>
+                            <TextBlock Text="关联书籍" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="AuthorBookTotalText" Text="0 本" Margin="0,10,0,0" FontSize="28" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                            <TextBlock Text="已指定作者的漫画" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
-                <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1">
+                <Border Grid.Row="2" Margin="8,0,22,12" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1744,7 +1730,7 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:AuthorItem}">
-                                    <Border Margin="0,0,0,6" Padding="14,10" CornerRadius="{StaticResource RadiusPanel}" Background="#FFFFFF" BorderBrush="#E5E7EB" BorderThickness="1" HorizontalAlignment="Stretch">
+                                    <Border Margin="0,0,0,6" Padding="14,10" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" HorizontalAlignment="Stretch">
                                         <DockPanel LastChildFill="True">
                                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                                 <Button Content="按照此作者筛选" Click="FilterByAuthor_Click" Style="{StaticResource AppGhostButton}" Margin="0,0,8,0"/>
@@ -1752,17 +1738,17 @@
                                                 <Button Content="删除" Click="DeleteAuthor_Click" Style="{StaticResource AppDangerButton}"/>
                                             </StackPanel>
                                             <StackPanel>
-                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="#25211E"/>
-                                                <TextBlock Text="{Binding BookCount, StringFormat={}{0} 本书籍}" FontSize="12" Foreground="#6B7280"/>
+                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                                <TextBlock Text="{Binding BookCount, StringFormat={}{0} 本书籍}" FontSize="12" Foreground="{DynamicResource Brush.TextMuted}"/>
                                             </StackPanel>
                                         </DockPanel>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <Border Grid.Row="2" x:Name="AuthorManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="#F8FAFC">
+                        <Border Grid.Row="2" x:Name="AuthorManagerEmptyState" Visibility="Collapsed" Margin="0,4,0,0" Padding="20" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.SurfaceMuted}">
                             <TextBlock Text="没有匹配的作者。"
-                                       Foreground="#6B7280"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
                                        TextWrapping="Wrap"/>
                         </Border>
                     </Grid>
@@ -1775,8 +1761,8 @@
                     Margin="8,14,22,0"
                     Padding="0"
                     CornerRadius="{StaticResource RadiusPanel}"
-                    Background="#111827"
-                    BorderBrush="#263244"
+                    Background="{DynamicResource Brush.TextPrimary}"
+                    BorderBrush="{DynamicResource Brush.TextPrimary}"
                     BorderThickness="1"
                     Visibility="Collapsed">
                 <Grid>
@@ -1793,13 +1779,13 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="输出"
                                    VerticalAlignment="Center"
-                                   Foreground="#F8FAFC"
+                                   Foreground="{DynamicResource Brush.SurfaceMuted}"
                                    FontWeight="Bold"/>
                         <TextBlock Grid.Column="1"
                                    Text="实时状态 / app 日志"
                                    Margin="12,0,0,0"
                                    VerticalAlignment="Center"
-                                   Foreground="#64748B"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
                                    FontSize="12"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button x:Name="LogPanelExpandButton" Content="扩大" Click="ToggleLogPanelSize_Click" Style="{StaticResource TinyButton}" Margin="0,0,10,0"/>
@@ -1807,7 +1793,7 @@
                             <Button Content="打开日志目录" Click="OpenLogFolder_Click" Style="{StaticResource TinyButton}"/>
                         </StackPanel>
                     </Grid>
-                    <Border Grid.Row="1" Margin="12,0" CornerRadius="{StaticResource RadiusControl}" Background="#0B1220">
+                    <Border Grid.Row="1" Margin="12,0" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.TextPrimary}">
                         <ScrollViewer x:Name="LogOutputScrollViewer"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Auto"
@@ -1815,7 +1801,7 @@
                             <TextBlock x:Name="LogOutputText"
                                        FontFamily="Consolas"
                                        FontSize="12"
-                                       Foreground="#CBD5E1"
+                                       Foreground="{DynamicResource Brush.ScrollThumb}"
                                        TextWrapping="NoWrap"/>
                         </ScrollViewer>
                     </Border>
@@ -1824,7 +1810,7 @@
                                Margin="16,0"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"
-                               Foreground="#D6A05F"
+                               Foreground="{DynamicResource Brush.Accent}"
                                FontSize="12"/>
                 </Grid>
             </Border>
@@ -1835,7 +1821,7 @@
                 Grid.ColumnSpan="2"
                 Panel.ZIndex="9"
                 Visibility="Collapsed"
-                Background="#01000000"
+                Background="{DynamicResource Brush.Surface}"
                 MouseDown="DetailDismissOverlay_MouseDown"/>
 
         <Border x:Name="DetailShell"
@@ -1850,8 +1836,8 @@
                 Margin="26"
                 Padding="20"
                 CornerRadius="{StaticResource RadiusPanel}"
-                Background="{StaticResource Brush.Surface}"
-                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.BorderSubtle}"
                 BorderThickness="1"
                 Effect="{StaticResource PanelShadow}">
             <Grid>
@@ -1888,7 +1874,7 @@
                                     <MenuItem Header="切换卡片样式" Click="CycleBookStyle_Click"/>
                                     <MenuItem x:Name="MoreActionsHideMenuItem" Header="隐藏作品" Click="HideBook_Click"/>
                                     <Separator/>
-                                    <MenuItem Header="删除库记录" Click="DeleteBook_Click" Foreground="#B91C1C"/>
+                                    <MenuItem Header="删除库记录" Click="DeleteBook_Click" Foreground="{DynamicResource Brush.Danger}"/>
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
@@ -1898,9 +1884,9 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
                     <Grid>
                         <StackPanel x:Name="EmptyDetailPanel" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,80,0,0">
-                            <Border Width="96" Height="132" CornerRadius="{StaticResource RadiusPanel}" Background="{StaticResource Brush.SurfaceMuted}" HorizontalAlignment="Center" Effect="{StaticResource BookShadow}"/>
-                            <TextBlock Text="选择一本书" FontSize="24" FontWeight="Black" Margin="0,24,0,0" HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextPrimary}"/>
-                            <TextBlock Text="书籍信息、标签和简介会在这里以卡片方式编辑。" Margin="24,8" Foreground="{StaticResource Brush.TextMuted}" TextWrapping="Wrap" TextAlignment="Center"/>
+                            <Border Width="96" Height="132" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.SurfaceMuted}" HorizontalAlignment="Center" Effect="{StaticResource BookShadow}"/>
+                            <TextBlock Text="选择一本书" FontSize="24" FontWeight="Black" Margin="0,24,0,0" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                            <TextBlock Text="书籍信息、标签和简介会在这里以卡片方式编辑。" Margin="24,8" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap" TextAlignment="Center"/>
                         </StackPanel>
 
                         <DockPanel x:Name="DetailPanel" Visibility="Collapsed" LastChildFill="True">
@@ -1908,8 +1894,8 @@
                                 <Border Width="320"
                                         Height="480"
                                         CornerRadius="{StaticResource RadiusPanel}"
-                                        Background="{StaticResource Brush.SurfaceMuted}"
-                                        BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                        Background="{DynamicResource Brush.SurfaceMuted}"
+                                        BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                         BorderThickness="1"
                                         ClipToBounds="True"
                                         Effect="{StaticResource BookShadow}">
@@ -1976,7 +1962,7 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Grid.Style>
-                                            <Border Background="#FAFFFFFF" CornerRadius="{StaticResource RadiusPanel}" Padding="14">
+                                            <Border Background="{DynamicResource Brush.Surface}" CornerRadius="{StaticResource RadiusPanel}" Padding="14">
                                                 <Border CornerRadius="{StaticResource RadiusClip}" ClipToBounds="True" Background="Transparent">
                                                     <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
                                                 </Border>
@@ -1987,7 +1973,7 @@
                                             <TextBlock Text="隐私模式"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
-                                                       Foreground="#E5E7EB"
+                                                       Foreground="{DynamicResource Brush.BorderSubtle}"
                                                        FontSize="20"
                                                        FontWeight="Black"/>
                                         </Border>
@@ -2037,8 +2023,8 @@
                                                 Padding="16,0"
                                                 Margin="0,0,8,8"
                                                 CornerRadius="{StaticResource RadiusControl}"
-                                                Background="{StaticResource Brush.SurfaceMuted}"
-                                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                                Background="{DynamicResource Brush.SurfaceMuted}"
+                                                BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                                 BorderThickness="1"
                                                 VerticalAlignment="Center">
                                             <TextBlock x:Name="BookMetaLineText"
@@ -2181,7 +2167,7 @@
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate DataType="{x:Type models:AuthorItem}">
                                                             <Border Style="{StaticResource AppTagChipBorder}"
-                                                                    Background="#E5E7EB"
+                                                                    Background="{DynamicResource Brush.BorderSubtle}"
                                                                     MouseLeftButtonDown="EditAuthorOption_Click"
                                                                     ToolTip="点击选择作者">
                                                                 <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
@@ -2226,8 +2212,8 @@
                                                 <TextBlock DockPanel.Dock="Top" Text="Tag 管理" Style="{StaticResource LabelText}" Margin="0,0,0,6"/>
                                                 <Border Padding="10,8"
                                                         CornerRadius="{StaticResource RadiusField}"
-                                                        Background="{StaticResource Brush.Surface}"
-                                                        BorderBrush="{StaticResource Brush.BorderStrong}"
+                                                        Background="{DynamicResource Brush.Surface}"
+                                                        BorderBrush="{DynamicResource Brush.BorderStrong}"
                                                         BorderThickness="1">
                                                     <DockPanel>
                                                         <TextBox x:Name="EditTagSearchBox"
@@ -2240,7 +2226,7 @@
                                                                 Margin="0,0,0,8"
                                                                 Padding="0,4">
                                                             <DockPanel>
-                                                                <TextBlock DockPanel.Dock="Left" Text="已选" VerticalAlignment="Center" Foreground="#8D8177" FontSize="12" Margin="0,0,8,0"/>
+                                                                <TextBlock DockPanel.Dock="Left" Text="已选" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,0,8,0"/>
                                                                 <ItemsControl ItemsSource="{Binding EditSelectedTagItems, RelativeSource={RelativeSource AncestorType=Window}}">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
@@ -2256,7 +2242,7 @@
                                                                                     ToolTip="点击移除">
                                                                                 <StackPanel Orientation="Horizontal">
                                                                                     <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#475569"/>
+                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#111827"/>
                                                                                 </StackPanel>
                                                                             </Border>
                                                                         </DataTemplate>
@@ -2373,7 +2359,7 @@
               Grid.ColumnSpan="2"
               Panel.ZIndex="18"
               Visibility="Collapsed"
-              Background="#99000000"
+              Background="{DynamicResource Brush.TextPrimary}"
               MouseLeftButtonDown="DetailCatalogOverlay_MouseLeftButtonDown"
               PreviewMouseWheel="DetailCatalogOverlay_PreviewMouseWheel">
             <Border Width="1120"
@@ -2383,8 +2369,8 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     CornerRadius="{StaticResource RadiusPanel}"
-                    Background="{StaticResource Brush.Surface}"
-                    BorderBrush="{StaticResource Brush.BorderSubtle}"
+                    Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
                     BorderThickness="1"
                     Effect="{StaticResource PanelShadow}"
                     MouseLeftButtonDown="DetailCatalogContent_MouseLeftButtonDown">
@@ -2405,7 +2391,7 @@
                                        FontWeight="Black"
                                        TextTrimming="CharacterEllipsis"
                                        MaxWidth="900"
-                                       Foreground="{StaticResource Brush.TextPrimary}"/>
+                                       Foreground="{DynamicResource Brush.TextPrimary}"/>
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Content="关闭"
@@ -2453,8 +2439,8 @@
                                             Margin="6"
                                             Padding="7"
                                             CornerRadius="{StaticResource RadiusControl}"
-                                            Background="{StaticResource Brush.SurfaceMuted}"
-                                            BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                            Background="{DynamicResource Brush.SurfaceMuted}"
+                                            BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                             BorderThickness="1"
                                             Cursor="Hand"
                                             MouseEnter="DetailCatalogItem_MouseEnter"
@@ -2474,7 +2460,7 @@
                                             </Grid.RowDefinitions>
                                             <Grid>
                                                 <Border CornerRadius="{StaticResource RadiusControl}"
-                                                        Background="#111827"
+                                                        Background="{DynamicResource Brush.TextPrimary}"
                                                         ClipToBounds="True">
                                                     <Image Source="{Binding Thumbnail}"
                                                            Stretch="Uniform"
@@ -2486,14 +2472,14 @@
                                                       Margin="0,0,6,6"
                                                       Data="M0,0 L20,0 L20,24 L10,18 L0,24 Z"
                                                       Fill="{Binding BookmarkBrush}"
-                                                      Stroke="#00000033"
+                                                      Stroke="{DynamicResource Brush.BorderSubtle}"
                                                       StrokeThickness="1"/>
                                             </Grid>
                                             <TextBlock Grid.Row="1"
                                                        Text="{Binding PageText}"
                                                        Margin="0,7,0,0"
                                                        HorizontalAlignment="Center"
-                                                       Foreground="{StaticResource Brush.TextMuted}"
+                                                       Foreground="{DynamicResource Brush.TextMuted}"
                                                        FontSize="12"
                                                        FontWeight="SemiBold"/>
                                         </Grid>
@@ -2505,8 +2491,8 @@
                                 Margin="18,0,0,0"
                                 Padding="14"
                                 CornerRadius="{StaticResource RadiusPanel}"
-                                Background="{StaticResource Brush.SurfaceMuted}"
-                                BorderBrush="{StaticResource Brush.BorderSubtle}"
+                                Background="{DynamicResource Brush.SurfaceMuted}"
+                                BorderBrush="{DynamicResource Brush.BorderSubtle}"
                                 BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -2514,7 +2500,7 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <Border CornerRadius="{StaticResource RadiusControl}"
-                                        Background="#111827"
+                                        Background="{DynamicResource Brush.TextPrimary}"
                                         ClipToBounds="True">
                                     <Image x:Name="DetailCatalogPreviewImage"
                                            Stretch="Uniform"
@@ -2525,7 +2511,7 @@
                                            Text="选择一页预览"
                                            Margin="0,12,0,0"
                                            HorizontalAlignment="Center"
-                                           Foreground="{StaticResource Brush.TextMuted}"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
                                            FontSize="13"
                                            FontWeight="SemiBold"/>
                             </Grid>
@@ -2542,12 +2528,12 @@
                 Margin="0,0,0,40"
                 Padding="20,10"
                 CornerRadius="{StaticResource RadiusControl}"
-                Background="#CC25211E"
+                Background="{DynamicResource Brush.TextPrimary}"
                 Visibility="Collapsed"
                 IsHitTestVisible="False"
                 Panel.ZIndex="100">
             <TextBlock x:Name="ToastText"
-                       Foreground="#FAF5EF"
+                       Foreground="{DynamicResource Brush.Surface}"
                        FontSize="13"
                        FontWeight="SemiBold"
                        TextAlignment="Center"/>

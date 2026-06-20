@@ -16,6 +16,32 @@ public partial class App : System.Windows.Application
         AppLogger.Info("app", "Application constructed.");
     }
 
+    public static void ApplyTheme(string themeName)
+    {
+        var dicts = Current.Resources.MergedDictionaries;
+
+        System.Windows.ResourceDictionary? colorDict = null;
+        int colorIndex = -1;
+        for (int i = 0; i < dicts.Count; i++)
+        {
+            var src = dicts[i].Source?.OriginalString;
+            if (src != null && src.Contains("Theme") && !src.Contains("ThemeBase") && !src.Contains("ReaderTheme"))
+            {
+                colorDict = dicts[i];
+                colorIndex = i;
+                break;
+            }
+        }
+        if (colorDict is null || colorIndex < 0) return;
+
+        var newDict = new System.Windows.ResourceDictionary
+        {
+            Source = new Uri($"Themes/Theme{themeName}.xaml", UriKind.Relative)
+        };
+
+        dicts[colorIndex] = newDict;
+    }
+
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {
         AppLogger.Info("app", $"Application exit. Code={e.ApplicationExitCode}");

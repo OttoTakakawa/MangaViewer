@@ -57,11 +57,15 @@ public partial class MainWindow : Window
         brush.Freeze();
         return brush;
     }
-    private static readonly SolidColorBrush DarkBrush = FrozenBrush("#111827");
-    private static readonly SolidColorBrush GrayForegroundBrush = FrozenBrush("#374151");
+
+    private static SolidColorBrush GetThemeBrush(string key)
+    {
+        if (System.Windows.Application.Current.TryFindResource(key) is System.Windows.Media.SolidColorBrush brush)
+            return brush;
+        return System.Windows.Media.Brushes.Transparent;
+    }
+
     private static readonly SolidColorBrush TransparentBrush = FrozenBrush("#00FFFFFF");
-    private static readonly SolidColorBrush LightBackgroundBrush = FrozenBrush("#F8FAFC");
-    private static readonly SolidColorBrush LightBorderBrush = FrozenBrush("#E5E7EB");
 
     private readonly AppStorage _storage = new();
     private readonly LibraryScanner _scanner = new();
@@ -191,6 +195,11 @@ public partial class MainWindow : Window
         try
         {
             await Task.Run(() => _database.Initialize());
+
+            // 应用保存的主题
+            var savedTheme = _database.LoadSetting("app.theme", "Warm");
+            if (savedTheme is "Light" or "Dark")
+                App.ApplyTheme(savedTheme);
 
             var managedTagsTask = Task.Run(() => _database.LoadManagedTags());
             var suppressedTagsTask = Task.Run(() => _database.LoadSuppressedTags());
@@ -2156,6 +2165,14 @@ public partial class MainWindow : Window
         {
             var shortcuts = _database.LoadShortcuts();
             ApplyShortcuts(shortcuts);
+        }
+
+        if (dialog.ThemeChanged)
+        {
+            SetNavButtonState(HomeNavButton, _currentNavigationKey == "home");
+            SetNavButtonState(LibraryNavButton, _currentNavigationKey == "library");
+            SetNavButtonState(TagsNavButton, _currentNavigationKey == "tags");
+            SetNavButtonState(AuthorsNavButton, _currentNavigationKey == "authors");
         }
 
         switch (dialog.RequestedAction)
@@ -4154,9 +4171,9 @@ public partial class MainWindow : Window
         if (BatchModeToggleButton is not null)
         {
             BatchModeToggleButton.Content = IsBatchSelectionMode ? "退出多选" : "多选管理";
-            BatchModeToggleButton.Background = IsBatchSelectionMode ? DarkBrush : LightBackgroundBrush;
-            BatchModeToggleButton.BorderBrush = IsBatchSelectionMode ? DarkBrush : LightBorderBrush;
-            BatchModeToggleButton.Foreground = IsBatchSelectionMode ? System.Windows.Media.Brushes.White : DarkBrush;
+            BatchModeToggleButton.Background = IsBatchSelectionMode ? GetThemeBrush("Brush.TextPrimary") : GetThemeBrush("Brush.SurfaceMuted");
+            BatchModeToggleButton.BorderBrush = IsBatchSelectionMode ? GetThemeBrush("Brush.TextPrimary") : GetThemeBrush("Brush.BorderSubtle");
+            BatchModeToggleButton.Foreground = IsBatchSelectionMode ? System.Windows.Media.Brushes.White : GetThemeBrush("Brush.TextPrimary");
         }
     }
 
@@ -4734,9 +4751,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        button.Background = active ? LightBackgroundBrush : TransparentBrush;
-        button.BorderBrush = active ? LightBorderBrush : TransparentBrush;
-        button.Foreground = active ? DarkBrush : GrayForegroundBrush;
+        button.Tag = active ? "active" : "";
     }
 
     private void FastVerticalScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)

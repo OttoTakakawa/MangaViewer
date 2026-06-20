@@ -1,0 +1,60 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="Color.AppBackground">#F6F7F9</Color>
+    <Color x:Key="Color.Surface">#FFFFFF</Color>
+    <Color x:Key="Color.SurfaceMuted">#F8F2EC</Color>
+    <Color x:Key="Color.TextPrimary">#25211E</Color>
+    <Color x:Key="Color.TextMuted">#8D8177</Color>
+    <Color x:Key="Color.TextSubtle">#8D8177</Color>
+    <Color x:Key="Color.BorderSubtle">#E5E0D8</Color>
+    <Color x:Key="Color.BorderStrong">#D1CCC2</Color>
+    <Color x:Key="Color.Accent">#B45309</Color>
+    <Color x:Key="Color.Danger">#9F1239</Color>
+    <Color x:Key="Color.DangerSurface">#FFF1F2</Color>
+    <Color x:Key="Color.DangerBorder">#FECDD3</Color>
+    <Color x:Key="Color.ScrollTrack">#EEF2F7</Color>
+    <Color x:Key="Color.ScrollThumb">#CBD5E1</Color>
+    <Color x:Key="Color.ScrollThumbHover">#94A3B8</Color>
+    <Color x:Key="Color.StatusMissing">#B44A36</Color>
+    <Color x:Key="Color.StatusHidden">#9A6F25</Color>
+    <Color x:Key="Color.StatusReading">#447154</Color>
+    <Color x:Key="Color.StatusFinished">#3B5A7C</Color>
+    <Color x:Key="Color.StatusUnread">#9CA3AF</Color>
+    <Color x:Key="Color.BorderFocus">#B45309</Color>
+    <Color x:Key="Color.SurfaceHover">#F0EDE8</Color>
+    <Color x:Key="Color.SurfaceSelected">#E8E2D8</Color>
+    <Color x:Key="Color.TagBg">#F8F2EC</Color>
+    <Color x:Key="Color.TagBorder">#E5E0D8</Color>
+    <Color x:Key="Color.Favorite">#E4B95F</Color>
+    <Color x:Key="Color.Rating">#E4B95F</Color>
+    <Color x:Key="Color.Dim">#9CA3AF</Color>
+
+    <SolidColorBrush x:Key="Brush.AppBackground" Color="{StaticResource Color.AppBackground}"/>
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceMuted" Color="{StaticResource Color.SurfaceMuted}"/>
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}"/>
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}"/>
+    <SolidColorBrush x:Key="Brush.TextSubtle" Color="{StaticResource Color.TextSubtle}"/>
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="{StaticResource Color.BorderSubtle}"/>
+    <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}"/>
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}"/>
+    <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
+    <SolidColorBrush x:Key="Brush.DangerSurface" Color="{StaticResource Color.DangerSurface}"/>
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="{StaticResource Color.DangerBorder}"/>
+    <SolidColorBrush x:Key="Brush.ScrollTrack" Color="{StaticResource Color.ScrollTrack}"/>
+    <SolidColorBrush x:Key="Brush.ScrollThumb" Color="{StaticResource Color.ScrollThumb}"/>
+    <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="{StaticResource Color.ScrollThumbHover}"/>
+    <SolidColorBrush x:Key="Brush.StatusMissing" Color="{StaticResource Color.StatusMissing}"/>
+    <SolidColorBrush x:Key="Brush.StatusHidden" Color="{StaticResource Color.StatusHidden}"/>
+    <SolidColorBrush x:Key="Brush.StatusReading" Color="{StaticResource Color.StatusReading}"/>
+    <SolidColorBrush x:Key="Brush.StatusFinished" Color="{StaticResource Color.StatusFinished}"/>
+    <SolidColorBrush x:Key="Brush.StatusUnread" Color="{StaticResource Color.StatusUnread}"/>
+    <SolidColorBrush x:Key="Brush.BorderFocus" Color="{StaticResource Color.BorderFocus}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceHover" Color="{StaticResource Color.SurfaceHover}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceSelected" Color="{StaticResource Color.SurfaceSelected}"/>
+    <SolidColorBrush x:Key="Brush.TagBg" Color="{StaticResource Color.TagBg}"/>
+    <SolidColorBrush x:Key="Brush.TagBorder" Color="{StaticResource Color.TagBorder}"/>
+    <SolidColorBrush x:Key="Brush.Favorite" Color="{StaticResource Color.Favorite}"/>
+    <SolidColorBrush x:Key="Brush.Rating" Color="{StaticResource Color.Rating}"/>
+    <SolidColorBrush x:Key="Brush.Dim" Color="{StaticResource Color.Dim}"/>
+</ResourceDictionary>

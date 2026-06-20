@@ -1,4 +1,4 @@
-<Window x:Class="MangaReader.Native.TagCreateDialog"
+﻿<Window x:Class="MangaReader.Native.TagCreateDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="新建标签"
@@ -11,7 +11,7 @@
         Background="Transparent">
     <Grid Margin="22">
         <Border Style="{StaticResource AppDialogShadowBorder}"/>
-        <Border CornerRadius="{StaticResource RadiusDialog}" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
+        <Border CornerRadius="{StaticResource RadiusDialog}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Padding="26" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

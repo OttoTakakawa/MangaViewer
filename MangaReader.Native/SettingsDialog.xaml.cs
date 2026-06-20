@@ -15,11 +15,13 @@ public partial class SettingsDialog : Window
     public bool PrivacyModeChanged { get; private set; }
     public bool ShortcutsChanged { get; private set; }
     public bool WaterfallRightClickChanged { get; private set; }
+    public bool ThemeChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
 
     private string? _pendingDataRoot;
     private bool _hasChanges;
     private bool _forceClose;
+    private bool _loading;
 
     // 快捷键：5个功能 × 3个槽位
     private readonly System.Windows.Input.Key[,] _keySlots = new System.Windows.Input.Key[5, 3];
@@ -66,12 +68,14 @@ public partial class SettingsDialog : Window
 
     public SettingsDialog(AppStorage storage, LibraryDatabase database)
     {
+        _loading = true;
         InitializeComponent();
         _storage = storage;
         _database = database;
         LoadCurrentSettings();
         DoublePageGapSlider.ValueChanged += DoublePageGapSlider_ValueChanged;
         PreviewKeyDown += SettingsDialog_PreviewKeyDown;
+        _loading = false;
     }
 
     private void LoadCurrentSettings()
@@ -80,6 +84,15 @@ public partial class SettingsDialog : Window
         PrivacyModeCheckBox.IsChecked = _database.LoadSetting("app.privacy_mode") == "1";
         CatalogDeleteCheckBox.IsChecked = _database.LoadSetting("app.catalog_delete_source_enabled", "1") == "1";
         WaterfallRightClickCheckBox.IsChecked = _database.LoadSetting("app.waterfall_right_click", "0") == "1";
+
+        // 主题
+        var theme = _database.LoadSetting("app.theme", "Warm");
+        switch (theme)
+        {
+            case "Light": ThemeLightRadio.IsChecked = true; break;
+            case "Dark": ThemeDarkRadio.IsChecked = true; break;
+            default: ThemeWarmRadio.IsChecked = true; break;
+        }
 
         // 快捷键
         for (var i = 0; i < 5; i++)
@@ -144,6 +157,16 @@ public partial class SettingsDialog : Window
         SectionData.Visibility = NavList.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
         SectionTags.Visibility = NavList.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
         SectionDanger.Visibility = NavList.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ThemeRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_loading || ThemeWarmRadio is null) return;
+        var theme = ThemeLightRadio.IsChecked == true ? "Light"
+            : ThemeDarkRadio.IsChecked == true ? "Dark"
+            : "Warm";
+        App.ApplyTheme(theme);
+        _hasChanges = true;
     }
 
     // --- 快捷键捕获 ---
@@ -436,6 +459,18 @@ public partial class SettingsDialog : Window
         // 数据根目录
         if (_pendingDataRoot is not null)
             AppStorage.SaveCustomRoot(_pendingDataRoot);
+
+        // 主题
+        var newTheme = ThemeLightRadio.IsChecked == true ? "Light"
+            : ThemeDarkRadio.IsChecked == true ? "Dark"
+            : "Warm";
+        var oldTheme = _database.LoadSetting("app.theme", "Warm");
+        if (newTheme != oldTheme)
+        {
+            _database.SaveSetting("app.theme", newTheme);
+            App.ApplyTheme(newTheme);
+            ThemeChanged = true;
+        }
 
         _hasChanges = false;
         _forceClose = true;
