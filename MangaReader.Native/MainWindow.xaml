@@ -725,57 +725,7 @@
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
                                 Margin="0,4,2,0">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Setter Property="Background" Value="#F3F4F6"/>
-                                    <Setter Property="BorderBrush" Value="#D1D5DB"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasRating}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Setter Property="Background" Value="#FFEEAA"/>
-                                            <Setter Property="BorderBrush" Value="#E4B95F"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding RatingText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Setter Property="Foreground" Value="#6B7280"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasRating}" Value="True">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                    <Setter Property="Foreground" Value="#B45309"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <TextBlock Text="★" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Margin" Value="0"/>
-                                            <Setter Property="Foreground" Value="#9CA3AF"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasRating}" Value="True">
-                                                    <Setter Property="Margin" Value="3,0,0,0"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                    <Setter Property="Foreground" Value="#B45309"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </StackPanel>
+                            <ContentControl ContentTemplate="{StaticResource RatingBadgeTemplate}" Content="{Binding}"/>
                         </Border>
                         <CheckBox IsChecked="{Binding IsSelectedForBatch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   Style="{StaticResource BatchSelectCheckBox}"
@@ -954,57 +904,7 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
                             Margin="42,0,0,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Setter Property="Background" Value="#F3F4F6"/>
-                                <Setter Property="BorderBrush" Value="#D1D5DB"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasRating}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Setter Property="Background" Value="#FFEEAA"/>
-                                        <Setter Property="BorderBrush" Value="#E4B95F"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding RatingText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Setter Property="Foreground" Value="#6B7280"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasRating}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                <Setter Property="Foreground" Value="#B45309"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Text="★" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Margin" Value="0"/>
-                                        <Setter Property="Foreground" Value="#9CA3AF"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasRating}" Value="True">
-                                                <Setter Property="Margin" Value="3,0,0,0"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                <Setter Property="Foreground" Value="#B45309"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
+                        <ContentControl ContentTemplate="{StaticResource RatingBadgeTemplate}" Content="{Binding}"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="10,4,0,0">
                         <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="#25211E" TextTrimming="CharacterEllipsis"/>

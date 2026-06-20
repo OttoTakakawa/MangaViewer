@@ -841,4 +841,61 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <DataTemplate x:Key="RatingBadgeTemplate">
+        <Border Padding="6,3" CornerRadius="{StaticResource RadiusControl}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasRating}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Setter Property="Background" Value="{StaticResource Brush.Favorite}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource Brush.Favorite}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{Binding RatingText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasRating}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Brush.Accent}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="★" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Dim}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasRating}" Value="True">
+                                    <Setter Property="Margin" Value="3,0,0,0"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Brush.Accent}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
 </ResourceDictionary>
