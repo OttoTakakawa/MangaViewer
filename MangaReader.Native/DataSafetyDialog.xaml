@@ -31,7 +31,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#EEF2F7"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.ScrollTrack}"/>
                                 <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">

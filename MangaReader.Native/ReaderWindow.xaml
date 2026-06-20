@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:MangaReader.Native.Controls"
         Title="阅读器" Height="900" Width="1280" MinHeight="720" MinWidth="980"
-        Background="#0F1115" WindowStartupLocation="CenterOwner" Opacity="1"
+        Background="{DynamicResource Brush.Reader.Bg}" WindowStartupLocation="CenterOwner" Opacity="1"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
     <Window.Resources>
@@ -17,9 +17,9 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="IsTabStop" Value="False"/>
-            <Setter Property="Background" Value="#1A0F172A"/>
-            <Setter Property="BorderBrush" Value="#22FFFFFF"/>
-            <Setter Property="Foreground" Value="#F9FAFB"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Reader.ButtonBgDark}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Reader.ButtonBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Reader.Text}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
@@ -35,12 +35,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#33475569"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#6694A3B8"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Reader.ButtonHoverBg}"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Reader.ButtonHoverBorder}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#4F1E293B"/>
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#88CBD5E1"/>
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Reader.ButtonPressedBg}"/>
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Reader.ButtonPressedBorder}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Root" Property="Opacity" Value="0.42"/>
@@ -54,9 +54,9 @@
             <Setter Property="MinHeight" Value="34"/>
             <Setter Property="Margin" Value="3"/>
             <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Background" Value="#1AFFFFFF"/>
-            <Setter Property="Foreground" Value="#F9FAFB"/>
-            <Setter Property="BorderBrush" Value="#22FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Reader.ComboBoxBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Reader.Text}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Reader.ButtonBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
@@ -80,7 +80,7 @@
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
                                     <Path Grid.Column="1"
                                           Data="M 0 0 L 4 4 L 8 0"
-                                          Stroke="#CBD5E1"
+                                          Stroke="{DynamicResource Brush.Reader.Decoration}"
                                           StrokeThickness="1.7"
                                           StrokeStartLineCap="Round"
                                           StrokeEndLineCap="Round"
@@ -106,8 +106,8 @@
                                    PopupAnimation="Slide">
                                 <Border Margin="0,0,0,8"
                                         Width="{Binding ActualWidth, ElementName=ComboRoot}"
-                                        Background="#111827"
-                                        BorderBrush="#273244"
+                                        Background="{DynamicResource Brush.Reader.PopupBg}"
+                                        BorderBrush="{DynamicResource Brush.Reader.PopupBorder}"
                                         BorderThickness="1"
                                         CornerRadius="{StaticResource RadiusControl}"
                                         Effect="{StaticResource ToolbarShadow}">
@@ -119,8 +119,8 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ComboBorder" Property="Background" Value="#30FFFFFF"/>
-                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#44FFFFFF"/>
+                                <Setter TargetName="ComboBorder" Property="Background" Value="{DynamicResource Brush.Reader.ComboBoxHoverBg}"/>
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.Reader.ComboBoxHoverBorder}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -129,7 +129,7 @@
         </Style>
         <Style TargetType="ComboBoxItem">
             <Setter Property="Padding" Value="12,9"/>
-            <Setter Property="Foreground" Value="#D8E0EA"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Reader.ItemFg}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Focusable" Value="False"/>
@@ -147,14 +147,14 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#16233444"/>
-                                <Setter TargetName="ItemRoot" Property="BorderBrush" Value="#24475569"/>
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.Reader.ItemHighlightBg}"/>
+                                <Setter TargetName="ItemRoot" Property="BorderBrush" Value="{DynamicResource Brush.Reader.ItemHighlightBorder}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Reader.ItemHighlightFg}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemRoot" Property="Background" Value="#1F0F172A"/>
-                                <Setter TargetName="ItemRoot" Property="BorderBrush" Value="#38CBD5E1"/>
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.Reader.ItemSelectedBg}"/>
+                                <Setter TargetName="ItemRoot" Property="BorderBrush" Value="{DynamicResource Brush.Reader.ItemSelectedBorder}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Reader.ItemHighlightFg}"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -179,19 +179,19 @@
                                     </RepeatButton>
                                 </Track.DecreaseRepeatButton>
                                 <Track.IncreaseRepeatButton>
-                                    <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="#30FFFFFF" BorderThickness="0">
+                                    <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="{DynamicResource Brush.Reader.SliderTrack}" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="#30FFFFFF"/>
+                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="{DynamicResource Brush.Reader.SliderTrack}"/>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
                                 </Track.IncreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb Width="16" Height="16" Background="#FFFFFF">
+                                    <Thumb Width="16" Height="16" Background="{DynamicResource Brush.Reader.SliderThumb}">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Width="16" Height="16" CornerRadius="{StaticResource RadiusControl}" Background="#FFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                                <Border Width="16" Height="16" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.Reader.SliderThumb}" BorderBrush="{DynamicResource Brush.Reader.SliderThumbBorder}" BorderThickness="1"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -204,15 +204,15 @@
         </Style>
     </Window.Resources>
     <Grid x:Name="ReaderRoot"
-          Background="#050608"
+                          Background="{DynamicResource Brush.Reader.SurfaceDeep}"
           PreviewMouseMove="ReaderRoot_PreviewMouseMove"
           PreviewMouseRightButtonDown="ReaderRoot_PreviewMouseRightButtonDown"
           PreviewMouseRightButtonUp="ReaderRoot_PreviewMouseRightButtonUp">
-        <Border x:Name="ReaderBackdrop" Margin="0" Background="#050608">
+        <Border x:Name="ReaderBackdrop" Margin="0" Background="{DynamicResource Brush.Reader.SurfaceDeep}">
             <ScrollViewer x:Name="ReaderScrollViewer"
                           HorizontalScrollBarVisibility="Hidden"
                           VerticalScrollBarVisibility="Hidden"
-                          Background="#050608"
+          Background="{DynamicResource Brush.Reader.SurfaceDeep}"
                           Padding="6"
                           PreviewMouseDown="ReaderScrollViewer_PreviewMouseDown"
                           PreviewMouseWheel="ReaderScrollViewer_PreviewMouseWheel"
@@ -224,7 +224,7 @@
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                Background="#FDFBF7">
+                                Background="{DynamicResource Brush.Reader.ImageHostBg}">
                         <Image x:Name="ReaderImage" Margin="4" Stretch="None" SnapsToDevicePixels="True" RenderOptions.BitmapScalingMode="HighQuality"/>
                         <Image x:Name="ReaderImageRight" Margin="4" Stretch="None" SnapsToDevicePixels="True" RenderOptions.BitmapScalingMode="HighQuality"/>
                         <StackPanel.LayoutTransform>
@@ -242,8 +242,8 @@
                 MaxWidth="680"
                 Padding="22,18"
                 CornerRadius="{StaticResource RadiusPanel}"
-                Background="#EAFDFBF7"
-                BorderBrush="#33FFFFFF"
+                Background="{DynamicResource Brush.Reader.MessageBg}"
+                BorderBrush="{DynamicResource Brush.Reader.MessageBorder}"
                 BorderThickness="1"
                 Visibility="Collapsed"
                 Effect="{StaticResource ToolbarShadow}">
@@ -252,12 +252,12 @@
                            Text="正在读取页面"
                            FontSize="20"
                            FontWeight="Black"
-                           Foreground="#111827"
+                           Foreground="{DynamicResource Brush.Reader.MessageText}"
                            TextAlignment="Center"/>
                 <TextBlock x:Name="ReaderMessageText"
                            Margin="0,8,0,0"
                            FontSize="13"
-                           Foreground="#475569"
+                           Foreground="{DynamicResource Brush.Reader.MessageSubtext}"
                            TextWrapping="Wrap"
                            TextAlignment="Center"/>
             </StackPanel>
@@ -265,7 +265,7 @@
 
         <Grid x:Name="NextBookConfirmOverlay"
               Panel.ZIndex="18"
-              Background="#66000000"
+              Background="{DynamicResource Brush.Reader.ScrimDark}"
               Visibility="Collapsed"
               PreviewMouseWheel="NextBookConfirmOverlay_PreviewMouseWheel">
             <Border HorizontalAlignment="Center"
@@ -273,15 +273,15 @@
                     MinWidth="560"
                     Padding="26"
                     CornerRadius="{StaticResource RadiusPanel}"
-                    Background="#EA080A0E"
-                    BorderBrush="#22FFFFFF"
+                    Background="{DynamicResource Brush.Reader.Confirm}"
+                    BorderBrush="{DynamicResource Brush.Reader.ButtonBorder}"
                     BorderThickness="1"
                     Effect="{StaticResource ToolbarShadow}">
                 <StackPanel>
                     <TextBlock Text="已经读到最后一页"
                                FontSize="20"
                                FontWeight="Black"
-                               Foreground="#F9FAFB"
+                               Foreground="{DynamicResource Brush.Reader.Text}"
                                Margin="0,0,0,18"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
                         <Border x:Name="NextBookCard1"
@@ -292,7 +292,7 @@
                             <StackPanel>
                                 <Border Width="120" Height="160"
                                         CornerRadius="{StaticResource RadiusControl}"
-                                        Background="#1AFFFFFF"
+                                        Background="{DynamicResource Brush.Reader.ButtonBg}"
                                         HorizontalAlignment="Center"
                                         ClipToBounds="True">
                                     <Image x:Name="NextBookCover1" Stretch="UniformToFill"/>
@@ -301,7 +301,7 @@
                                            Margin="0,8,0,0"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="#E2E8F0"
+                                           Foreground="{DynamicResource Brush.Reader.CardTitle}"
                                            TextAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
                                            MaxWidth="130"/>
@@ -315,7 +315,7 @@
                             <StackPanel>
                                 <Border Width="120" Height="160"
                                         CornerRadius="{StaticResource RadiusControl}"
-                                        Background="#1AFFFFFF"
+                                        Background="{DynamicResource Brush.Reader.ButtonBg}"
                                         HorizontalAlignment="Center"
                                         ClipToBounds="True">
                                     <Image x:Name="NextBookCover2" Stretch="UniformToFill"/>
@@ -324,7 +324,7 @@
                                            Margin="0,8,0,0"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="#E2E8F0"
+                                           Foreground="{DynamicResource Brush.Reader.CardTitle}"
                                            TextAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
                                            MaxWidth="130"/>
@@ -337,7 +337,7 @@
                             <StackPanel>
                                 <Border Width="120" Height="160"
                                         CornerRadius="{StaticResource RadiusControl}"
-                                        Background="#1AFFFFFF"
+                                        Background="{DynamicResource Brush.Reader.ButtonBg}"
                                         HorizontalAlignment="Center"
                                         ClipToBounds="True">
                                     <Image x:Name="NextBookCover3" Stretch="UniformToFill"/>
@@ -346,7 +346,7 @@
                                            Margin="0,8,0,0"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="#E2E8F0"
+                                           Foreground="{DynamicResource Brush.Reader.CardTitle}"
                                            TextAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
                                            MaxWidth="130"/>
@@ -373,15 +373,15 @@
 
         <Grid x:Name="PageCatalogOverlay"
               Panel.ZIndex="16"
-              Background="#99000000"
+              Background="{DynamicResource Brush.Reader.ScrimDarker}"
               Visibility="Collapsed"
               MouseLeftButtonDown="PageCatalogOverlay_MouseLeftButtonDown"
               PreviewMouseWheel="PageCatalogOverlay_PreviewMouseWheel">
             <Border Margin="42"
                     Padding="20"
                     CornerRadius="{StaticResource RadiusPanel}"
-                    Background="#F0080A0E"
-                    BorderBrush="#22FFFFFF"
+                    Background="{DynamicResource Brush.Reader.Overlay}"
+                    BorderBrush="{DynamicResource Brush.Reader.ButtonBorder}"
                     BorderThickness="1"
                     Effect="{StaticResource ToolbarShadow}"
                     MouseLeftButtonDown="PageCatalogContent_MouseLeftButtonDown">
@@ -399,11 +399,11 @@
                             <TextBlock Text="目录"
                                        FontSize="22"
                                        FontWeight="Black"
-                                       Foreground="#F9FAFB"/>
+                                       Foreground="{DynamicResource Brush.Reader.Text}"/>
                             <TextBlock Text="左键跳转页面；右键可将图片设为封面。"
                                        Margin="0,6,0,0"
                                        FontSize="12"
-                                       Foreground="#94A3B8"/>
+                                       Foreground="{DynamicResource Brush.Reader.SubtleText}"/>
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Content="关闭"
@@ -447,8 +447,8 @@
                                         Margin="7"
                                         Padding="8"
                                         CornerRadius="{StaticResource RadiusControl}"
-                                        Background="#141E293B"
-                                        BorderBrush="#26FFFFFF"
+                                        Background="{DynamicResource Brush.Reader.CatalogItemBg}"
+                                        BorderBrush="{DynamicResource Brush.Reader.CatalogItemBorder}"
                                         BorderThickness="1"
                                         Cursor="Hand"
                                         MouseLeftButtonDown="PageCatalogItem_MouseLeftButtonDown">
@@ -465,7 +465,7 @@
                                         </Grid.RowDefinitions>
                                         <Grid>
                                             <Border CornerRadius="{StaticResource RadiusControl}"
-                                                    Background="#0F172A"
+                                                    Background="{DynamicResource Brush.Reader.CatalogImageBg}"
                                                     ClipToBounds="True">
                                                 <Image Source="{Binding Thumbnail}"
                                                        Stretch="Uniform"
@@ -477,14 +477,14 @@
                                                   Margin="0,0,6,6"
                                                   Data="M0,0 L20,0 L20,24 L10,18 L0,24 Z"
                                                   Fill="{Binding BookmarkBrush}"
-                                                  Stroke="#00000033"
+                                                  Stroke="{DynamicResource Brush.Reader.BookmarkStroke}"
                                                   StrokeThickness="1"/>
                                         </Grid>
                                         <TextBlock Grid.Row="1"
                                                    Text="{Binding PageText}"
                                                    Margin="0,8,0,0"
                                                    HorizontalAlignment="Center"
-                                                   Foreground="#CBD5E1"
+                                                   Foreground="{DynamicResource Brush.Reader.Decoration}"
                                                    FontSize="12"
                                                    FontWeight="SemiBold"/>
                                     </Grid>
@@ -502,15 +502,15 @@
                 HorizontalAlignment="Center"
                 Margin="0,14,0,0"
                 Padding="18,9"
-                Background="#A6080A0E"
-                BorderBrush="#18FFFFFF"
+                Background="{DynamicResource Brush.Reader.ToolbarTop}"
+                BorderBrush="{DynamicResource Brush.Reader.ToolbarBorder}"
                 BorderThickness="1"
                 CornerRadius="{StaticResource RadiusPanel}"
                 Effect="{StaticResource ToolbarShadow}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="TitleText" Foreground="#F9FAFB" FontSize="14" FontWeight="SemiBold" MaxWidth="520" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                <Border Width="1" Height="14" Margin="12,0" Background="#28FFFFFF"/>
-                <TextBlock x:Name="PageText" Foreground="#CBD5E1" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TitleText" Foreground="{DynamicResource Brush.Reader.Text}" FontSize="14" FontWeight="SemiBold" MaxWidth="520" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                <Border Width="1" Height="14" Margin="12,0" Background="{DynamicResource Brush.Reader.ToolbarDivider}"/>
+                <TextBlock x:Name="PageText" Foreground="{DynamicResource Brush.Reader.Decoration}" FontSize="12" VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 
@@ -520,8 +520,8 @@
                 HorizontalAlignment="Center"
                 Margin="0,0,0,18"
                 Padding="12,9"
-                Background="#B0080A0E"
-                BorderBrush="#18FFFFFF"
+                Background="{DynamicResource Brush.Reader.ToolbarBottom}"
+                BorderBrush="{DynamicResource Brush.Reader.ToolbarBorder}"
                 BorderThickness="1"
                 CornerRadius="{StaticResource RadiusPanel}"
                 Effect="{StaticResource ToolbarShadow}">
@@ -535,7 +535,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
                     <TextBlock Text="显示"
-                               Foreground="#94A3B8"
+                               Foreground="{DynamicResource Brush.Reader.SubtleText}"
                                FontSize="11"
                                FontWeight="Bold"
                                VerticalAlignment="Center"
@@ -543,19 +543,19 @@
                     <Button x:Name="FitWidthButton" Content="适宽" Style="{StaticResource ReaderButton}" Click="FitWidth_Click"/>
                     <Button x:Name="FitHeightButton" Content="适高" Style="{StaticResource ReaderButton}" Click="FitHeight_Click"/>
                     <Button x:Name="OriginalSizeButton" Content="原始" Style="{StaticResource ReaderButton}" Click="OriginalSize_Click"/>
-                    <Border Width="1" Height="24" Background="#22FFFFFF" Margin="8,0"/>
+                    <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="8,0"/>
                     <TextBlock Text="渲染"
-                               Foreground="#94A3B8"
+                               Foreground="{DynamicResource Brush.Reader.SubtleText}"
                                FontSize="11"
                                FontWeight="Bold"
                                VerticalAlignment="Center"
                                Margin="0,0,4,0"/>
                     <Button x:Name="QualityModeButton" Content="质量" Style="{StaticResource ReaderButton}" Click="ToggleQualityModeButton_Click"/>
-                    <Border Width="1" Height="24" Background="#22FFFFFF" Margin="8,0"/>
+                    <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="8,0"/>
                     <Button x:Name="BackgroundButton" Content="背景" Style="{StaticResource ReaderButton}" Click="CycleBackgroundButton_Click"/>
                     <Button x:Name="CatalogButton" Content="目录" Style="{StaticResource ReaderButton}" Click="CatalogButton_Click"/>
                 </StackPanel>
-                <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
+                <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="{DynamicResource Brush.Reader.Decoration}" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
                 <Slider Grid.Column="3" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
                 <StackPanel Grid.Column="4" Orientation="Horizontal">
                     <ComboBox x:Name="WheelModeBox" Width="112" SelectionChanged="WheelModeBox_SelectionChanged">
@@ -584,14 +584,14 @@
                 Margin="14,14,0,0"
                 Padding="13,8"
                 CornerRadius="{StaticResource RadiusControl}"
-                Background="#99080A0E"
-                BorderBrush="#18FFFFFF"
+                Background="{DynamicResource Brush.Reader.Hint}"
+                BorderBrush="{DynamicResource Brush.Reader.ToolbarBorder}"
                 BorderThickness="1"
                 Visibility="Collapsed"
                 MouseLeftButtonDown="HiddenControlsBadge_MouseLeftButtonDown">
             <StackPanel>
-                <TextBlock Text="显示 UI" Foreground="#F9FAFB" FontSize="12" FontWeight="SemiBold"/>
-                <TextBlock x:Name="HiddenPageText" Text="1 / 1" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                <TextBlock Text="显示 UI" Foreground="{DynamicResource Brush.Reader.Text}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock x:Name="HiddenPageText" Text="1 / 1" Foreground="{DynamicResource Brush.Reader.Decoration}" FontSize="11" FontWeight="SemiBold" Margin="0,5,0,0"/>
             </StackPanel>
         </Border>
     </Grid>

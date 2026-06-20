@@ -152,7 +152,7 @@
                                     <Button x:Name="PagKey3" Content="—" Click="KeySlot_Click" Style="{StaticResource KeySlotButton}" Tag="pagination,2"/>
                                 </StackPanel>
 
-                                <TextBlock x:Name="KeyConflictWarning" Text="存在重复快捷键" Foreground="#EF4444" FontSize="11" Visibility="Collapsed" Margin="0,0,0,12"/>
+                                <TextBlock x:Name="KeyConflictWarning" Text="存在重复快捷键" Foreground="{DynamicResource Brush.Danger}" FontSize="11" Visibility="Collapsed" Margin="0,0,0,12"/>
 
                                 <TextBlock Text="阅读偏好" Style="{StaticResource SectionHeader}"/>
                                 <Grid>
@@ -241,7 +241,7 @@
                 <DockPanel Grid.Row="2" Margin="0,20,0,0">
                     <Button DockPanel.Dock="Right" Content="保存" Click="Save_Click" Style="{StaticResource AppDialogButton}" Margin="8,0,0,0"/>
                     <Button DockPanel.Dock="Right" Content="取消" Click="Cancel_Click" Style="{StaticResource AppDialogGhostButton}"/>
-                    <TextBlock x:Name="UnsavedHint" Text="有未保存的更改" Foreground="#F97316" FontSize="12" VerticalAlignment="Center" Visibility="Collapsed"/>
+                    <TextBlock x:Name="UnsavedHint" Text="有未保存的更改" Foreground="{DynamicResource Brush.Accent}" FontSize="12" VerticalAlignment="Center" Visibility="Collapsed"/>
                 </DockPanel>
             </Grid>
         </Border>

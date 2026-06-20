@@ -2,35 +2,101 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Color x:Key="Color.Reader.Bg">#0F1115</Color>
     <Color x:Key="Color.Reader.Surface">#080A0E</Color>
+    <Color x:Key="Color.Reader.SurfaceDeep">#050608</Color>
+    <Color x:Key="Color.Reader.ImageHostBg">#FDFBF7</Color>
     <Color x:Key="Color.Reader.Text">#F9FAFB</Color>
     <Color x:Key="Color.Reader.TextMuted">#273244</Color>
+    <Color x:Key="Color.Reader.Decoration">#CBD5E1</Color>
+    <Color x:Key="Color.Reader.SubtleText">#94A3B8</Color>
+    <Color x:Key="Color.Reader.CardTitle">#E2E8F0</Color>
     <Color x:Key="Color.Reader.Border">#22FFFFFF</Color>
+    <Color x:Key="Color.Reader.ToolbarBorder">#18FFFFFF</Color>
+    <Color x:Key="Color.Reader.ToolbarDivider">#28FFFFFF</Color>
     <Color x:Key="Color.Reader.ToolbarTop">#A6080A0E</Color>
     <Color x:Key="Color.Reader.ToolbarBottom">#B0080A0E</Color>
     <Color x:Key="Color.Reader.Overlay">#F0080A0E</Color>
     <Color x:Key="Color.Reader.Confirm">#EA080A0E</Color>
     <Color x:Key="Color.Reader.Hint">#99080A0E</Color>
+    <Color x:Key="Color.Reader.ScrimDark">#66000000</Color>
+    <Color x:Key="Color.Reader.ScrimDarker">#99000000</Color>
     <Color x:Key="Color.Reader.SliderTrack">#30FFFFFF</Color>
+    <Color x:Key="Color.Reader.SliderThumb">#FFFFFF</Color>
+    <Color x:Key="Color.Reader.SliderThumbBorder">#55FFFFFF</Color>
     <Color x:Key="Color.Reader.ButtonBg">#1AFFFFFF</Color>
+    <Color x:Key="Color.Reader.ButtonBgDark">#1A0F172A</Color>
     <Color x:Key="Color.Reader.ButtonBorder">#22FFFFFF</Color>
+    <Color x:Key="Color.Reader.ButtonHoverBg">#33475569</Color>
+    <Color x:Key="Color.Reader.ButtonHoverBorder">#6694A3B8</Color>
+    <Color x:Key="Color.Reader.ButtonPressedBg">#4F1E293B</Color>
+    <Color x:Key="Color.Reader.ButtonPressedBorder">#88CBD5E1</Color>
+    <Color x:Key="Color.Reader.ComboBoxBg">#1AFFFFFF</Color>
+    <Color x:Key="Color.Reader.ComboBoxHoverBg">#30FFFFFF</Color>
+    <Color x:Key="Color.Reader.ComboBoxHoverBorder">#44FFFFFF</Color>
+    <Color x:Key="Color.Reader.PopupBg">#111827</Color>
+    <Color x:Key="Color.Reader.PopupBorder">#273244</Color>
+    <Color x:Key="Color.Reader.ItemFg">#D8E0EA</Color>
+    <Color x:Key="Color.Reader.ItemHighlightBg">#16233444</Color>
+    <Color x:Key="Color.Reader.ItemHighlightBorder">#24475569</Color>
+    <Color x:Key="Color.Reader.ItemHighlightFg">#F8FAFC</Color>
+    <Color x:Key="Color.Reader.ItemSelectedBg">#1F0F172A</Color>
+    <Color x:Key="Color.Reader.ItemSelectedBorder">#38CBD5E1</Color>
+    <Color x:Key="Color.Reader.CatalogItemBg">#141E293B</Color>
+    <Color x:Key="Color.Reader.CatalogItemBorder">#26FFFFFF</Color>
+    <Color x:Key="Color.Reader.CatalogImageBg">#0F172A</Color>
+    <Color x:Key="Color.Reader.BookmarkStroke">#00000033</Color>
     <Color x:Key="Color.Reader.MessageBg">#EAFDFBF7</Color>
+    <Color x:Key="Color.Reader.MessageBorder">#33FFFFFF</Color>
     <Color x:Key="Color.Reader.MessageText">#111827</Color>
+    <Color x:Key="Color.Reader.MessageSubtext">#475569</Color>
 
     <SolidColorBrush x:Key="Brush.Reader.Bg" Color="{StaticResource Color.Reader.Bg}"/>
     <SolidColorBrush x:Key="Brush.Reader.Surface" Color="{StaticResource Color.Reader.Surface}"/>
+    <SolidColorBrush x:Key="Brush.Reader.SurfaceDeep" Color="{StaticResource Color.Reader.SurfaceDeep}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ImageHostBg" Color="{StaticResource Color.Reader.ImageHostBg}"/>
     <SolidColorBrush x:Key="Brush.Reader.Text" Color="{StaticResource Color.Reader.Text}"/>
     <SolidColorBrush x:Key="Brush.Reader.TextMuted" Color="{StaticResource Color.Reader.TextMuted}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Decoration" Color="{StaticResource Color.Reader.Decoration}"/>
+    <SolidColorBrush x:Key="Brush.Reader.SubtleText" Color="{StaticResource Color.Reader.SubtleText}"/>
+    <SolidColorBrush x:Key="Brush.Reader.CardTitle" Color="{StaticResource Color.Reader.CardTitle}"/>
     <SolidColorBrush x:Key="Brush.Reader.Border" Color="{StaticResource Color.Reader.Border}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ToolbarBorder" Color="{StaticResource Color.Reader.ToolbarBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ToolbarDivider" Color="{StaticResource Color.Reader.ToolbarDivider}"/>
     <SolidColorBrush x:Key="Brush.Reader.ToolbarTop" Color="{StaticResource Color.Reader.ToolbarTop}"/>
     <SolidColorBrush x:Key="Brush.Reader.ToolbarBottom" Color="{StaticResource Color.Reader.ToolbarBottom}"/>
     <SolidColorBrush x:Key="Brush.Reader.Overlay" Color="{StaticResource Color.Reader.Overlay}"/>
     <SolidColorBrush x:Key="Brush.Reader.Confirm" Color="{StaticResource Color.Reader.Confirm}"/>
     <SolidColorBrush x:Key="Brush.Reader.Hint" Color="{StaticResource Color.Reader.Hint}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ScrimDark" Color="{StaticResource Color.Reader.ScrimDark}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ScrimDarker" Color="{StaticResource Color.Reader.ScrimDarker}"/>
     <SolidColorBrush x:Key="Brush.Reader.SliderTrack" Color="{StaticResource Color.Reader.SliderTrack}"/>
+    <SolidColorBrush x:Key="Brush.Reader.SliderThumb" Color="{StaticResource Color.Reader.SliderThumb}"/>
+    <SolidColorBrush x:Key="Brush.Reader.SliderThumbBorder" Color="{StaticResource Color.Reader.SliderThumbBorder}"/>
     <SolidColorBrush x:Key="Brush.Reader.ButtonBg" Color="{StaticResource Color.Reader.ButtonBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonBgDark" Color="{StaticResource Color.Reader.ButtonBgDark}"/>
     <SolidColorBrush x:Key="Brush.Reader.ButtonBorder" Color="{StaticResource Color.Reader.ButtonBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonHoverBg" Color="{StaticResource Color.Reader.ButtonHoverBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonHoverBorder" Color="{StaticResource Color.Reader.ButtonHoverBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonPressedBg" Color="{StaticResource Color.Reader.ButtonPressedBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonPressedBorder" Color="{StaticResource Color.Reader.ButtonPressedBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ComboBoxBg" Color="{StaticResource Color.Reader.ComboBoxBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ComboBoxHoverBg" Color="{StaticResource Color.Reader.ComboBoxHoverBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ComboBoxHoverBorder" Color="{StaticResource Color.Reader.ComboBoxHoverBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.PopupBg" Color="{StaticResource Color.Reader.PopupBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.PopupBorder" Color="{StaticResource Color.Reader.PopupBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ItemFg" Color="{StaticResource Color.Reader.ItemFg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ItemHighlightBg" Color="{StaticResource Color.Reader.ItemHighlightBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ItemHighlightBorder" Color="{StaticResource Color.Reader.ItemHighlightBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ItemHighlightFg" Color="{StaticResource Color.Reader.ItemHighlightFg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ItemSelectedBg" Color="{StaticResource Color.Reader.ItemSelectedBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ItemSelectedBorder" Color="{StaticResource Color.Reader.ItemSelectedBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.CatalogItemBg" Color="{StaticResource Color.Reader.CatalogItemBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.CatalogItemBorder" Color="{StaticResource Color.Reader.CatalogItemBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.CatalogImageBg" Color="{StaticResource Color.Reader.CatalogImageBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.BookmarkStroke" Color="{StaticResource Color.Reader.BookmarkStroke}"/>
     <SolidColorBrush x:Key="Brush.Reader.MessageBg" Color="{StaticResource Color.Reader.MessageBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.MessageBorder" Color="{StaticResource Color.Reader.MessageBorder}"/>
     <SolidColorBrush x:Key="Brush.Reader.MessageText" Color="{StaticResource Color.Reader.MessageText}"/>
+    <SolidColorBrush x:Key="Brush.Reader.MessageSubtext" Color="{StaticResource Color.Reader.MessageSubtext}"/>
 
     <Style x:Key="ReaderButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
         <Setter Property="Background" Value="{DynamicResource Brush.Reader.ButtonBg}"/>

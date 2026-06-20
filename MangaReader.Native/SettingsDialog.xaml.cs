@@ -33,7 +33,7 @@ public partial class SettingsDialog : Window
     // 快捷键功能名
     private static readonly string[] KeyFunctionNames = ["next", "prev", "fullscreen", "hideui", "pagination"];
     private static readonly string[] KeySettingKeys = [
-        "reader.key.next", "reader.key.prev", "reader.key.fullscreen",
+        "reader.next", "reader.previous", "reader.key.fullscreen",
         "reader.key.hideui", "reader.key.pagination"
     ];
     private static readonly string[] KeyDefaultValues = [
@@ -440,7 +440,7 @@ public partial class SettingsDialog : Window
             for (var j = 0; j < 3; j++)
                 if (_keySlots[i, j] != System.Windows.Input.Key.None)
                     keys.Add(_keySlots[i, j]);
-            _database.SaveSetting(KeySettingKeys[i], FormatKeys(keys));
+            _database.SaveShortcut(KeySettingKeys[i], FormatKeys(keys));
         }
         ShortcutsChanged = true;
 

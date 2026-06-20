@@ -730,6 +730,7 @@ public partial class MainWindow : Window
 
     private void BookCard_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        if (_isRubberBanding) return;
         if (sender is UIElement element)
         {
             MotionService.ScaleTo(element, 1.025);
@@ -738,6 +739,7 @@ public partial class MainWindow : Window
 
     private void BookCard_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        if (_isRubberBanding) return;
         if (sender is UIElement element)
         {
             MotionService.ScaleTo(element, 1.0);
@@ -748,6 +750,7 @@ public partial class MainWindow : Window
 
     private void BookCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_isRubberBanding) return;
         if (sender is UIElement element)
         {
             MotionService.PressBounce(element);

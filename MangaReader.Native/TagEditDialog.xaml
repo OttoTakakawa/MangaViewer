@@ -13,7 +13,7 @@
     <Window.Resources>
         <DataTemplate x:Key="PreviewBookTemplate" DataType="{x:Type models:MangaBook}">
             <Border Margin="0,0,8,0" Padding="10,6" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.SurfaceMuted}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
-                <TextBlock Text="{Binding Title}" FontSize="12" Foreground="#374151" MaxWidth="160" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource Brush.TextPrimary}" MaxWidth="160" TextTrimming="CharacterEllipsis"/>
             </Border>
         </DataTemplate>
     </Window.Resources>
@@ -37,8 +37,8 @@
             </DockPanel>
 
             <WrapPanel Grid.Row="1" Margin="0,8,0,0">
-                <TextBlock x:Name="UpdatedAtText" Foreground="#9CA3AF" FontSize="12" Margin="0,0,12,0"/>
-                <TextBlock x:Name="UsageCountText" Foreground="#9CA3AF" FontSize="12" Margin="0,0,12,0"/>
+                <TextBlock x:Name="UpdatedAtText" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,0,12,0"/>
+                <TextBlock x:Name="UsageCountText" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,0,12,0"/>
                 <Button Content="查看关联的漫画 →" Click="More_Click" Style="{StaticResource AppDialogLinkButton}"/>
             </WrapPanel>
 
@@ -94,12 +94,12 @@
                             Margin="0,0,8,0"
                             MouseLeftButtonDown="AddCustomColor_Click"
                             ToolTip="添加自定义颜色">
-                        <TextBlock Text="+" Foreground="#9CA3AF" FontSize="22"
+                        <TextBlock Text="+" Foreground="{DynamicResource Brush.TextMuted}" FontSize="22"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </WrapPanel>
                 <Border x:Name="SelectedColorPreview" Margin="0,8,0,0" Padding="12,6" CornerRadius="{StaticResource RadiusTag}" HorizontalAlignment="Left" SnapsToDevicePixels="True">
-                    <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="#374151"/>
+                    <TextBlock x:Name="SelectedColorText" FontSize="12" Foreground="{DynamicResource Brush.TextPrimary}"/>
                 </Border>
             </StackPanel>
 
@@ -112,7 +112,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
-                <TextBlock x:Name="EmptyPreviewText" Text="暂无关联漫画。" Foreground="#9CA3AF" FontSize="12" Margin="0,4,0,0" Visibility="Collapsed"/>
+                <TextBlock x:Name="EmptyPreviewText" Text="暂无关联漫画。" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" Margin="0,4,0,0" Visibility="Collapsed"/>
             </StackPanel>
 
             <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,8">

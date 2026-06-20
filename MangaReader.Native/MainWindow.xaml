@@ -127,7 +127,7 @@
         <Style x:Key="AppTagChipText" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#111827"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="DetailHeroTagChipBorder" TargetType="Border" BasedOn="{StaticResource TagChipLg}"/>
@@ -459,10 +459,10 @@
                                 <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckRoot" Property="Background" Value="{DynamicResource Brush.Accent}"/>
-                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
-                                <Setter TargetName="CheckMark" Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
-                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter TargetName="CheckRoot" Property="Background" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter TargetName="CheckRoot" Property="BorderBrush" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter TargetName="CheckMark" Property="Background" Value="{DynamicResource Brush.Surface}"/>
+                                <Setter TargetName="CheckMark" Property="BorderBrush" Value="{DynamicResource Brush.Surface}"/>
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible"/>
                                 <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                             </Trigger>
@@ -1234,7 +1234,7 @@
                                         </Border.ContextMenu>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                            <TextBlock Text=" ×" Foreground="#111827" FontSize="12" FontWeight="Bold"/>
+                                            <TextBlock Text=" ×" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="12" FontWeight="Bold"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -1285,10 +1285,10 @@
                                                 <TextBlock Text="{Binding Category}" FontSize="11" Margin="0,0,5,0">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                                            <Setter Property="Foreground" Value="#111827"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                    <Setter Property="Foreground" Value="#111827"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1297,10 +1297,10 @@
                                                 <TextBlock Text="{Binding Name}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                                            <Setter Property="Foreground" Value="#111827"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                    <Setter Property="Foreground" Value="#111827"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1353,10 +1353,10 @@
                     </ListBox>
                     <Canvas x:Name="RubberBandLayer" IsHitTestVisible="False" Margin="8,0,24,0">
                         <Rectangle x:Name="RubberBandRect"
-                                   Stroke="{DynamicResource Brush.Accent}"
+                                   Stroke="{DynamicResource Brush.BorderStrong}"
                                    StrokeThickness="1"
                                    StrokeDashArray="3,2"
-                                   Fill="{DynamicResource Brush.Accent}"
+                                   Fill="#10000000"
                                    RadiusX="3"
                                    RadiusY="3"
                                    Visibility="Collapsed"/>
@@ -1619,7 +1619,7 @@
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal">
                                                     <Border Background="{Binding Color}" CornerRadius="{StaticResource RadiusControl}" Padding="10,5" Margin="0,0,10,0">
-                                                        <TextBlock Text="{Binding Category}" Foreground="#111827" FontSize="11" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding Category}" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="11" FontWeight="SemiBold"/>
                                                     </Border>
                                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource Brush.TextPrimary}"/>
                                                 </StackPanel>
@@ -2242,7 +2242,7 @@
                                                                                     ToolTip="点击移除">
                                                                                 <StackPanel Orientation="Horizontal">
                                                                                     <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
-                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="#111827"/>
+                                                                                    <TextBlock Text=" ×" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Brush.TextPrimary}"/>
                                                                                 </StackPanel>
                                                                             </Border>
                                                                         </DataTemplate>

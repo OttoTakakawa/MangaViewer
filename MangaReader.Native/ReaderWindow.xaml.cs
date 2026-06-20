@@ -59,6 +59,9 @@ public partial class ReaderWindow : Window
     private readonly LibraryDatabase _database;
     private readonly List<Key> _nextKeys;
     private readonly List<Key> _prevKeys;
+    private List<Key> _fullscreenKeys = [Key.W];
+    private List<Key> _hideuiKeys = [Key.D, Key.H, Key.Tab];
+    private List<Key> _paginationKeys = [Key.S];
     private readonly Func<MangaBook, NextBookRecommendations?>? _nextBookResolver;
     private readonly Action<MangaBook>? _openBookRequest;
     private readonly Action<MangaBook>? _openDetailRequest;
@@ -682,11 +685,6 @@ public partial class ReaderWindow : Window
             PreviousPage_Click(sender, new RoutedEventArgs());
             e.Handled = true;
         }
-        else if (e.Key == Key.Tab || e.Key == Key.H)
-        {
-            SetControlsHidden(!_controlsHidden);
-            e.Handled = true;
-        }
         else if (e.Key == Key.D1)
         {
             WheelModeBox.SelectedIndex = 0;
@@ -729,19 +727,23 @@ public partial class ReaderWindow : Window
 
     private bool HandleFixedShortcut(Key key)
     {
+        if (_fullscreenKeys.Contains(key))
+        {
+            ToggleFullscreen();
+            return true;
+        }
+        if (_hideuiKeys.Contains(key))
+        {
+            SetControlsHidden(!_controlsHidden);
+            return true;
+        }
         switch (key)
         {
-            case Key.W:
-                ToggleFullscreen();
-                return true;
             case Key.E:
                 SetFitMode(FitMode.Height);
                 return true;
             case Key.Q:
                 SetFitMode(FitMode.Width);
-                return true;
-            case Key.D:
-                SetControlsHidden(!_controlsHidden);
                 return true;
             case Key.S:
                 ToggleReadingMode();
@@ -1902,6 +1904,13 @@ public partial class ReaderWindow : Window
             {
                 _qualityMode = ReaderQualityMode.Quality;
             }
+
+            if (shortcuts.TryGetValue("reader.key.fullscreen", out var fsKeys) && fsKeys.Length > 0)
+                _fullscreenKeys = ParseKeys(fsKeys);
+            if (shortcuts.TryGetValue("reader.key.hideui", out var hideKeys) && hideKeys.Length > 0)
+                _hideuiKeys = ParseKeys(hideKeys);
+            if (shortcuts.TryGetValue("reader.key.pagination", out var pagKeys) && pagKeys.Length > 0)
+                _paginationKeys = ParseKeys(pagKeys);
         }
         finally
         {
@@ -1980,6 +1989,16 @@ public partial class ReaderWindow : Window
     {
         _backgroundMode = (_backgroundMode + 1) % 3;
         ApplyReaderBackground();
+    }
+
+    private static List<Key> ParseKeys(string text)
+    {
+        return text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(value => Enum.TryParse<Key>(value, true, out var key) ? key : (Key?)null)
+            .Where(key => key is not null)
+            .Select(key => key!.Value)
+            .Distinct()
+            .ToList();
     }
 
     private void ApplyReaderBackground()
