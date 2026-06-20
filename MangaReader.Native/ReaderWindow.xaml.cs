@@ -61,6 +61,7 @@ public partial class ReaderWindow : Window
     private readonly List<Key> _prevKeys;
     private readonly Func<MangaBook, NextBookRecommendations?>? _nextBookResolver;
     private readonly Action<MangaBook>? _openBookRequest;
+    private readonly CoverThumbnailPipeline? _coverPipeline;
     private int _displayedPageCount = 1;
     private FitMode _fitMode = FitMode.Height;
     private ReaderQualityMode _qualityMode = ReaderQualityMode.Quality;
@@ -124,7 +125,8 @@ public partial class ReaderWindow : Window
         List<Key> nextKeys,
         List<Key> prevKeys,
         Func<MangaBook, NextBookRecommendations?>? nextBookResolver = null,
-        Action<MangaBook>? openBookRequest = null)
+        Action<MangaBook>? openBookRequest = null,
+        CoverThumbnailPipeline? coverPipeline = null)
     {
         InitializeComponent();
         _book = book;
@@ -133,6 +135,7 @@ public partial class ReaderWindow : Window
         _prevKeys = prevKeys;
         _nextBookResolver = nextBookResolver;
         _openBookRequest = openBookRequest;
+        _coverPipeline = coverPipeline;
         _requestedPageIndex = Math.Clamp(book.LastReadPageIndex, 0, Math.Max(0, book.PageCount - 1));
         DataContext = this;
         Title = book.Title;
@@ -245,7 +248,7 @@ public partial class ReaderWindow : Window
             NextBookConfirmOverlay.Visibility = Visibility.Visible;
     }
 
-    private void BindNextBookCard(Border? card, System.Windows.Controls.TextBlock? title, MangaBook? book)
+    private async void BindNextBookCard(Border? card, System.Windows.Controls.TextBlock? title, MangaBook? book)
     {
         if (card is null || title is null) return;
         if (book is null)
@@ -258,8 +261,17 @@ public partial class ReaderWindow : Window
         if (card.Child is System.Windows.Controls.StackPanel sp)
         {
             var border = sp.Children.OfType<Border>().FirstOrDefault();
-            if (border?.Child is System.Windows.Controls.Image img && book.CoverImage is not null)
-                img.Source = book.CoverImage;
+            if (border?.Child is System.Windows.Controls.Image img)
+            {
+                if (book.CoverImage is not null)
+                    img.Source = book.CoverImage;
+                else if (_coverPipeline is not null)
+                {
+                    var cover = await _coverPipeline.LoadAsync(book);
+                    if (cover is not null)
+                        img.Source = cover;
+                }
+            }
         }
     }
 

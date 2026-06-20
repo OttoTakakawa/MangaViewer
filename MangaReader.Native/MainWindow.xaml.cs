@@ -4410,7 +4410,8 @@ public partial class MainWindow : Window
             _nextKeys,
             _prevKeys,
             ResolveNextBookRecommendations,
-            nextBook => Dispatcher.InvokeAsync(() => OpenBook(nextBook), DispatcherPriority.ApplicationIdle))
+            nextBook => Dispatcher.InvokeAsync(() => OpenBook(nextBook), DispatcherPriority.ApplicationIdle),
+            _coverPipeline)
         {
             Owner = this
         };
