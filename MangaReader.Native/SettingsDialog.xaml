@@ -192,12 +192,16 @@
                                     </Grid>
                                     <TextBlock Text="更改后需要重启软件生效" Foreground="{StaticResource Brush.TextMuted}" FontSize="11" Margin="0,6,0,0"/>
                                 </StackPanel>
-                                <WrapPanel>
-                                    <Button Content="打开备份目录" Click="OpenBackupFolder_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
-                                    <Button Content="打开数据目录" Click="OpenDataFolder_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
-                                    <Button Content="手动备份" Click="CreateBackup_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,8"/>
-                                    <Button Content="恢复备份" Click="OpenDataSafety_Click" Style="{StaticResource AppDialogGhostButton}"/>
-                                </WrapPanel>
+                                <StackPanel>
+                                    <WrapPanel Margin="0,0,0,8">
+                                        <Button Content="打开备份目录" Click="OpenBackupFolder_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0"/>
+                                        <Button Content="打开数据目录" Click="OpenDataFolder_Click" Style="{StaticResource AppDialogGhostButton}"/>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Content="手动备份" Click="CreateBackup_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0"/>
+                                        <Button Content="恢复备份" Click="OpenDataSafety_Click" Style="{StaticResource AppDialogGhostButton}"/>
+                                    </WrapPanel>
+                                </StackPanel>
                             </StackPanel>
 
                             <!-- 标记分区 -->
