@@ -117,8 +117,6 @@ public partial class MainWindow : Window
     private bool _cachedFavoriteOnly;
     private bool _cachedShowHidden;
     private bool _cachedOnlyHidden;
-    private bool _onlyHiddenMode;
-    private bool _favoriteOnlyMode;
     private bool _sortDescending;
     private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
@@ -1139,7 +1137,7 @@ public partial class MainWindow : Window
         RefreshLibraryViews(tagManager: false, sort: false);
         RefreshHomeShelves();
 
-        if (book.IsHidden && !_onlyHiddenMode)
+        if (book.IsHidden && OnlyHiddenBox?.IsChecked != true)
         {
             BooksList.SelectedItem = null;
             _currentBook = null;
@@ -3394,7 +3392,7 @@ public partial class MainWindow : Window
         var selectedAuthor = AuthorFilterBox?.SelectedItem as string;
         try
         {
-            var authors = _allBooks.Where(book => _onlyHiddenMode || !book.IsHidden)
+            var authors = _allBooks.Where(book => OnlyHiddenBox?.IsChecked == true || !book.IsHidden)
                 .Select(book => book.Author.Trim())
                 .Where(author => !string.IsNullOrWhiteSpace(author))
                 .Concat(_managedAuthors)
@@ -3472,21 +3470,8 @@ public partial class MainWindow : Window
         RefreshLibraryViews(tagManager: false, sort: false);
     }
 
-    private void OnlyHidden_Click(object sender, RoutedEventArgs e)
+    private void OnlyHidden_Changed(object sender, RoutedEventArgs e)
     {
-        _onlyHiddenMode = !_onlyHiddenMode;
-        OnlyHiddenButton.Background = _onlyHiddenMode
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1F, 0x29, 0x37))
-            : null;
-        RefreshLibraryViews(tagManager: false, sort: false);
-    }
-
-    private void FavoriteOnly_Click(object sender, RoutedEventArgs e)
-    {
-        _favoriteOnlyMode = !_favoriteOnlyMode;
-        FavoriteOnlyButton.Background = _favoriteOnlyMode
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1F, 0x29, 0x37))
-            : null;
         RefreshLibraryViews(tagManager: false, sort: false);
     }
 
@@ -3737,9 +3722,9 @@ public partial class MainWindow : Window
         _cachedSearchQuery = BookSearchBox?.Text.Trim() ?? "";
         _cachedStatusFilter = GetSelectedStatusFilter();
         _cachedAuthorFilter = AuthorFilterBox?.SelectedItem as string ?? "";
-        _cachedFavoriteOnly = _favoriteOnlyMode;
-        _cachedShowHidden = _onlyHiddenMode;
-        _cachedOnlyHidden = _onlyHiddenMode;
+        _cachedFavoriteOnly = FavoriteOnlyBox?.IsChecked == true;
+        _cachedShowHidden = false;
+        _cachedOnlyHidden = OnlyHiddenBox?.IsChecked == true;
         _cachedActiveTagFilters = _activeTagFilters.ToArray();
     }
 
@@ -3877,10 +3862,8 @@ public partial class MainWindow : Window
         _activeTagFilters.Clear();
         AuthorFilterBox.SelectedItem = "全部作者";
         StatusFilterBox.SelectedIndex = 0;
-        FavoriteOnlyButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
-        _favoriteOnlyMode = false;
-        _onlyHiddenMode = false;
-        OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+        FavoriteOnlyBox.IsChecked = false;
+        OnlyHiddenBox.IsChecked = false;
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
         StatusText.Text = "已清空书架筛选。";
     }
@@ -4694,10 +4677,8 @@ public partial class MainWindow : Window
         _activeTagFilters.Clear();
         AuthorFilterBox.SelectedItem = "全部作者";
         StatusFilterBox.SelectedIndex = 0;
-        FavoriteOnlyButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
-        _favoriteOnlyMode = false;
-        _onlyHiddenMode = false;
-        OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+        FavoriteOnlyBox.IsChecked = false;
+        OnlyHiddenBox.IsChecked = false;
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
     }
 
@@ -4740,8 +4721,8 @@ public partial class MainWindow : Window
             || _activeTagFilters.Count > 0
             || (!string.IsNullOrWhiteSpace(selectedAuthor) && selectedAuthor != "全部作者")
             || StatusFilterBox?.SelectedIndex > 0
-            || _favoriteOnlyMode
-            || _onlyHiddenMode;
+            || FavoriteOnlyBox?.IsChecked == true
+            || OnlyHiddenBox?.IsChecked == true;
     }
 
     private void UpdateNavigationVisuals()
