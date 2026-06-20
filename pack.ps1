@@ -47,11 +47,11 @@ if ($running) {
 # preserve user config & data
 $preserveList = @('MangaReader_DataLocation.txt', 'MangaReader_Data')
 $backupDir = Join-Path $env:TEMP "mangareader_pack_backup_$(Get-Random)"
+New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 foreach ($name in $preserveList) {
     $src = Join-Path $OutDir $name
     if (Test-Path $src) {
-        $dst = Join-Path $backupDir $name
-        Copy-Item $src $dst -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item $src $backupDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
