@@ -1,7 +1,7 @@
 # MangaView UI 全量优化方案
 
 > 日期：2026-06-19
-> 状态：部分完成（P0 全部 + P1 四项 + P2 七项）
+> 状态：大部分完成（P0 全部 + P1 四项 + P2 全部）
 > 范围：MangaView（MangaReader.Native）UI 性能、Token 体系、美观度全量优化
 > 参考排查数据：366 个硬编码颜色、39 个 ControlTemplate、35 个无样式按钮、47 处同步 DB 调用、2 个目录列表无虚拟化
 >
@@ -9,10 +9,10 @@
 > **已完成：**
 > P0-1 ✅ 目录列表虚拟化 | P0-2 ✅ 启动并行DB读取 | P0-3 ✅ BookmarkBrush缓存 | P0-4 ✅ AddRange优化 | P0-5 ✅ 封面缓存清理
 > P1-3 ✅ 间距Token | P1-4 ✅ 字体Token | P1-5 ✅ ReaderTheme | P1-7 ✅ TagChip统一
-> P2-1 ✅ ContextMenu | P2-2 ✅ ToolTip | P2-3 ✅ 对话框统一 | P2-4 ✅ ReaderWindow按钮 | P2-5 ✅ 滑块修复 | P2-6 ✅ RadioButton | P2-7 ✅ 卡片静止态
+> P2-1 ✅ ContextMenu | P2-2 ✅ ToolTip | P2-3 ✅ 对话框统一 | P2-4 ✅ ReaderWindow按钮 | P2-5 ✅ 滑块修复 | P2-6 ✅ RadioButton | P2-7 ✅ 卡片静止态 | P2-8 ✅ 评分徽章去重
 >
 > **待完成（需新 session）：**
-> P1-1 主题拆分（672行→5文件）| P1-2 颜色Token替换（366个硬编码）| P1-6 ControlTemplate去重（39个模板）| P2-8 评分徽章去重（3处XAML）
+> P1-1 主题拆分（672行→5文件）| P1-2 颜色Token替换（366个硬编码）| P1-6 ControlTemplate去重（39个模板）
 
 ---
 
