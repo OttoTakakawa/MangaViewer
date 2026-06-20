@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <Color x:Key="Color.AppBackground">#F6F7F9</Color>
     <Color x:Key="Color.Surface">#FFFFFF</Color>
     <Color x:Key="Color.SurfaceMuted">#F8FAFC</Color>
@@ -52,6 +53,31 @@
 
     <Thickness x:Key="SpacePanel">16</Thickness>
     <Thickness x:Key="SpaceDialog">24</Thickness>
+
+    <Thickness x:Key="Space2">4</Thickness>
+    <Thickness x:Key="Space3">8</Thickness>
+    <Thickness x:Key="Space4">12</Thickness>
+    <Thickness x:Key="Space5">16</Thickness>
+    <Thickness x:Key="Space6">20</Thickness>
+    <Thickness x:Key="Space7">24</Thickness>
+    <Thickness x:Key="Space8">28</Thickness>
+    <Thickness x:Key="Space10">36</Thickness>
+    <Thickness x:Key="SpaceBottom3">0,0,0,8</Thickness>
+    <Thickness x:Key="SpaceBottom4">0,0,0,12</Thickness>
+    <Thickness x:Key="SpaceBottom5">0,0,0,16</Thickness>
+    <Thickness x:Key="SpaceTop3">0,8,0,0</Thickness>
+    <Thickness x:Key="SpaceTop4">0,12,0,0</Thickness>
+    <Thickness x:Key="SpaceTop6">0,20,0,0</Thickness>
+    <Thickness x:Key="SpaceRight3">0,0,8,0</Thickness>
+    <Thickness x:Key="SpaceRight4">0,0,12,0</Thickness>
+
+    <sys:Double x:Key="Font.Display">30</sys:Double>
+    <sys:Double x:Key="Font.Title">28</sys:Double>
+    <sys:Double x:Key="Font.TitleSm">22</sys:Double>
+    <sys:Double x:Key="Font.Section">16</sys:Double>
+    <sys:Double x:Key="Font.Body">14</sys:Double>
+    <sys:Double x:Key="Font.Label">12</sys:Double>
+    <sys:Double x:Key="Font.Caption">11</sys:Double>
 
     <DropShadowEffect x:Key="AppDialogShadow" Color="#111827" BlurRadius="40" ShadowDepth="12" Opacity="0.18"/>
 

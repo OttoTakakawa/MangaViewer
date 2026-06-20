@@ -1,0 +1,45 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="Color.Reader.Bg">#0F1115</Color>
+    <Color x:Key="Color.Reader.Surface">#080A0E</Color>
+    <Color x:Key="Color.Reader.Text">#F9FAFB</Color>
+    <Color x:Key="Color.Reader.TextMuted">#273244</Color>
+    <Color x:Key="Color.Reader.Border">#22FFFFFF</Color>
+    <Color x:Key="Color.Reader.ToolbarTop">#A6080A0E</Color>
+    <Color x:Key="Color.Reader.ToolbarBottom">#B0080A0E</Color>
+    <Color x:Key="Color.Reader.Overlay">#F0080A0E</Color>
+    <Color x:Key="Color.Reader.Confirm">#EA080A0E</Color>
+    <Color x:Key="Color.Reader.Hint">#99080A0E</Color>
+    <Color x:Key="Color.Reader.SliderTrack">#30FFFFFF</Color>
+    <Color x:Key="Color.Reader.ButtonBg">#1AFFFFFF</Color>
+    <Color x:Key="Color.Reader.ButtonBorder">#22FFFFFF</Color>
+    <Color x:Key="Color.Reader.MessageBg">#EAFDFBF7</Color>
+    <Color x:Key="Color.Reader.MessageText">#111827</Color>
+
+    <SolidColorBrush x:Key="Brush.Reader.Bg" Color="{StaticResource Color.Reader.Bg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Surface" Color="{StaticResource Color.Reader.Surface}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Text" Color="{StaticResource Color.Reader.Text}"/>
+    <SolidColorBrush x:Key="Brush.Reader.TextMuted" Color="{StaticResource Color.Reader.TextMuted}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Border" Color="{StaticResource Color.Reader.Border}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ToolbarTop" Color="{StaticResource Color.Reader.ToolbarTop}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ToolbarBottom" Color="{StaticResource Color.Reader.ToolbarBottom}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Overlay" Color="{StaticResource Color.Reader.Overlay}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Confirm" Color="{StaticResource Color.Reader.Confirm}"/>
+    <SolidColorBrush x:Key="Brush.Reader.Hint" Color="{StaticResource Color.Reader.Hint}"/>
+    <SolidColorBrush x:Key="Brush.Reader.SliderTrack" Color="{StaticResource Color.Reader.SliderTrack}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonBg" Color="{StaticResource Color.Reader.ButtonBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.ButtonBorder" Color="{StaticResource Color.Reader.ButtonBorder}"/>
+    <SolidColorBrush x:Key="Brush.Reader.MessageBg" Color="{StaticResource Color.Reader.MessageBg}"/>
+    <SolidColorBrush x:Key="Brush.Reader.MessageText" Color="{StaticResource Color.Reader.MessageText}"/>
+
+    <Style x:Key="ReaderButton" TargetType="Button" BasedOn="{StaticResource AppButton}">
+        <Setter Property="Background" Value="{StaticResource Brush.Reader.ButtonBg}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Reader.ButtonBorder}"/>
+        <Setter Property="Foreground" Value="{StaticResource Brush.Reader.Text}"/>
+    </Style>
+
+    <Style x:Key="ReaderGhostButton" TargetType="Button" BasedOn="{StaticResource ReaderButton}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Reader.Border}"/>
+    </Style>
+</ResourceDictionary>
