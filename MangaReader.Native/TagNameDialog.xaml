@@ -12,8 +12,8 @@
     <Grid Margin="22">
         <Border Style="{StaticResource AppDialogShadowBorder}"/>
         <Border CornerRadius="{StaticResource RadiusDialog}"
-                Background="{StaticResource Brush.AppBackground}"
-                BorderBrush="{StaticResource Brush.Surface}"
+                Background="{StaticResource Brush.Surface}"
+                BorderBrush="{StaticResource Brush.BorderSubtle}"
                 BorderThickness="1"
                 Padding="26"
                 SnapsToDevicePixels="True">

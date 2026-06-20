@@ -63,7 +63,7 @@
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Style="{StaticResource AppDialogCloseButton}"/>
                     <StackPanel>
-                        <TextBlock Text="数据安全" FontSize="30" FontWeight="Black" Foreground="{StaticResource Brush.TextPrimary}"/>
+                        <TextBlock Text="数据安全" Style="{StaticResource AppDialogTitleText}"/>
                         <TextBlock Text="管理数据库备份与恢复。漫画图片不会复制，真正需要保护的是 app.db。"
                                    Margin="0,6,0,0"
                                    Foreground="{StaticResource Brush.TextMuted}"/>
