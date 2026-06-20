@@ -170,10 +170,10 @@
                         <Grid>
                             <Track x:Name="PART_Track" VerticalAlignment="Center" Height="22">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="#E5E7EB" BorderThickness="0">
+                                    <RepeatButton IsTabStop="False" Focusable="False" Height="4" Background="{StaticResource Brush.Reader.SliderTrack}" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="#E5E7EB"/>
+                                                <Border Height="4" CornerRadius="{StaticResource RadiusScrollTrack}" Background="{StaticResource Brush.Reader.SliderTrack}"/>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
@@ -356,18 +356,15 @@
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
                         <Button Content="返回第一页"
-                                Background="#1AFFFFFF"
-                                BorderBrush="#22FFFFFF"
+                                Style="{StaticResource ReaderButton}"
                                 Click="NextBookGoFirst_Click"/>
                         <Button Content="打开详情页"
                                 Margin="8,0"
-                                Background="#1AFFFFFF"
-                                BorderBrush="#22FFFFFF"
+                                Style="{StaticResource ReaderButton}"
                                 Click="OpenDetailFromReader_Click"/>
                         <Button Content="留在当前页"
                                 Margin="8,0"
-                                Background="#1AFFFFFF"
-                                BorderBrush="#22FFFFFF"
+                                Style="{StaticResource ReaderButton}"
                                 Click="NextBookCancel_Click"/>
                     </StackPanel>
                 </StackPanel>
@@ -410,6 +407,7 @@
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Content="关闭"
+                                Style="{StaticResource ReaderButton}"
                                 Click="ClosePageCatalog_Click"
                                 VerticalAlignment="Center"/>
                     </Grid>
@@ -542,9 +540,9 @@
                                FontWeight="Bold"
                                VerticalAlignment="Center"
                                Margin="2,0,4,0"/>
-                    <Button x:Name="FitWidthButton" Content="适宽" Click="FitWidth_Click"/>
-                    <Button x:Name="FitHeightButton" Content="适高" Click="FitHeight_Click"/>
-                    <Button x:Name="OriginalSizeButton" Content="原始" Click="OriginalSize_Click"/>
+                    <Button x:Name="FitWidthButton" Content="适宽" Style="{StaticResource ReaderButton}" Click="FitWidth_Click"/>
+                    <Button x:Name="FitHeightButton" Content="适高" Style="{StaticResource ReaderButton}" Click="FitHeight_Click"/>
+                    <Button x:Name="OriginalSizeButton" Content="原始" Style="{StaticResource ReaderButton}" Click="OriginalSize_Click"/>
                     <Border Width="1" Height="24" Background="#22FFFFFF" Margin="8,0"/>
                     <TextBlock Text="渲染"
                                Foreground="#94A3B8"
@@ -552,10 +550,10 @@
                                FontWeight="Bold"
                                VerticalAlignment="Center"
                                Margin="0,0,4,0"/>
-                    <Button x:Name="QualityModeButton" Content="质量" Click="ToggleQualityModeButton_Click"/>
+                    <Button x:Name="QualityModeButton" Content="质量" Style="{StaticResource ReaderButton}" Click="ToggleQualityModeButton_Click"/>
                     <Border Width="1" Height="24" Background="#22FFFFFF" Margin="8,0"/>
-                    <Button x:Name="BackgroundButton" Content="背景" Click="CycleBackgroundButton_Click"/>
-                    <Button x:Name="CatalogButton" Content="目录" Click="CatalogButton_Click"/>
+                    <Button x:Name="BackgroundButton" Content="背景" Style="{StaticResource ReaderButton}" Click="CycleBackgroundButton_Click"/>
+                    <Button x:Name="CatalogButton" Content="目录" Style="{StaticResource ReaderButton}" Click="CatalogButton_Click"/>
                 </StackPanel>
                 <TextBlock Grid.Column="2" x:Name="DoublePageGapText" Text="间距 8" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="54"/>
                 <Slider Grid.Column="3" x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" ValueChanged="DoublePageGapSlider_ValueChanged" Margin="0,0,14,0" Focusable="False"/>
@@ -573,8 +571,8 @@
                         <ComboBoxItem Content="从左到右" IsSelected="True"/>
                         <ComboBoxItem Content="从右到左"/>
                     </ComboBox>
-                    <Button x:Name="ToggleControlsButton" Content="隐藏" Click="ToggleControlsButton_Click"/>
-                    <Button x:Name="FullscreenButton" Content="全屏" Click="FullscreenButton_Click"/>
+                    <Button x:Name="ToggleControlsButton" Content="隐藏" Style="{StaticResource ReaderButton}" Click="ToggleControlsButton_Click"/>
+                    <Button x:Name="FullscreenButton" Content="全屏" Style="{StaticResource ReaderButton}" Click="FullscreenButton_Click"/>
                 </StackPanel>
             </Grid>
         </Border>
