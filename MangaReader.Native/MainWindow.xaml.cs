@@ -1700,14 +1700,14 @@ public partial class MainWindow : Window
         }
 
         var book = _detailCatalogBook;
-        if (!IsSafeFolderPathForDeletion(book.FolderPath, _storage.Root))
+        if (!File.Exists(item.Path))
         {
-            StatusText.Text = "源文件夹路径不合法，已取消。";
+            StatusText.Text = "文件不存在，已取消。";
             return;
         }
 
         var first = System.Windows.MessageBox.Show(
-            $"确定永久删除《{book.Title}》的源文件夹及其所有内容吗？\n\n路径：{book.FolderPath}\n\n此操作不可恢复！",
+            $"确定永久删除此页吗？\n\n《{book.Title}》第 {item.PageIndex + 1} 页\n路径：{item.Path}\n\n此操作不可恢复！",
             "删除源文件",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -1724,9 +1724,43 @@ public partial class MainWindow : Window
             return;
         }
 
-        HideDetailCatalog();
-        _currentBook = book;
-        await DeleteSourceFilesAsync();
+        try
+        {
+            await Task.Run(() => File.Delete(item.Path));
+
+            book.Pages.RemoveAt(item.PageIndex);
+            book.PageCount = book.Pages.Count;
+            book.TotalBytes = ImageLoader.SumFileBytes(book.Pages);
+            book.CoverPageIndex = Math.Clamp(book.CoverPageIndex, 0, Math.Max(0, book.Pages.Count - 1));
+            book.LastReadPageIndex = Math.Clamp(book.LastReadPageIndex, 0, Math.Max(0, book.Pages.Count - 1));
+            _database.UpsertBook(book);
+            book.NotifyAll();
+
+            AppLogger.Info("delete-source", $"Deleted single page: {book.Title}, page={item.PageIndex + 1}, file={item.Path}");
+            StatusText.Text = $"已删除《{book.Title}》第 {item.PageIndex + 1} 页。";
+
+            if (book.Pages.Count == 0)
+            {
+                HideDetailCatalog();
+                _database.DeleteBook(book);
+                _allBooks.Remove(book);
+                _currentBook = null;
+                BooksList.SelectedItem = null;
+                SetDetailVisible(false);
+                RefreshLibraryViews(tagManager: false, authors: true);
+                RefreshHomeShelves();
+                StatusText.Text = $"《{book.Title}》已无剩余页面，书库记录已删除。";
+                return;
+            }
+
+            _detailCatalogBook = book;
+            EnsureDetailCatalogItems(book);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"删除失败：{ex.Message}";
+            AppLogger.Error("delete-source", ex, $"Failed to delete page: {book.Title}, file={item.Path}");
+        }
     }
 
     private async void ManualBackup_Click(object sender, RoutedEventArgs e)
