@@ -2413,7 +2413,7 @@
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListBox.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <controls:VirtualizingWrapPanel ItemWidth="118" ItemHeight="176" HorizontalSpacing="12" VerticalSpacing="12" IsVirtualizing="True" VirtualizationMode="Recycling" CacheLength="2"/>
+                                    <controls:VirtualizingWrapPanel ItemWidth="130" ItemHeight="188" IsVirtualizing="True" VirtualizationMode="Recycling" CacheLength="2"/>
                                 </ItemsPanelTemplate>
                             </ListBox.ItemsPanel>
                             <ListBox.ItemContainerStyle>
