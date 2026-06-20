@@ -4410,8 +4410,9 @@ public partial class MainWindow : Window
             _nextKeys,
             _prevKeys,
             ResolveNextBookRecommendations,
-            nextBook => Dispatcher.InvokeAsync(() => OpenBook(nextBook), DispatcherPriority.ApplicationIdle),
-            _coverPipeline)
+            nextBook => Dispatcher.InvokeAsync(() => OpenBookFromRecommendation(nextBook), DispatcherPriority.ApplicationIdle),
+            _coverPipeline,
+            openDetailRequest: OpenBookDetailFromReader)
         {
             Owner = this
         };
@@ -4421,8 +4422,34 @@ public partial class MainWindow : Window
             ApplyBookSort(refresh: false);
             RefreshBookFilter();
             RefreshHomeShelves();
+            if (BooksList.SelectedItem is MangaBook selected && Books.Contains(selected))
+                _ = Dispatcher.InvokeAsync(() => BooksList.ScrollIntoView(selected), DispatcherPriority.ApplicationIdle);
         };
         reader.Show();
+    }
+
+    private void OpenBookFromRecommendation(MangaBook book)
+    {
+        _currentBook = book;
+        if (Books.Contains(book))
+        {
+            BooksList.SelectedItem = book;
+            _ = Dispatcher.InvokeAsync(() => BooksList.ScrollIntoView(book), DispatcherPriority.ApplicationIdle);
+        }
+        OpenBook(book);
+    }
+
+    private void OpenBookDetailFromReader(MangaBook book)
+    {
+        _currentBook = book;
+        if (Books.Contains(book))
+        {
+            BooksList.SelectedItem = book;
+            _ = Dispatcher.InvokeAsync(() => BooksList.ScrollIntoView(book), DispatcherPriority.ApplicationIdle);
+        }
+        FillMetadataEditors(book);
+        SetEditMode(false);
+        SetDetailVisible(true);
     }
 
     private MangaBook? ResolveNextBookInCurrentView(MangaBook currentBook)

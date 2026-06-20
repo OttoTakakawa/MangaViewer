@@ -358,6 +358,11 @@
                                 Background="#1AFFFFFF"
                                 BorderBrush="#22FFFFFF"
                                 Click="NextBookGoFirst_Click"/>
+                        <Button Content="打开详情页"
+                                Margin="8,0"
+                                Background="#1AFFFFFF"
+                                BorderBrush="#22FFFFFF"
+                                Click="OpenDetailFromReader_Click"/>
                         <Button Content="留在当前页"
                                 Margin="8,0"
                                 Background="#1AFFFFFF"

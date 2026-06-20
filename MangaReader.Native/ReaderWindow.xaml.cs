@@ -61,6 +61,7 @@ public partial class ReaderWindow : Window
     private readonly List<Key> _prevKeys;
     private readonly Func<MangaBook, NextBookRecommendations?>? _nextBookResolver;
     private readonly Action<MangaBook>? _openBookRequest;
+    private readonly Action<MangaBook>? _openDetailRequest;
     private readonly CoverThumbnailPipeline? _coverPipeline;
     private int _displayedPageCount = 1;
     private FitMode _fitMode = FitMode.Height;
@@ -126,7 +127,8 @@ public partial class ReaderWindow : Window
         List<Key> prevKeys,
         Func<MangaBook, NextBookRecommendations?>? nextBookResolver = null,
         Action<MangaBook>? openBookRequest = null,
-        CoverThumbnailPipeline? coverPipeline = null)
+        CoverThumbnailPipeline? coverPipeline = null,
+        Action<MangaBook>? openDetailRequest = null)
     {
         InitializeComponent();
         _book = book;
@@ -136,6 +138,7 @@ public partial class ReaderWindow : Window
         _nextBookResolver = nextBookResolver;
         _openBookRequest = openBookRequest;
         _coverPipeline = coverPipeline;
+        _openDetailRequest = openDetailRequest;
         _requestedPageIndex = Math.Clamp(book.LastReadPageIndex, 0, Math.Max(0, book.PageCount - 1));
         DataContext = this;
         Title = book.Title;
@@ -311,6 +314,12 @@ public partial class ReaderWindow : Window
         HideNextBookPrompt();
         _boundaryHint = "已经是最后一页";
         UpdateNavigationState();
+    }
+
+    private void OpenDetailFromReader_Click(object sender, RoutedEventArgs e)
+    {
+        _openDetailRequest?.Invoke(_book);
+        Close();
     }
 
     private void NextBookConfirmOverlay_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
