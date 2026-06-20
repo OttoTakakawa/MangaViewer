@@ -1138,7 +1138,7 @@ public partial class MainWindow : Window
         RefreshLibraryViews(tagManager: false, sort: false);
         RefreshHomeShelves();
 
-        if (book.IsHidden && ShowHiddenBox.IsChecked != true)
+        if (book.IsHidden && !_onlyHiddenMode)
         {
             BooksList.SelectedItem = null;
             _currentBook = null;
@@ -3393,7 +3393,7 @@ public partial class MainWindow : Window
         var selectedAuthor = AuthorFilterBox?.SelectedItem as string;
         try
         {
-            var authors = _allBooks.Where(book => ShowHiddenBox?.IsChecked == true || !book.IsHidden)
+            var authors = _allBooks.Where(book => _onlyHiddenMode || !book.IsHidden)
                 .Select(book => book.Author.Trim())
                 .Where(author => !string.IsNullOrWhiteSpace(author))
                 .Concat(_managedAuthors)
@@ -3467,24 +3467,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        // 取消显示隐藏时，同步退出只看隐藏模式
-        if (ShowHiddenBox?.IsChecked != true && _onlyHiddenMode)
-        {
-            _onlyHiddenMode = false;
-            OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
-        }
 
         RefreshLibraryViews(tagManager: false, sort: false);
     }
 
     private void OnlyHidden_Click(object sender, RoutedEventArgs e)
     {
-        // 切换只看隐藏模式，并自动勾选显示隐藏作品
         _onlyHiddenMode = !_onlyHiddenMode;
-        if (_onlyHiddenMode)
-        {
-            ShowHiddenBox.IsChecked = true;
-        }
         OnlyHiddenButton.Background = _onlyHiddenMode
             ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1F, 0x29, 0x37))
             : null;
@@ -3739,7 +3728,7 @@ public partial class MainWindow : Window
         _cachedStatusFilter = GetSelectedStatusFilter();
         _cachedAuthorFilter = AuthorFilterBox?.SelectedItem as string ?? "";
         _cachedFavoriteOnly = FavoriteOnlyBox?.IsChecked == true;
-        _cachedShowHidden = ShowHiddenBox?.IsChecked == true;
+        _cachedShowHidden = _onlyHiddenMode;
         _cachedOnlyHidden = _onlyHiddenMode;
         _cachedActiveTagFilters = _activeTagFilters.ToArray();
     }
@@ -3879,7 +3868,6 @@ public partial class MainWindow : Window
         AuthorFilterBox.SelectedItem = "全部作者";
         StatusFilterBox.SelectedIndex = 0;
         FavoriteOnlyBox.IsChecked = false;
-        ShowHiddenBox.IsChecked = false;
         _onlyHiddenMode = false;
         OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
@@ -4696,7 +4684,6 @@ public partial class MainWindow : Window
         AuthorFilterBox.SelectedItem = "全部作者";
         StatusFilterBox.SelectedIndex = 0;
         FavoriteOnlyBox.IsChecked = false;
-        ShowHiddenBox.IsChecked = false;
         _onlyHiddenMode = false;
         OnlyHiddenButton?.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
@@ -4742,7 +4729,7 @@ public partial class MainWindow : Window
             || (!string.IsNullOrWhiteSpace(selectedAuthor) && selectedAuthor != "全部作者")
             || StatusFilterBox?.SelectedIndex > 0
             || FavoriteOnlyBox?.IsChecked == true
-            || ShowHiddenBox?.IsChecked == true;
+            || _onlyHiddenMode;
     }
 
     private void UpdateNavigationVisuals()
