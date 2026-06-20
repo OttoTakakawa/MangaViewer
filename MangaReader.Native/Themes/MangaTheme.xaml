@@ -18,6 +18,19 @@
     <Color x:Key="Color.ScrollTrack">#EEF2F7</Color>
     <Color x:Key="Color.ScrollThumb">#CBD5E1</Color>
     <Color x:Key="Color.ScrollThumbHover">#94A3B8</Color>
+    <Color x:Key="Color.StatusMissing">#B44A36</Color>
+    <Color x:Key="Color.StatusHidden">#9A6F25</Color>
+    <Color x:Key="Color.StatusReading">#447154</Color>
+    <Color x:Key="Color.StatusFinished">#3B5A7C</Color>
+    <Color x:Key="Color.StatusUnread">#9CA3AF</Color>
+    <Color x:Key="Color.BorderFocus">#B45309</Color>
+    <Color x:Key="Color.SurfaceHover">#F0EDE8</Color>
+    <Color x:Key="Color.SurfaceSelected">#E8E2D8</Color>
+    <Color x:Key="Color.TagBg">#F8F2EC</Color>
+    <Color x:Key="Color.TagBorder">#E5E0D8</Color>
+    <Color x:Key="Color.Favorite">#E4B95F</Color>
+    <Color x:Key="Color.Rating">#E4B95F</Color>
+    <Color x:Key="Color.Dim">#9CA3AF</Color>
 
     <SolidColorBrush x:Key="Brush.AppBackground" Color="{StaticResource Color.AppBackground}"/>
     <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}"/>
@@ -36,6 +49,19 @@
     <SolidColorBrush x:Key="Brush.ScrollTrack" Color="{StaticResource Color.ScrollTrack}"/>
     <SolidColorBrush x:Key="Brush.ScrollThumb" Color="{StaticResource Color.ScrollThumb}"/>
     <SolidColorBrush x:Key="Brush.ScrollThumbHover" Color="{StaticResource Color.ScrollThumbHover}"/>
+    <SolidColorBrush x:Key="Brush.StatusMissing" Color="{StaticResource Color.StatusMissing}"/>
+    <SolidColorBrush x:Key="Brush.StatusHidden" Color="{StaticResource Color.StatusHidden}"/>
+    <SolidColorBrush x:Key="Brush.StatusReading" Color="{StaticResource Color.StatusReading}"/>
+    <SolidColorBrush x:Key="Brush.StatusFinished" Color="{StaticResource Color.StatusFinished}"/>
+    <SolidColorBrush x:Key="Brush.StatusUnread" Color="{StaticResource Color.StatusUnread}"/>
+    <SolidColorBrush x:Key="Brush.BorderFocus" Color="{StaticResource Color.BorderFocus}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceHover" Color="{StaticResource Color.SurfaceHover}"/>
+    <SolidColorBrush x:Key="Brush.SurfaceSelected" Color="{StaticResource Color.SurfaceSelected}"/>
+    <SolidColorBrush x:Key="Brush.TagBg" Color="{StaticResource Color.TagBg}"/>
+    <SolidColorBrush x:Key="Brush.TagBorder" Color="{StaticResource Color.TagBorder}"/>
+    <SolidColorBrush x:Key="Brush.Favorite" Color="{StaticResource Color.Favorite}"/>
+    <SolidColorBrush x:Key="Brush.Rating" Color="{StaticResource Color.Rating}"/>
+    <SolidColorBrush x:Key="Brush.Dim" Color="{StaticResource Color.Dim}"/>
 
     <CornerRadius x:Key="RadiusClip">4</CornerRadius>
     <CornerRadius x:Key="RadiusClipLeft">4,0,0,4</CornerRadius>
@@ -675,14 +701,7 @@
         <Setter Property="Margin" Value="0,0,10,0"/>
     </Style>
 
-    <Style x:Key="DetailTagChipBorder" TargetType="Border">
-        <Setter Property="CornerRadius" Value="999"/>
-        <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="10,4"/>
-        <Setter Property="Margin" Value="0,0,8,8"/>
-    </Style>
+    <Style x:Key="DetailTagChipBorder" TargetType="Border" BasedOn="{StaticResource TagChipLg}"/>
 
     <Style x:Key="DetailTagChipText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13"/>
@@ -694,5 +713,31 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="TagChip" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceMuted}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <Style x:Key="TagChipSm" TargetType="Border" BasedOn="{StaticResource TagChip}">
+        <Setter Property="Height" Value="18"/>
+        <Setter Property="Padding" Value="6,0"/>
+        <Setter Property="Margin" Value="0,0,5,4"/>
+    </Style>
+
+    <Style x:Key="TagChipMd" TargetType="Border" BasedOn="{StaticResource TagChip}">
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Margin" Value="0,0,7,7"/>
+    </Style>
+
+    <Style x:Key="TagChipLg" TargetType="Border" BasedOn="{StaticResource TagChip}">
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="Margin" Value="0,0,8,8"/>
     </Style>
 </ResourceDictionary>
