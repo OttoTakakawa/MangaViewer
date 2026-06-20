@@ -694,9 +694,9 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{StaticResource RadiusPanel}"
                             Padding="{TemplateBinding Padding}">
-                        <StackPanel>
-                            <ContentPresenter/>
-                        </StackPanel>
+                        <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                            <ItemsPresenter/>
+                        </ScrollViewer>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

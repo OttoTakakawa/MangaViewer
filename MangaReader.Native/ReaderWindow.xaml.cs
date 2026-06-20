@@ -818,6 +818,7 @@ public partial class ReaderWindow : Window
 
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _requestedPageIndex = safeIndex;
+        UpdateSignButton();
 
         if (_isPageDecodeActive)
         {
@@ -2136,6 +2137,7 @@ public partial class ReaderWindow : Window
         }
 
         _bookmarks = _database.LoadBookmarks(_book.Id);
+        UpdateSignButton();
         PageCatalogItems.Clear();
         var catalogItems = new List<PageCatalogItem>(_book.Pages.Count);
         for (var i = 0; i < _book.Pages.Count; i++)
@@ -2172,6 +2174,38 @@ public partial class ReaderWindow : Window
             StatusCatalogFeedback($"已取消标记第 {item.PageIndex + 1} 页。");
         }
         AssignBookmarkColors();
+        UpdateSignButton();
+    }
+
+    private void SignButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleCurrentPageBookmark();
+    }
+
+    private void ToggleCurrentPageBookmark()
+    {
+        var isBookmarked = _bookmarks.Contains(_requestedPageIndex);
+        if (isBookmarked)
+        {
+            _bookmarks.Remove(_requestedPageIndex);
+            _ = Task.Run(() => _database.RemoveBookmark(_book.Id, _requestedPageIndex));
+            StatusCatalogFeedback($"已取消标记第 {_requestedPageIndex + 1} 页。");
+        }
+        else
+        {
+            _bookmarks.Add(_requestedPageIndex);
+            _ = Task.Run(() => _database.AddBookmark(_book.Id, _requestedPageIndex));
+            StatusCatalogFeedback($"已标记第 {_requestedPageIndex + 1} 页。");
+        }
+        AssignBookmarkColors();
+        UpdateSignButton();
+    }
+
+    private void UpdateSignButton()
+    {
+        var isBookmarked = _bookmarks.Contains(_requestedPageIndex);
+        SignButton.Content = isBookmarked ? "✓已标记" : "标记";
+        SignButton.Opacity = isBookmarked ? 1.0 : 0.7;
     }
 
     private static readonly string[] MarkColorGroupA =
