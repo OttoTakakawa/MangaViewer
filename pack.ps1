@@ -44,9 +44,26 @@ if ($running) {
     Start-Sleep -Seconds 1
 }
 
+# preserve user config & data
+$preserveList = @('MangaReader_DataLocation.txt', 'MangaReader_Data')
+$backupDir = Join-Path $env:TEMP "mangareader_pack_backup_$(Get-Random)"
+foreach ($name in $preserveList) {
+    $src = Join-Path $OutDir $name
+    if (Test-Path $src) {
+        $dst = Join-Path $backupDir $name
+        Copy-Item $src $dst -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # clean & publish directly to output dir
 if (Test-Path $OutDir) { Remove-Item "$OutDir\*" -Recurse -Force -ErrorAction SilentlyContinue }
 else { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
+
+# restore preserved files
+if (Test-Path $backupDir) {
+    Copy-Item "$backupDir\*" $OutDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item $backupDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 Write-Host "`n=== Build MangaReader.Native ($Mode) v$Version ===" -ForegroundColor Cyan
 

@@ -14,12 +14,7 @@ public sealed class AppStorage
     public bool UsesCustomRoot { get; }
 
     public static string DefaultRoot => Path.Combine(AppContext.BaseDirectory, "MangaReader_Data");
-
-    private static string AppDataDir => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "MangaReader");
-
-    public static string DataLocationPath => Path.Combine(AppDataDir, DataLocationFileName);
+    public static string DataLocationPath => Path.Combine(AppContext.BaseDirectory, DataLocationFileName);
 
     public AppStorage()
     {
@@ -148,9 +143,7 @@ public sealed class AppStorage
         {
             if (!File.Exists(DataLocationPath))
             {
-                MigrateOldConfig();
-                if (!File.Exists(DataLocationPath))
-                    return DefaultRoot;
+                return DefaultRoot;
             }
 
             var configuredRoot = File.ReadAllText(DataLocationPath).Trim();
@@ -161,22 +154,6 @@ public sealed class AppStorage
         catch
         {
             return DefaultRoot;
-        }
-    }
-
-    private static void MigrateOldConfig()
-    {
-        var legacyPath = Path.Combine(AppContext.BaseDirectory, DataLocationFileName);
-        if (!File.Exists(legacyPath))
-            return;
-
-        try
-        {
-            Directory.CreateDirectory(AppDataDir);
-            File.Copy(legacyPath, DataLocationPath, overwrite: false);
-        }
-        catch
-        {
         }
     }
 }
