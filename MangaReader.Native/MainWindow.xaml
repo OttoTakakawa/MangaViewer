@@ -595,22 +595,22 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="SelectionFrame" Padding="4" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" CornerRadius="{StaticResource RadiusPanel}">
+                        <Border x:Name="SelectionFrame" Padding="4" Background="{StaticResource Brush.SurfaceMuted}" BorderBrush="{StaticResource Brush.BorderSubtle}" BorderThickness="1" CornerRadius="{StaticResource RadiusPanel}">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="#0D111827"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="{StaticResource Brush.SurfaceHover}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="#18111827"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="{StaticResource Brush.SurfaceSelected}"/>
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="True"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="SelectionFrame" Property="Background" Value="#24111827"/>
+                                <Setter TargetName="SelectionFrame" Property="Background" Value="{StaticResource Brush.SurfaceSelected}"/>
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
