@@ -204,8 +204,10 @@
                             <StackPanel x:Name="SectionTags" Visibility="Collapsed">
                                 <TextBlock Text="标记颜色组" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                    <RadioButton x:Name="ColorGroupARadio" Content="颜色组 A" IsChecked="True" FontSize="14" Margin="0,0,20,0" Checked="ColorGroup_Checked"/>
-                                    <RadioButton x:Name="ColorGroupBRadio" Content="颜色组 B" FontSize="14" Checked="ColorGroup_Checked"/>
+                                    <RadioButton x:Name="ColorGroupARadio" Content="颜色组 A" IsChecked="True" FontSize="14" Margin="0,0,16,0" Checked="ColorGroup_Checked"/>
+                                    <RadioButton x:Name="ColorGroupBRadio" Content="颜色组 B" FontSize="14" Margin="0,0,16,0" Checked="ColorGroup_Checked"/>
+                                    <RadioButton x:Name="ColorGroupCRadio" Content="颜色组 C" FontSize="14" Margin="0,0,16,0" Checked="ColorGroup_Checked"/>
+                                    <RadioButton x:Name="ColorGroupDRadio" Content="颜色组 D" FontSize="14" Checked="ColorGroup_Checked"/>
                                 </StackPanel>
                                 <WrapPanel x:Name="ColorSwatchPanel" Margin="0,0,0,16"/>
                                 <TextBlock Text="一本书的标记超过 12 个后从第一个颜色重新循环" Foreground="{StaticResource Brush.TextMuted}" FontSize="11"/>

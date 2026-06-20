@@ -1447,10 +1447,29 @@ public partial class MainWindow : Window
         "#115E59", "#1E3A8A", "#3730A3", "#581C87",
         "#831843", "#9F1239", "#365314", "#164E63"
     ];
+    private static readonly string[] MarkColorGroupC =
+    [
+        "#E879A0", "#F0946C", "#E6B84A", "#7FB884",
+        "#5BB5A2", "#6A9FD8", "#8B8EC9", "#B08DC2",
+        "#D98CB8", "#E07A6A", "#A3C565", "#54B8C4"
+    ];
+    private static readonly string[] MarkColorGroupD =
+    [
+        "#C0392B", "#D35400", "#D4AC0D", "#1E8449",
+        "#1A5276", "#2E4085", "#6C3483", "#A93276",
+        "#C0395A", "#D4553A", "#27AE60", "#16A085"
+    ];
 
     private string[] GetActiveMarkColors()
     {
-        return _database.LoadSetting("mark.color_group", "A") == "B" ? MarkColorGroupB : MarkColorGroupA;
+        var group = _database.LoadSetting("mark.color_group", "A");
+        return group switch
+        {
+            "B" => MarkColorGroupB,
+            "C" => MarkColorGroupC,
+            "D" => MarkColorGroupD,
+            _ => MarkColorGroupA
+        };
     }
 
     private void AssignBookmarkColors(IList<PageCatalogItem> items, HashSet<int> bookmarks)

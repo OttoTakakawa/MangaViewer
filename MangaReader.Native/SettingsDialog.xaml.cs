@@ -51,6 +51,18 @@ public partial class SettingsDialog : Window
         "#115E59", "#1E3A8A", "#3730A3", "#581C87",
         "#831843", "#9F1239", "#365314", "#164E63"
     ];
+    private static readonly string[] PresetGroupC =
+    [
+        "#E879A0", "#F0946C", "#E6B84A", "#7FB884",
+        "#5BB5A2", "#6A9FD8", "#8B8EC9", "#B08DC2",
+        "#D98CB8", "#E07A6A", "#A3C565", "#54B8C4"
+    ];
+    private static readonly string[] PresetGroupD =
+    [
+        "#C0392B", "#D35400", "#D4AC0D", "#1E8449",
+        "#1A5276", "#2E4085", "#6C3483", "#A93276",
+        "#C0395A", "#D4553A", "#27AE60", "#16A085"
+    ];
 
     public SettingsDialog(AppStorage storage, LibraryDatabase database)
     {
@@ -94,8 +106,10 @@ public partial class SettingsDialog : Window
 
         // 标记颜色组
         var savedGroup = _database.LoadSetting("mark.color_group", "A");
+        ColorGroupARadio.IsChecked = savedGroup == "A" || savedGroup != "B" && savedGroup != "C" && savedGroup != "D";
         ColorGroupBRadio.IsChecked = savedGroup == "B";
-        ColorGroupARadio.IsChecked = savedGroup != "B";
+        ColorGroupCRadio.IsChecked = savedGroup == "C";
+        ColorGroupDRadio.IsChecked = savedGroup == "D";
         RefreshColorSwatches();
 
         _hasChanges = false;
@@ -252,7 +266,10 @@ public partial class SettingsDialog : Window
     private void RefreshColorSwatches()
     {
         if (ColorSwatchPanel is null) return;
-        var colors = ColorGroupBRadio.IsChecked == true ? PresetGroupB : PresetGroupA;
+        var colors = ColorGroupBRadio.IsChecked == true ? PresetGroupB
+            : ColorGroupCRadio.IsChecked == true ? PresetGroupC
+            : ColorGroupDRadio.IsChecked == true ? PresetGroupD
+            : PresetGroupA;
         ColorSwatchPanel.Children.Clear();
         foreach (var color in colors)
         {
@@ -410,7 +427,11 @@ public partial class SettingsDialog : Window
         _database.SaveShortcut("reader.doublepage.gap", DoublePageGapSlider.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
 
         // 标记颜色组
-        _database.SaveSetting("mark.color_group", ColorGroupBRadio.IsChecked == true ? "B" : "A");
+        var markColorGroup = ColorGroupBRadio.IsChecked == true ? "B"
+            : ColorGroupCRadio.IsChecked == true ? "C"
+            : ColorGroupDRadio.IsChecked == true ? "D"
+            : "A";
+        _database.SaveSetting("mark.color_group", markColorGroup);
 
         // 数据根目录
         if (_pendingDataRoot is not null)
