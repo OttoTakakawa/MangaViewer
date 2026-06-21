@@ -47,6 +47,8 @@ public partial class MainWindow : Window
     private const string DeleteSourcePasswordKey = "app.permission_password";
     private const string DefaultDeleteSourcePassword = "0309";
     private const string CatalogDeleteSourceEnabledKey = "app.catalog_delete_source_enabled";
+    private const string LibraryPageSizeSettingKey = "library.page_size";
+    private const int DefaultLibraryPageSize = 140;
     private const string TagDragDataFormat = "MangaReader.TagName";
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
@@ -104,9 +106,11 @@ public partial class MainWindow : Window
     private DispatcherTimer? _toastTimer;
     private readonly Queue<string> _liveLogLines = new();
     private List<MangaBook> _allBooks = [];
+    private List<MangaBook> _pagedSourceBooks = [];
     private CancellationTokenSource _filterCts = new();
     private bool _refreshShelfOverviewAfterBookFilter;
     private bool _ensureLibraryViewAfterBookFilter;
+    private bool _resetPageAfterBookFilter;
     private bool _isRefreshingAuthorFilters;
     private bool _tagGroupFilterOptionsDirty = true;
     private bool _tagIndexDirty = true;
@@ -123,6 +127,10 @@ public partial class MainWindow : Window
     private bool _cachedShowHidden;
     private bool _cachedOnlyHidden;
     private bool _sortDescending;
+    private int _currentPageIndex;
+    private int _pageSize = DefaultLibraryPageSize;
+    private bool _isRefreshingPageSize;
+    private bool _paginationFirstShown;
     private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
 
@@ -208,14 +216,16 @@ public partial class MainWindow : Window
             var managedAuthorsTask = Task.Run(() => _database.LoadManagedAuthors());
             var shortcutsTask = Task.Run(() => _database.LoadShortcuts());
             var privacyModeTask = Task.Run(() => _database.LoadSetting(PrivacyModeSettingKey));
+            var pageSizeTask = Task.Run(() => _database.LoadSetting(LibraryPageSizeSettingKey, DefaultLibraryPageSize.ToString()));
 
-            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask);
+            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask);
 
             ApplyManagedTags(managedTagsTask.Result, suppressedTagsTask.Result);
             ApplyCustomTagColors(customTagColorsTask.Result);
             ApplyManagedAuthors(managedAuthorsTask.Result);
             ApplyShortcuts(shortcutsTask.Result);
             IsPrivacyMode = string.Equals(privacyModeTask.Result, "1", StringComparison.Ordinal);
+            ApplyLibraryPageSizeSetting(pageSizeTask.Result);
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
@@ -576,6 +586,7 @@ public partial class MainWindow : Window
         Books.Clear();
         _allBooks = [];
         MarkTagIndexDirty();
+        _paginationFirstShown = false;
         _currentBook = null;
         SetDetailVisible(false);
         ShowLibraryView("library");
@@ -1106,7 +1117,7 @@ public partial class MainWindow : Window
         await Task.Run(() => _database.SaveMetadata(book));
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
-        RefreshBookFilter();
+        RefreshBookFilter(resetPage: false);
         RefreshHomeShelves();
         StatusText.Text = _currentBook.IsFavorite
             ? $"已收藏《{_currentBook.Title}》。"
@@ -1136,7 +1147,7 @@ public partial class MainWindow : Window
         _currentBook.NotifyAll();
         FillMetadataEditors(_currentBook);
         ApplyBookSort(refresh: false);
-        RefreshBookFilter();
+        RefreshBookFilter(resetPage: false);
         RefreshHomeShelves();
         StatusText.Text = $"《{_currentBook.Title}》已标记为读过 {_currentBook.ReadCount} 次。";
     }
@@ -3601,26 +3612,17 @@ public partial class MainWindow : Window
     private void SetLibraryChromeCollapsed(bool collapsed)
     {
         _libraryChromeCollapsed = collapsed;
-        if (LibraryFilterControlsPanel is not null)
-        {
-            LibraryFilterControlsPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        }
-        UpdateBatchSelectionModeVisuals(clearSelection: false);
         if (LibraryTagPanel is not null)
         {
             LibraryTagPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         }
-        if (LibraryMetricPanel is not null)
-        {
-            LibraryMetricPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        }
         if (LibraryChromeToggleButton is not null)
         {
-            LibraryChromeToggleButton.Content = collapsed ? "展开筛选" : "专注浏览";
+            LibraryChromeToggleButton.Content = collapsed ? "打开标签筛选" : "收起标签筛选";
         }
         StatusText.Text = collapsed
-            ? "已进入专注浏览：筛选控件、Tag 池和统计摘要已收起，点击“展开筛选”可恢复。"
-            : "已展开筛选区。";
+            ? "已收起标签筛选面板。"
+            : "已展开标签筛选面板。";
     }
 
     private void UpdateLogPanelVisibility()
@@ -3647,23 +3649,26 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RefreshBookFilter(bool ensureLibraryView = false)
+    private void RefreshBookFilter(bool ensureLibraryView = false, bool resetPage = true)
     {
         CacheBookFilterState();
-        ScheduleBookViewRefresh(refreshShelfOverview: true, ensureLibraryView);
+        ScheduleBookViewRefresh(refreshShelfOverview: true, ensureLibraryView, resetPage);
     }
 
-    private void ScheduleBookViewRefresh(bool refreshShelfOverview, bool ensureLibraryView = false)
+    private void ScheduleBookViewRefresh(bool refreshShelfOverview, bool ensureLibraryView = false, bool resetPage = false)
     {
         _refreshShelfOverviewAfterBookFilter |= refreshShelfOverview;
         _ensureLibraryViewAfterBookFilter |= ensureLibraryView;
+        _resetPageAfterBookFilter |= resetPage;
         _filterCts.Cancel();
         _filterCts = new CancellationTokenSource();
 
         var refreshShelf = _refreshShelfOverviewAfterBookFilter;
         var ensureLibrary = _ensureLibraryViewAfterBookFilter;
+        var resetPageAfterFilter = _resetPageAfterBookFilter;
         _refreshShelfOverviewAfterBookFilter = false;
         _ensureLibraryViewAfterBookFilter = false;
+        _resetPageAfterBookFilter = false;
         var snapshot = _allBooks.ToList();
         var sortIndex = SortBox?.SelectedIndex ?? 0;
         var sortDescending = _sortDescending;
@@ -3689,6 +3694,7 @@ public partial class MainWindow : Window
             activeTags,
             refreshShelf,
             ensureLibrary,
+            resetPageAfterFilter,
             token);
     }
 
@@ -3705,6 +3711,7 @@ public partial class MainWindow : Window
         string[] activeTags,
         bool refreshShelfOverview,
         bool ensureLibraryView,
+        bool resetPage,
         CancellationToken token)
     {
         List<MangaBook> filtered;
@@ -3735,7 +3742,32 @@ public partial class MainWindow : Window
             return;
         }
 
-        Books.ReplaceRange(filtered);
+        _pagedSourceBooks = filtered;
+        if (resetPage)
+        {
+            _currentPageIndex = 0;
+        }
+        RenderCurrentBookPage(refreshShelfOverview, ensureLibraryView);
+    }
+
+    private void RenderCurrentBookPage(bool refreshShelfOverview = true, bool ensureLibraryView = false)
+    {
+        ClampCurrentPageIndex();
+        var pageBooks = _pagedSourceBooks
+            .Skip(_currentPageIndex * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+
+        Books.ReplaceRange(pageBooks);
+        UpdateLibraryPaginationState();
+
+        if (_pagedSourceBooks.Count > 0 && !_paginationFirstShown)
+        {
+            _paginationFirstShown = true;
+            if (LibraryPaginationBar is not null) LibraryPaginationBar.Visibility = Visibility.Visible;
+            if (LibraryPaginationToggle is not null) LibraryPaginationToggle.Visibility = Visibility.Visible;
+        }
+
         if (refreshShelfOverview)
         {
             RefreshShelfOverview();
@@ -3744,6 +3776,152 @@ public partial class MainWindow : Window
         {
             EnsureLibraryViewCanShowBooks();
         }
+    }
+
+    private void ClampCurrentPageIndex()
+    {
+        var pageCount = GetLibraryPageCount();
+        _currentPageIndex = Math.Clamp(_currentPageIndex, 0, pageCount - 1);
+    }
+
+    private int GetLibraryPageCount()
+    {
+        return Math.Max(1, (int)Math.Ceiling(_pagedSourceBooks.Count / (double)Math.Max(1, _pageSize)));
+    }
+
+    private void UpdateLibraryPaginationState()
+    {
+        if (LibraryPageText is null)
+        {
+            return;
+        }
+
+        var pageCount = GetLibraryPageCount();
+        var currentPageNumber = _pagedSourceBooks.Count == 0 ? 0 : _currentPageIndex + 1;
+        LibraryPageText.Text = $"第 {currentPageNumber} / {pageCount} 页 · 本页 {Books.Count} 本 · 筛选结果 {_pagedSourceBooks.Count} 本";
+
+        if (LibraryFirstPageButton is not null) LibraryFirstPageButton.IsEnabled = _pagedSourceBooks.Count > 0 && _currentPageIndex > 0;
+        if (LibraryPreviousPageButton is not null) LibraryPreviousPageButton.IsEnabled = _pagedSourceBooks.Count > 0 && _currentPageIndex > 0;
+        if (LibraryNextPageButton is not null) LibraryNextPageButton.IsEnabled = _pagedSourceBooks.Count > 0 && _currentPageIndex < pageCount - 1;
+        if (LibraryLastPageButton is not null) LibraryLastPageButton.IsEnabled = _pagedSourceBooks.Count > 0 && _currentPageIndex < pageCount - 1;
+    }
+
+    private void ApplyLibraryPageSizeSetting(string raw)
+    {
+        _pageSize = NormalizeLibraryPageSize(raw);
+        if (LibraryPageSizeBox is null)
+        {
+            return;
+        }
+
+        _isRefreshingPageSize = true;
+        try
+        {
+            foreach (var item in LibraryPageSizeBox.Items.OfType<System.Windows.Controls.ComboBoxItem>())
+            {
+                if (NormalizeLibraryPageSize(item.Tag?.ToString() ?? item.Content?.ToString() ?? "") == _pageSize)
+                {
+                    LibraryPageSizeBox.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _isRefreshingPageSize = false;
+        }
+    }
+
+    private static int NormalizeLibraryPageSize(string raw)
+    {
+        return int.TryParse(raw, out var value) && value is 70 or 140 or 350
+            ? value
+            : DefaultLibraryPageSize;
+    }
+
+    private void LibraryFirstPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPageIndex == 0)
+        {
+            return;
+        }
+
+        _currentPageIndex = 0;
+        RenderCurrentBookPage();
+    }
+
+    private void LibraryPreviousPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPageIndex <= 0)
+        {
+            return;
+        }
+
+        _currentPageIndex--;
+        RenderCurrentBookPage();
+    }
+
+    private void LibraryNextPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentPageIndex >= GetLibraryPageCount() - 1)
+        {
+            return;
+        }
+
+        _currentPageIndex++;
+        RenderCurrentBookPage();
+    }
+
+    private void LibraryLastPage_Click(object sender, RoutedEventArgs e)
+    {
+        var lastPageIndex = GetLibraryPageCount() - 1;
+        if (_currentPageIndex == lastPageIndex)
+        {
+            return;
+        }
+
+        _currentPageIndex = lastPageIndex;
+        RenderCurrentBookPage();
+    }
+
+    private void ToggleLibraryPagination_Click(object sender, RoutedEventArgs e)
+    {
+        if (LibraryPaginationBar is null || LibraryPaginationToggle is null)
+            return;
+        if (LibraryPaginationBar.Visibility == Visibility.Visible)
+        {
+            LibraryPaginationBar.Visibility = Visibility.Collapsed;
+            LibraryPaginationToggle.Content = "▲";
+            LibraryPaginationToggle.ToolTip = "展开分页栏";
+        }
+        else
+        {
+            LibraryPaginationBar.Visibility = Visibility.Visible;
+            LibraryPaginationToggle.Content = "▼";
+            LibraryPaginationToggle.ToolTip = "折叠分页栏";
+            UpdateLibraryPaginationState();
+        }
+    }
+
+    private void LibraryPageSizeBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isRefreshingPageSize)
+            return;
+        if (LibraryPageSizeBox is null)
+            return;
+        if (LibraryPageSizeBox.SelectedItem is not System.Windows.Controls.ComboBoxItem item)
+            return;
+        var raw = item.Tag is string tagStr ? tagStr : item.Content?.ToString() ?? "";
+        if (!int.TryParse(raw, out var newPageSize))
+            return;
+        if (newPageSize == _pageSize)
+            return;
+
+        _pageSize = newPageSize;
+        _currentPageIndex = 0;
+        _ = Task.Run(() => _database.SaveSetting(LibraryPageSizeSettingKey, _pageSize.ToString()));
+        RenderCurrentBookPage();
+        StatusText.Text = $"每页显示 {_pageSize} 本，共 {GetLibraryPageCount()} 页";
     }
 
     private void CacheBookFilterState()
@@ -3940,7 +4118,7 @@ public partial class MainWindow : Window
 
         if (refresh)
         {
-            ScheduleBookViewRefresh(refreshShelfOverview: false);
+            ScheduleBookViewRefresh(refreshShelfOverview: false, resetPage: true);
         }
     }
 
@@ -4108,7 +4286,7 @@ public partial class MainWindow : Window
         var favoriteCount = 0;
         var readingNowCount = 0;
         var readCount = 0;
-        var visibleCount = Books.Count;
+        var visibleCount = _pagedSourceBooks.Count;
         foreach (var book in _allBooks)
         {
             if (_cachedOnlyHidden)
@@ -4181,7 +4359,7 @@ public partial class MainWindow : Window
             ClearBatchSelection();
         }
 
-        var showBatchTools = IsBatchSelectionMode && !_libraryChromeCollapsed;
+        var showBatchTools = IsBatchSelectionMode;
         IsBatchSelectionUiVisible = showBatchTools;
         if (BatchManageShell is not null)
         {
@@ -4486,7 +4664,7 @@ public partial class MainWindow : Window
         {
             book.NotifyAll();
             ApplyBookSort(refresh: false);
-            RefreshBookFilter();
+            RefreshBookFilter(resetPage: false);
             RefreshHomeShelves();
             if (BooksList.SelectedItem is MangaBook selected && Books.Contains(selected))
                 _ = Dispatcher.InvokeAsync(() => BooksList.ScrollIntoView(selected), DispatcherPriority.ApplicationIdle);
@@ -4520,7 +4698,7 @@ public partial class MainWindow : Window
 
     private MangaBook? ResolveNextBookInCurrentView(MangaBook currentBook)
     {
-        var visibleBooks = GetVisibleBooks()
+        var visibleBooks = _pagedSourceBooks
             .Where(book => !book.IsMissing && book.Pages.Count > 0)
             .ToList();
         var currentIndex = visibleBooks.FindIndex(book => ReferenceEquals(book, currentBook) || book.Id == currentBook.Id);
@@ -5167,7 +5345,7 @@ public partial class MainWindow : Window
 
     private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null, string? color = null)
     {
-        var resolvedCategory = category ?? TagCategory(tag);
+        var resolvedCategory = NormalizeManagedTagCategory(tag, category ?? TagCategory(tag));
         var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
         var requestedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
         var resolvedColor = !string.IsNullOrWhiteSpace(requestedColor)
@@ -5180,10 +5358,11 @@ public partial class MainWindow : Window
 
     private List<string> EnumerateTagsInCategory(string category, string? requiredTag = null)
     {
+        var resolvedCategory = NormalizeManagedTagCategory(requiredTag ?? "", category);
         return EnumerateKnownTags()
             .Append(requiredTag ?? "")
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
-            .Where(tag => string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase)
+            .Where(tag => string.Equals(TagCategory(tag), resolvedCategory, StringComparison.OrdinalIgnoreCase)
                 || (!string.IsNullOrWhiteSpace(requiredTag) && string.Equals(tag, requiredTag, StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -5191,12 +5370,13 @@ public partial class MainWindow : Window
 
     private void ApplyCategoryColorLocally(string category, string color, string? primaryTag = null, bool? primaryIsExclusive = null)
     {
+        var resolvedCategory = NormalizeManagedTagCategory(primaryTag ?? "", category);
         var updatedAt = DateTimeOffset.Now.ToString("O");
-        foreach (var tag in EnumerateTagsInCategory(category, primaryTag))
+        foreach (var tag in EnumerateTagsInCategory(resolvedCategory, primaryTag))
         {
             _suppressedTags.Remove(tag);
             _managedTags.Add(tag);
-            _managedTagCategories[tag] = category;
+            _managedTagCategories[tag] = resolvedCategory;
             _managedTagIsExclusive[tag] = primaryTag is not null && string.Equals(tag, primaryTag, StringComparison.OrdinalIgnoreCase)
                 ? primaryIsExclusive ?? IsExclusiveTag(tag)
                 : IsExclusiveTag(tag);
@@ -5210,12 +5390,13 @@ public partial class MainWindow : Window
 
     private void SaveCategoryColor(string category, string color, string? primaryTag = null, bool? primaryIsExclusive = null)
     {
-        foreach (var tag in EnumerateTagsInCategory(category, primaryTag))
+        var resolvedCategory = NormalizeManagedTagCategory(primaryTag ?? "", category);
+        foreach (var tag in EnumerateTagsInCategory(resolvedCategory, primaryTag))
         {
             var isExclusive = primaryTag is not null && string.Equals(tag, primaryTag, StringComparison.OrdinalIgnoreCase)
                 ? primaryIsExclusive ?? IsExclusiveTag(tag)
                 : IsExclusiveTag(tag);
-            _database.SaveManagedTag(tag, category, isExclusive, color);
+            _database.SaveManagedTag(tag, resolvedCategory, isExclusive, color);
         }
     }
 
@@ -5284,7 +5465,7 @@ public partial class MainWindow : Window
 
         SaveCustomTagColors(dialog.CustomColors);
         tag = dialog.TagName;
-        category = dialog.TagCategory;
+        category = NormalizeManagedTagCategory(tag, dialog.TagCategory);
         isExclusive = dialog.IsExclusive;
         color = dialog.SelectedColor;
         return true;
@@ -5647,7 +5828,7 @@ public partial class MainWindow : Window
     {
         if (_managedTagCategories.TryGetValue(tag, out var category) && !string.IsNullOrWhiteSpace(category))
         {
-            return IsPollutedTagCategory(tag, category) ? "自定义" : category;
+            return NormalizeManagedTagCategory(tag, category);
         }
 
         return TagService.GetCategory(tag);
@@ -5656,7 +5837,7 @@ public partial class MainWindow : Window
     private IEnumerable<string> EnumerateKnownTagCategories()
     {
         return DefaultTagPresets.Select(tag => tag.Category)
-            .Concat(_managedTagCategories.Select(item => IsPollutedTagCategory(item.Key, item.Value) ? "自定义" : item.Value))
+            .Concat(_managedTagCategories.Select(item => NormalizeManagedTagCategory(item.Key, item.Value)))
             .Append("自定义")
             .Select(category => category.Trim())
             .Where(category => !string.IsNullOrWhiteSpace(category))
@@ -5669,6 +5850,14 @@ public partial class MainWindow : Window
         return string.Equals(trimmed, tag, StringComparison.OrdinalIgnoreCase)
             || (_managedTags.Contains(trimmed)
                 && !DefaultTagPresets.Any(preset => string.Equals(preset.Category, trimmed, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private string NormalizeManagedTagCategory(string tag, string category)
+    {
+        var trimmed = category.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) || IsPollutedTagCategory(tag, trimmed)
+            ? "自定义"
+            : trimmed;
     }
 
     private bool IsExclusiveTag(string tag)
@@ -5912,7 +6101,7 @@ public partial class MainWindow : Window
             .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
-        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(chip.Name), _customTagColors) { Owner = this };
+        var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(), _customTagColors) { Owner = this };
         var result = dialog.ShowDialog();
         if (dialog.OpenMoreRequested)
         {
@@ -5925,7 +6114,7 @@ public partial class MainWindow : Window
         }
 
         var newName = dialog.TagName;
-        var newCategory = dialog.TagCategory;
+        var newCategory = NormalizeManagedTagCategory(newName, dialog.TagCategory);
         var newIsExclusive = dialog.IsExclusive;
         var newColor = dialog.SelectedColor;
         SaveCustomTagColors(dialog.CustomColors);

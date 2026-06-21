@@ -70,6 +70,9 @@
 
 - `Books`、`VisibleTags`、`ActiveTagFilters`、`TagManagerItems`、`AuthorManagerItems`、`AuthorFilters` 使用 `RangeObservableCollection<T>`。
 - 大集合替换用 `ReplaceRange()` / `AddRange()`，不要循环 `ObservableCollection.Add()`。
+- 书库瀑布流现在是 UI 层分页：完整筛选/排序结果缓存在 `_pagedSourceBooks`，`Books` 只承载当前页。不要把 `Books` 当成完整筛选结果；需要完整当前视图顺序时用 `_pagedSourceBooks`。
+- 分页页大小固定选项为 `25 / 50 / 100`，默认 `50`，保存到 `app_settings` 的 `library.page_size`。筛选、搜索、排序变化回到第一页；单纯元数据刷新尽量保留当前页。
+- 批量“全选”和 Shift 范围选择只面向当前页 `Books`，不要无提示扩展到全部筛选结果。
 - `RefreshBookFilter()` 不得自动触发 `RefreshHomeShelves()`。书库筛选和首页书架刷新必须解耦。
 - 书库列表使用 `VirtualizingWrapPanel`，配置在 `MainWindow.xaml` 的 `BooksList.ItemsPanel`。
 - 扫描书库时耗时部分必须放在后台线程，例如现有扫描通过 `Task.Run()`。
@@ -206,6 +209,8 @@
 - `TagCatalog`：内置标签目录 + **唯一颜色调色板来源** `TagCatalog.PresetColors`（8 色）。两个 Dialog（`TagCreateDialog` / `TagEditDialog`）的 `private static readonly string[] PresetColors` 都引用这一份，不要再在 Dialog 里定义独立色集。
 - `managed_tags`：用户管理的标签，`color` 列存调色板颜色。
 - `suppressed_tags`：被隐藏的候选标签。
+- Tag 颜色属于“分组”，不是单个 Tag。编辑任意 Tag 的颜色会统一该 Tag 所在分组颜色；保存前必须用 `NormalizeManagedTagCategory()` 归一分组，禁止把 Tag 名写成 category。
+- 旧数据中如果 `managed_tags.category == tag.Name`，或 category 命中另一个 Tag 名但不是合法预设分组，显示和再次保存时归一为 `自定义`。
 
 Tag 新建对话框（`TagCreateDialog`）规则：
 

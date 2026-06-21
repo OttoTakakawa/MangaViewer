@@ -93,10 +93,12 @@ public partial class TagEditDialog : Window
 
     private void TagCategoryBox_Changed(object sender, SelectionChangedEventArgs e)
     {
+        UpdateColorFromCategory();
     }
 
-    private void TagCategoryBox_TextChanged(object sender, TextChangedEventArgs e)
+    private void TagCategoryBox_LostFocus(object sender, RoutedEventArgs e)
     {
+        UpdateColorFromCategory();
     }
 
     private void UpdateColorFromCategory()
