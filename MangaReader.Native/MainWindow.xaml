@@ -920,6 +920,64 @@
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <DataTemplate x:Key="TagChipItemTemplate" DataType="{x:Type models:TagChip}">
+            <Border Margin="3"
+                    Padding="10,6"
+                    Background="{Binding Color}"
+                    MouseEnter="TagChip_MouseEnter"
+                    MouseLeave="TagChip_MouseLeave"
+                    PreviewMouseLeftButtonDown="TagChip_PreviewMouseLeftButtonDown"
+                    PreviewMouseLeftButtonUp="TagChip_PreviewMouseLeftButtonUp"
+                    MouseMove="TagChip_MouseMove"
+                    MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
+                <Border.ContextMenu>
+                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                        <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
+                        <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
+                        <Separator/>
+                        <MenuItem Header="前往标签页" Click="TagContextOpenManager_Click"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource AppTagChipBorder}">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter Property="Cursor" Value="Arrow"/>
+                                <Setter Property="Opacity" Value="0.38"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Category}" FontSize="11" Margin="0,0,5,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding Name}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -1265,70 +1323,33 @@
                             <Button DockPanel.Dock="Right" Content="添加" Click="AddTag_Click" Style="{StaticResource FilterActionButton}" Margin="8,0,0,0" Height="44"/>
                             <TextBox x:Name="TagSearchBox" TextChanged="TagSearchBox_TextChanged" Style="{StaticResource FilterTextBox}" Height="44" ToolTip="搜索 Tag；点添加可创建候选 Tag，选中漫画时会直接添加到漫画"/>
                         </DockPanel>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="120" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
-                            <ItemsControl x:Name="TagPool" ItemsSource="{Binding VisibleTags}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="240" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                            <ItemsControl x:Name="TagPool" ItemsSource="{Binding VisibleTagGroups}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type models:TagChip}">
-                                        <Border Margin="3"
-                                                Padding="10,6"
-                                                Background="{Binding Color}"
-                                                MouseEnter="TagChip_MouseEnter"
-                                                MouseLeave="TagChip_MouseLeave"
-                                                PreviewMouseLeftButtonDown="TagChip_PreviewMouseLeftButtonDown"
-                                                PreviewMouseLeftButtonUp="TagChip_PreviewMouseLeftButtonUp"
-                                                MouseMove="TagChip_MouseMove"
-                                                MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
-                                            <Border.ContextMenu>
-                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                    <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
-                                                    <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
-                                                    <Separator/>
-                                                    <MenuItem Header="前往标签页" Click="TagContextOpenManager_Click"/>
-                                                </ContextMenu>
-                                            </Border.ContextMenu>
-                                            <Border.Style>
-                                                <Style TargetType="Border" BasedOn="{StaticResource AppTagChipBorder}">
-                                                    <Setter Property="Opacity" Value="1"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                            <Setter Property="Cursor" Value="Arrow"/>
-                                                            <Setter Property="Opacity" Value="0.38"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Category}" FontSize="11" Margin="0,0,5,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding Name}">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Border>
+                                    <DataTemplate DataType="{x:Type models:TagCategoryGroup}">
+                                        <StackPanel Margin="0,0,0,8">
+                                            <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                          Style="{StaticResource TagCategoryHeaderToggleButton}"
+                                                          ToolTip="点击折叠/展开该分类">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Arrow}" Margin="0,0,6,0" FontSize="11" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Header}"/>
+                                                </StackPanel>
+                                            </ToggleButton>
+                                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                                          VerticalScrollBarVisibility="Auto"
+                                                          MaxHeight="100"
+                                                          Visibility="{Binding TagsVisibility}"
+                                                          PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                                                <ItemsControl ItemsSource="{Binding Tags}" ItemTemplate="{StaticResource TagChipItemTemplate}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

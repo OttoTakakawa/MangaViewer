@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private const int InitialDetailCatalogThumbnailLimit = 96;
     private const string PrivacyModeSettingKey = "app.privacy_mode";
     private const string CustomTagColorsSettingKey = "tag.custom_colors";
+    private const string TagCategoryCollapseStateKey = "tag.category_collapse_state";
     private const string DeleteSourcePasswordKey = "app.permission_password";
     private const string DefaultDeleteSourcePassword = "0309";
     private const string CatalogDeleteSourceEnabledKey = "app.catalog_delete_source_enabled";
@@ -115,6 +116,8 @@ public partial class MainWindow : Window
     private bool _tagGroupFilterOptionsDirty = true;
     private bool _tagIndexDirty = true;
     private bool _libraryChromeCollapsed;
+    private readonly HashSet<string> _collapsedTagCategories = new(StringComparer.OrdinalIgnoreCase);
+    private bool _tagSearchActive;
     private bool _isLogPanelVisible;
     private bool _isLogPanelExpanded;
     private bool _isCheckingForUpdates;
@@ -136,6 +139,7 @@ public partial class MainWindow : Window
 
     public RangeObservableCollection<MangaBook> Books { get; } = [];
     public RangeObservableCollection<TagChip> VisibleTags { get; } = [];
+    public RangeObservableCollection<TagCategoryGroup> VisibleTagGroups { get; } = [];
     public RangeObservableCollection<TagChip> ActiveTagFilters { get; } = [];
     public RangeObservableCollection<TagChip> TagManagerItems { get; } = [];
     public RangeObservableCollection<TagChip> EditSelectedTagItems { get; } = [];
@@ -217,8 +221,9 @@ public partial class MainWindow : Window
             var shortcutsTask = Task.Run(() => _database.LoadShortcuts());
             var privacyModeTask = Task.Run(() => _database.LoadSetting(PrivacyModeSettingKey));
             var pageSizeTask = Task.Run(() => _database.LoadSetting(LibraryPageSizeSettingKey, DefaultLibraryPageSize.ToString()));
+            var tagCollapseTask = Task.Run(() => _database.LoadSetting(TagCategoryCollapseStateKey));
 
-            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask);
+            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask, tagCollapseTask);
 
             ApplyManagedTags(managedTagsTask.Result, suppressedTagsTask.Result);
             ApplyCustomTagColors(customTagColorsTask.Result);
@@ -226,6 +231,7 @@ public partial class MainWindow : Window
             ApplyShortcuts(shortcutsTask.Result);
             IsPrivacyMode = string.Equals(privacyModeTask.Result, "1", StringComparison.Ordinal);
             ApplyLibraryPageSizeSetting(pageSizeTask.Result);
+            ApplyTagCategoryCollapseState(tagCollapseTask.Result);
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
@@ -3381,6 +3387,8 @@ public partial class MainWindow : Window
         }
 
         var query = TagSearchBox.Text.Trim();
+        _tagSearchActive = !string.IsNullOrWhiteSpace(query);
+
         var tagNames = EnumerateKnownTags()
             .Append(query)
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
@@ -3413,7 +3421,92 @@ public partial class MainWindow : Window
                 .ToList(),
         };
 
+        var groups = tags
+            .GroupBy(tag => string.IsNullOrWhiteSpace(tag.Category) ? "未分类" : tag.Category)
+            .Select(g =>
+            {
+                var group = new TagCategoryGroup
+                {
+                    Category = g.Key,
+                    TotalCount = g.Count(),
+                    IsExpanded = ResolveCategoryExpanded(g.Key, hasMatches: g.Any())
+                };
+                group.Tags.AddRange(g);
+                group.ExpandedChanged += TagCategoryGroup_ExpandedChanged;
+                return group;
+            })
+            .OrderBy(g => TagCategoryOrder(g.Category))
+            .ThenBy(g => g.Category, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        VisibleTagGroups.ReplaceRange(groups);
         VisibleTags.ReplaceRange(tags);
+    }
+
+    private bool ResolveCategoryExpanded(string category, bool hasMatches)
+    {
+        // 搜索态：只要有匹配就展开，便于用户看到结果
+        if (_tagSearchActive)
+        {
+            return hasMatches;
+        }
+
+        // 用户手动折叠过的分类，尊重用户选择
+        if (_collapsedTagCategories.Contains(category))
+        {
+            return false;
+        }
+
+        // 默认策略：核心分类（互斥三分类）展开，其他折叠
+        return TagService.IsMutuallyExclusiveCategory(category);
+    }
+
+    private void TagCategoryGroup_ExpandedChanged(TagCategoryGroup group, bool isExpanded)
+    {
+        if (_tagSearchActive)
+        {
+            return;
+        }
+
+        if (isExpanded)
+        {
+            _collapsedTagCategories.Remove(group.Category);
+        }
+        else
+        {
+            _collapsedTagCategories.Add(group.Category);
+        }
+
+        var value = string.Join(";", _collapsedTagCategories.OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase));
+        try
+        {
+            _database.SaveSetting(TagCategoryCollapseStateKey, value);
+        }
+        catch
+        {
+            // 持久化失败不影响使用
+        }
+    }
+
+    private void ApplyTagCategoryCollapseState(string raw)
+    {
+        _collapsedTagCategories.Clear();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var name in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                _collapsedTagCategories.Add(name);
+            }
+        }
+        catch
+        {
+            // 加载失败用默认策略
+        }
     }
 
     private void WaterfallTagSort_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
