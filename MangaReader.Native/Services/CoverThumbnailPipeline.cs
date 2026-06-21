@@ -7,7 +7,7 @@ public sealed class CoverThumbnailPipeline
 {
     private const int MaxMemoryCovers = 320;
     private readonly CoverCache _coverCache;
-    private readonly SemaphoreSlim _loaderGate = new(2);
+    private readonly SemaphoreSlim _loaderGate = new(4);
     private readonly object _syncRoot = new();
     private readonly Dictionary<string, LinkedListNode<CacheEntry>> _memoryCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<CacheEntry> _lru = new();

@@ -1,4 +1,4 @@
-using MangaReader.Native.Models;
+﻿using MangaReader.Native.Models;
 using System.Windows.Media.Imaging;
 
 namespace MangaReader.Native.Services;
@@ -6,6 +6,7 @@ namespace MangaReader.Native.Services;
 public sealed class CoverCache
 {
     private readonly AppStorage _storage;
+    private readonly Dictionary<string, long> _coverTimestampCache = new(StringComparer.OrdinalIgnoreCase);
 
     public CoverCache(AppStorage storage)
     {
@@ -45,7 +46,11 @@ public sealed class CoverCache
 
     private string GetCachePath(MangaBook book, string coverPage)
     {
-        var modifiedTicks = File.GetLastWriteTimeUtc(coverPage).Ticks;
+        if (!_coverTimestampCache.TryGetValue(coverPage, out var modifiedTicks))
+        {
+            modifiedTicks = File.GetLastWriteTimeUtc(coverPage).Ticks;
+            _coverTimestampCache[coverPage] = modifiedTicks;
+        }
         var fileName = $"{book.Id}_{book.CoverPageIndex}_{modifiedTicks}.png";
         return Path.Combine(_storage.CoverCachePath, fileName);
     }

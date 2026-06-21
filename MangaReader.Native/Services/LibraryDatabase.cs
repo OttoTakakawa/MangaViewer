@@ -1,4 +1,4 @@
-using MangaReader.Native.Models;
+﻿using MangaReader.Native.Models;
 using Microsoft.Data.Sqlite;
 
 namespace MangaReader.Native.Services;
@@ -34,6 +34,7 @@ public sealed class LibraryDatabase
     private readonly string _connectionString;
     private readonly string _databasePath;
     private readonly string _backupPath;
+    private readonly Dictionary<string, string> _settingsCache = new(StringComparer.OrdinalIgnoreCase);
     private DateTimeOffset _lastMetadataBackupAt = DateTimeOffset.MinValue;
 
     public LibraryDatabase(AppStorage storage)
@@ -130,6 +131,7 @@ public sealed class LibraryDatabase
             CREATE INDEX IF NOT EXISTS idx_books_is_hidden ON books(is_hidden);
             CREATE INDEX IF NOT EXISTS idx_books_folder_path ON books(folder_path);
             CREATE INDEX IF NOT EXISTS idx_book_bookmarks_book_id ON book_bookmarks(book_id);
+            CREATE INDEX IF NOT EXISTS idx_books_last_opened_at ON books(last_opened_at);
             """;
         command.ExecuteNonQuery();
         EnsureColumn(connection, "books", "character_name", "TEXT NOT NULL DEFAULT ''");
@@ -683,11 +685,16 @@ public sealed class LibraryDatabase
 
     public string LoadSetting(string key, string defaultValue = "")
     {
+        if (_settingsCache.TryGetValue(key, out var cached))
+            return cached;
+
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT value FROM app_settings WHERE key = $key;";
         command.Parameters.AddWithValue("$key", key);
-        return command.ExecuteScalar() as string ?? defaultValue;
+        var result = command.ExecuteScalar() as string ?? defaultValue;
+        _settingsCache[key] = result;
+        return result;
     }
 
     public List<ManagedTagRecord> LoadManagedTags()
@@ -931,6 +938,7 @@ public sealed class LibraryDatabase
         command.Parameters.AddWithValue("$value", value);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
+        _settingsCache[key] = value;
     }
 
     public string CreateManualBackup()

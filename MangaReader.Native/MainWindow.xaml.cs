@@ -109,6 +109,7 @@ public partial class MainWindow : Window
     private bool _ensureLibraryViewAfterBookFilter;
     private bool _isRefreshingAuthorFilters;
     private bool _tagGroupFilterOptionsDirty = true;
+    private bool _tagIndexDirty = true;
     private bool _libraryChromeCollapsed;
     private bool _isLogPanelVisible;
     private bool _isLogPanelExpanded;
@@ -357,6 +358,7 @@ public partial class MainWindow : Window
                 if (saved is null && string.IsNullOrWhiteSpace(book.Tags))
                 {
                     book.Tags = candidate.Tags;
+                    MarkTagIndexDirty();
                 }
                 book.Pages.Clear();
                 foreach (var page in pages)
@@ -390,6 +392,7 @@ public partial class MainWindow : Window
             }
         }
         _allBooks.AddRange(newBooks);
+        MarkTagIndexDirty();
 
         HideImportProgress();
         RefreshLibraryViews(sort: true, ensureLibraryView: true);
@@ -572,6 +575,7 @@ public partial class MainWindow : Window
         _filterCts.Cancel();
         Books.Clear();
         _allBooks = [];
+        MarkTagIndexDirty();
         _currentBook = null;
         SetDetailVisible(false);
         ShowLibraryView("library");
@@ -660,6 +664,7 @@ public partial class MainWindow : Window
             }
 
             _allBooks = visibleBooks;
+            MarkTagIndexDirty();
 
             RefreshLibraryViews(sort: true, ensureLibraryView: true);
             RefreshHomeShelves();
@@ -1014,6 +1019,7 @@ public partial class MainWindow : Window
         _currentBook.ImportedAt = string.IsNullOrWhiteSpace(importedAt) ? DateTime.Today.ToString("yyyy-MM-dd") : importedAt;
         _currentBook.Summary = SummaryBox.Text.Trim();
         _currentBook.Tags = NormalizeTagsRespectingRules(TagService.ParseTags(TagsBox.Text.Trim()));
+        MarkTagIndexDirty();
         TagsBox.Text = _currentBook.Tags;
         RefreshEditTagEditor(_currentBook.Tags);
 
@@ -1208,6 +1214,7 @@ public partial class MainWindow : Window
         {
             await Task.Run(() => _database.DeleteBook(book));
             _allBooks.Remove(book);
+            MarkTagIndexDirty();
             _currentBook = null;
             BooksList.SelectedItem = null;
             SetDetailVisible(false);
@@ -1280,6 +1287,7 @@ public partial class MainWindow : Window
             });
 
             _allBooks.Remove(book);
+            MarkTagIndexDirty();
             _currentBook = null;
             BooksList.SelectedItem = null;
             SetDetailVisible(false);
@@ -1785,6 +1793,7 @@ public partial class MainWindow : Window
                 HideDetailCatalog();
                 _database.DeleteBook(book);
                 _allBooks.Remove(book);
+                MarkTagIndexDirty();
                 _currentBook = null;
                 BooksList.SelectedItem = null;
                 SetDetailVisible(false);
@@ -2443,6 +2452,7 @@ public partial class MainWindow : Window
             if (!string.Equals(book.Tags, formatted, StringComparison.Ordinal))
             {
                 book.Tags = formatted;
+                MarkTagIndexDirty();
                 updates.Add((book.Id, book.Tags));
             }
         }
@@ -2504,6 +2514,7 @@ public partial class MainWindow : Window
             foreach (var book in selectedBooks)
             {
                 _allBooks.Remove(book);
+                MarkTagIndexDirty();
             }
 
             if (_currentBook is not null && selectedBooks.Contains(_currentBook))
@@ -2583,6 +2594,7 @@ public partial class MainWindow : Window
             foreach (var book in safeBooks)
             {
                 _allBooks.Remove(book);
+                MarkTagIndexDirty();
             }
 
             if (_currentBook is not null && safeBooks.Contains(_currentBook))
@@ -3975,11 +3987,13 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            if (activeTags.Length > 0
-                && !activeTags.All(activeTag =>
-                    book.TagItems.Any(tag => string.Equals(tag.Name, activeTag, StringComparison.OrdinalIgnoreCase))))
+            if (activeTags.Length > 0)
             {
-                return false;
+                var bookTagSet = new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
+                if (!activeTags.All(activeTag => bookTagSet.Contains(activeTag)))
+                {
+                    return false;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(searchQuery))
@@ -4994,14 +5008,18 @@ public partial class MainWindow : Window
     {
         return DefaultTagPresets.Select(tag => tag.Name)
             .Concat(_managedTags)
-            .Concat(_allBooks.SelectMany(book => book.TagItems.Select(tag => tag.Name)))
+            .Concat(_tagBooksByName.Keys)
             .Where(tag => !string.IsNullOrWhiteSpace(tag))
             .Where(tag => !_suppressedTags.Contains(tag) || GetTagUsageCount(tag) > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
+    private void MarkTagIndexDirty() => _tagIndexDirty = true;
+
     private void RebuildTagIndex()
     {
+        if (!_tagIndexDirty) return;
+        _tagIndexDirty = false;
         _tagBooksByName.Clear();
         foreach (var book in _allBooks)
         {
@@ -5037,6 +5055,7 @@ public partial class MainWindow : Window
     private void LoadManagedTags()
     {
         _tagGroupFilterOptionsDirty = true;
+        MarkTagIndexDirty();
         _managedTags.Clear();
         _managedTagCategories.Clear();
         _managedTagIsExclusive.Clear();
@@ -5064,6 +5083,7 @@ public partial class MainWindow : Window
     private void ApplyManagedTags(IReadOnlyList<LibraryDatabase.ManagedTagRecord> tags, IReadOnlyList<string> suppressedTags)
     {
         _tagGroupFilterOptionsDirty = true;
+        MarkTagIndexDirty();
         _managedTags.Clear();
         _managedTagCategories.Clear();
         _managedTagIsExclusive.Clear();
@@ -5353,6 +5373,7 @@ public partial class MainWindow : Window
 
         names.Add(tag);
         book.Tags = TagService.FormatTags(names);
+        MarkTagIndexDirty();
     }
 
     private string NormalizeTagsRespectingRules(IEnumerable<string> tags)
@@ -6009,6 +6030,7 @@ public partial class MainWindow : Window
         foreach (var (book, tags) in affectedBooks)
         {
             book.Tags = tags;
+            MarkTagIndexDirty();
             book.NotifyAll();
         }
 
@@ -6083,6 +6105,7 @@ public partial class MainWindow : Window
         foreach (var (book, tags) in affectedBooks)
         {
             book.Tags = tags;
+            MarkTagIndexDirty();
             book.NotifyAll();
         }
 

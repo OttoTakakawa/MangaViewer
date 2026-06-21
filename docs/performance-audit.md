@@ -1,32 +1,27 @@
-# 性能优化审计报告 v0.7.3.3
+# 性能优化审计报告 v0.7.4.0
 
 > 审计日期：2026-06-20
 > 基线版本：v0.7.3.3
+> 更新日期：2026-06-21
 
 ## 一、P0 — 立即可修复，效果显著
 
-### P0-1 缺少 `last_opened_at` 索引
-- **位置**: `LibraryDatabase.cs:127-132`（Initialize 方法中的 CREATE INDEX 序列）
-- **现状**: 已有 author、reading_status、is_favorite、is_hidden、folder_path、book_bookmarks(book_id) 共 6 个索引，但缺少 `last_opened_at`
-- **影响**: 首页"继续阅读"按 `LastOpenedAt` 排序（MainWindow.xaml.cs:4331），无索引导致全表排序
-- **修复**: 在 Initialize 中添加 `CREATE INDEX IF NOT EXISTS idx_books_last_opened_at ON books(last_opened_at);`
+### ~~P0-1 缺少 `last_opened_at` 索引~~ ✅ v0.7.4.0 已修复
+- **位置**: `LibraryDatabase.cs:127-133`（Initialize 方法中的 CREATE INDEX 序列）
+- **修复**: 添加 `CREATE INDEX IF NOT EXISTS idx_books_last_opened_at ON books(last_opened_at);`
 
-### P0-2 多处同步 DB 调用在 UI 线程
+### ~~P0-2 多处同步 DB 调用在 UI 线程~~ ✅ v0.7.4.0 部分修复
 - **位置**:
-  - `MainWindow.xaml.cs:219` — `LoadLibraryRoots()`
-  - `MainWindow.xaml.cs:5045` — `LoadManagedTags()`
-  - `MainWindow.xaml.cs:5058` — `LoadSuppressedTags()`
-  - `MainWindow.xaml.cs:806` — `LoadSetting()`
-  - `MainWindow.xaml.cs:1513` — `LoadBookmarks()`
-  - `ReaderWindow.xaml.cs:1878` — `LoadShortcuts()`
-- **影响**: UI 线程阻塞，用户感知卡顿
-- **修复**: 用 `Task.Run` 包装或改为异步方法
+  - `MainWindow.xaml.cs:219` — `LoadLibraryRoots()` ✅ 改为 `await Task.Run()`
+  - `MainWindow.xaml.cs:806` — `LoadSetting()` ✅ 添加内存缓存 `_settingsCache`
+  - `MainWindow.xaml.cs:5045` — `LoadManagedTags()` — 启动时已 Task.Run 并行化
+  - `MainWindow.xaml.cs:5058` — `LoadSuppressedTags()` — 启动时已 Task.Run 并行化
+  - `MainWindow.xaml.cs:1513` — `LoadBookmarks()` — 待优化
+  - `ReaderWindow.xaml.cs:1878` — `LoadShortcuts()` — 待优化
 
-### P0-3 RebuildTagIndex 频繁全量重建
+### ~~P0-3 RebuildTagIndex 频繁全量重建~~ ✅ v0.7.4.0 已修复
 - **位置**: `MainWindow.xaml.cs:5003-5025`
-- **现状**: `RefreshLibraryViews` 中 tags=true 时全量重建 `_tagBooksByName`，而 `RefreshLibraryViews` 被调用 51 次
-- **影响**: 操作后 UI 延迟
-- **修复**: 实现增量更新，仅在书籍 tag 实际变更时更新索引
+- **修复**: 添加 `_tagIndexDirty` 脏标记，仅在 tag 数据实际变更时重建
 
 ## 二、P1 — 中等优先级
 
@@ -36,11 +31,9 @@
 - **影响**: 启动慢、内存浪费
 - **修复**: 拆分为 `LoadBooksByPathForList`（仅列表字段）+ `LoadBookDetail`（全部字段）
 
-### P1-2 GetCachePath 每次访问文件系统
+### ~~P1-2 GetCachePath 每次访问文件系统~~ ✅ v0.7.4.0 已修复
 - **位置**: `CoverCache.cs:46-51`
-- **现状**: `File.GetLastWriteTimeUtc(coverPage).Ticks` 每次获取缓存路径都访问磁盘
-- **影响**: 封面加载延迟
-- **修复**: 在 MangaBook 上缓存封面文件修改时间戳
+- **修复**: 添加 `_coverTimestampCache` 字典缓存文件修改时间戳
 
 ### P1-3 Reader 页面缓存无字节追踪
 - **位置**: `ReaderWindow.xaml.cs:1051-1070`
@@ -61,20 +54,17 @@
 - **现状**: 每个操作 `new SqliteConnection` + PRAGMA 设置 + 操作 + 关闭
 - **修复**: 连接池或长期连接复用，PRAGMA 移到初始化阶段
 
-### P2-2 封面并发限制仅 2
-- **位置**: `CoverThumbnailPipeline.cs:10` — `SemaphoreSlim(2)`
-- **现状**: 最多 2 个并发封面加载
-- **修复**: 提高到 4-6，或根据 CPU 核心数动态调整
+### ~~P2-2 封面并发限制仅 2~~ ✅ v0.7.4.0 已修复
+- **位置**: `CoverThumbnailPipeline.cs:10`
+- **修复**: `SemaphoreSlim(2)` → `SemaphoreSlim(4)`
 
-### P2-3 Tag 过滤 O(N×M×K)
+### ~~P2-3 Tag 过滤 O(N×M×K)~~ ✅ v0.7.4.0 已修复
 - **位置**: `MainWindow.xaml.cs:3978-3983`
-- **现状**: 对每本书的每个 activeTag 执行 `TagItems.Any()` 线性扫描
-- **修复**: 预构建 `HashSet<string>`，用 `IsSupersetOf` 替代
+- **修复**: 先构建 `HashSet<string>` 再 `Contains`，O(N+M)
 
-### P2-4 RefreshHomeShelves 4 次遍历
+### ~~P2-4 RefreshHomeShelves 4 次遍历~~ ✅ v0.7.4.0 已修复
 - **位置**: `MainWindow.xaml.cs:4312-4365`
-- **现状**: 4 个 LINQ 查询分别遍历 homeBooks
-- **修复**: 合并为单次遍历按条件分类
+- **修复**: 合并为单次 `foreach` 分类填充
 
 ## 四、P3 — 长期改进
 
@@ -93,9 +83,8 @@
 - **现状**: 200 页漫画需要 200 次独立 `ImageLoader.LoadBitmap`
 - **修复**: 批量预解码或仅加载可见范围
 
-### P3-4 EnumerateKnownTags 每次全量扫描
+### ~~P3-4 EnumerateKnownTags 每次全量扫描~~ ✅ v0.7.4.0 已修复
 - **位置**: `MainWindow.xaml.cs:4993-5001`
-- **现状**: 每次遍历所有书籍所有 tag 再去重
 - **修复**: 直接使用 `_tagBooksByName.Keys`
 
 ### P3-5 _allBooks 使用 List 而非索引
@@ -113,3 +102,12 @@
 | v0.7.3.3 | 点击标题复制无反馈 | 添加 Toast 提示 |
 | v0.7.3.3 | 复制后显示"失败" | SafeSetClipboard 重试异常不再冒泡 |
 | v0.7.3.3 | 复制时 UI 卡顿 | Thread.Sleep → Dispatcher.BeginInvoke 异步 |
+| v0.7.4.0 | 缺少 last_opened_at 索引 | 添加 idx_books_last_opened_at |
+| v0.7.4.0 | LoadSetting 每次查 DB | 添加 _settingsCache 内存缓存 |
+| v0.7.4.0 | LoadLibraryRoots 同步阻塞 | 改为 await Task.Run() |
+| v0.7.4.0 | RebuildTagIndex 无条件全量重建 | 添加 _tagIndexDirty 脏标记 |
+| v0.7.4.0 | GetCachePath 每次访问文件系统 | 添加 _coverTimestampCache |
+| v0.7.4.0 | 封面并发限制仅 2 | SemaphoreSlim(2) → (4) |
+| v0.7.4.0 | Tag 过滤 O(N×M) | HashSet 优化 O(N+M) |
+| v0.7.4.0 | RefreshHomeShelves 4 次遍历 | 单次 foreach 分类 |
+| v0.7.4.0 | EnumerateKnownTags 全量扫描 | 直接用 _tagBooksByName.Keys |
