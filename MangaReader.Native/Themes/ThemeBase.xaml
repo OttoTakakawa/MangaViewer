@@ -686,7 +686,7 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Padding" Value="8,5"/>
-        <Setter Property="Margin" Value="0,0,0,4"/>
+        <Setter Property="Margin" Value="0,0,0,2"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>

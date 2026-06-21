@@ -116,6 +116,7 @@ public partial class MainWindow : Window
     private bool _tagGroupFilterOptionsDirty = true;
     private bool _tagIndexDirty = true;
     private bool _libraryChromeCollapsed;
+    private bool _libraryFilterCollapsed;
     private readonly HashSet<string> _collapsedTagCategories = new(StringComparer.OrdinalIgnoreCase);
     private bool _tagSearchActive;
     private bool _isLogPanelVisible;
@@ -124,6 +125,9 @@ public partial class MainWindow : Window
     private string _currentNavigationKey = "home";
     private string _cachedSearchQuery = "";
     private string _cachedStatusFilter = "";
+    private int _sessionBooksRead;
+    private int _sessionBooksModified;
+    private readonly List<string> _sessionNewTags = [];
     private string _cachedAuthorFilter = "";
     private string _lastStatusLogText = "";
     private bool _cachedFavoriteOnly;
@@ -192,7 +196,14 @@ public partial class MainWindow : Window
         _statusLogTimer.Start();
         VersionText.Text = $"v{UpdateService.CurrentVersionText}";
         Loaded += MainWindow_Loaded;
-        Closing += (_, _) =>
+        Closing += OnMainWindow_Closing;
+    }
+
+    private bool _pendingExitConfirmed;
+
+    private void OnMainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_pendingExitConfirmed)
         {
             AppLogger.LineWritten -= AppLogger_LineWritten;
             _statusLogTimer.Stop();
@@ -200,7 +211,36 @@ public partial class MainWindow : Window
             _filterCts.Cancel();
             _filterCts.Dispose();
             SaveCurrentProgress();
-        };
+            return;
+        }
+
+        if (_currentNavigationKey is "library" or "tags" or "authors")
+        {
+            e.Cancel = true;
+            var summary = BuildSessionSummary();
+            var dialog = new ExitConfirmDialog(summary) { Owner = this };
+            var result = dialog.ShowDialog();
+            if (dialog.ViewLogRequested)
+            {
+                _isLogPanelVisible = true;
+                UpdateLogPanelVisibility();
+                return;
+            }
+            if (result == true && dialog.Confirmed)
+            {
+                _pendingExitConfirmed = true;
+                Close();
+            }
+        }
+        else
+        {
+            AppLogger.LineWritten -= AppLogger_LineWritten;
+            _statusLogTimer.Stop();
+            StopSearchDebounceTimers();
+            _filterCts.Cancel();
+            _filterCts.Dispose();
+            SaveCurrentProgress();
+        }
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -474,8 +514,18 @@ public partial class MainWindow : Window
         LibraryLoadProgressBar.Minimum = 0;
         LibraryLoadProgressBar.Maximum = safeTotal;
         LibraryLoadProgressBar.Value = safeCompleted;
-        LibraryLoadProgressText.Text = $"{safeCompleted} / {safeTotal} · 已发现 {booksFound} 本 · {detail}";
+        LibraryLoadProgressText.Text = $"{safeCompleted} / {safeTotal} · 已发现 {booksFound} 本 · {TruncateProgressDetail(detail)}";
         StatusText.Text = LibraryLoadProgressText.Text;
+    }
+
+    private static string TruncateProgressDetail(string detail, int maxLen = 25)
+    {
+        if (string.IsNullOrEmpty(detail) || detail.Length <= maxLen)
+        {
+            return detail;
+        }
+
+        return detail[..(maxLen - 1)] + "…";
     }
 
     private void HideLibraryLoadProgress()
@@ -660,6 +710,33 @@ public partial class MainWindow : Window
                     book.IsMissing = true;
                     book.Pages.Clear();
                     book.NotifyAll();
+                }
+                // 重定位后的书：路径不在根目录下但路径存在，需要保留
+                var relocated = savedBooks.Values
+                    .Where(book => !scannedPaths.Contains(book.FolderPath) && Directory.Exists(book.FolderPath))
+                    .ToList();
+                foreach (var book in relocated)
+                {
+                    token.ThrowIfCancellationRequested();
+                    book.IsMissing = false;
+                    if (book.Pages.Count == 0)
+                    {
+                        var pages = Directory.EnumerateFiles(book.FolderPath)
+                            .Where(ImageLoader.IsSupportedImage)
+                            .OrderBy(path => path, new NaturalPathComparer())
+                            .ToList();
+                        book.PageCount = pages.Count;
+                        book.TotalBytes = ImageLoader.SumFileBytes(pages);
+                        book.CoverPageIndex = Math.Clamp(book.CoverPageIndex, 0, Math.Max(pages.Count - 1, 0));
+                        book.LastReadPageIndex = Math.Clamp(book.LastReadPageIndex, 0, Math.Max(pages.Count - 1, 0));
+                        book.Pages.Clear();
+                        foreach (var page in pages)
+                        {
+                            book.Pages.Add(page);
+                        }
+                    }
+                    book.NotifyAll();
+                    all.Add(book);
                 }
                 return (Scanned: all, MissingBooks: missing);
             }, token);
@@ -1048,6 +1125,7 @@ public partial class MainWindow : Window
         }
 
         book.NotifyAll();
+        _sessionBooksModified++;
         RefreshLibraryViews(tagManager: false, sort: true);
         RefreshHomeShelves();
         FillMetadataEditors(book);
@@ -2139,42 +2217,50 @@ public partial class MainWindow : Window
         }
 
         var selectedPath = dialog.SelectedPath;
-        var pages = await Task.Run(() =>
-            Directory.EnumerateFiles(selectedPath)
-                .Where(ImageLoader.IsSupportedImage)
-                .OrderBy(path => path, new NaturalPathComparer())
-                .ToList());
-
-        if (pages.Count == 0)
+        try
         {
-            StatusText.Text = "重定位失败：目标文件夹内没有支持的图片。";
-            return;
+            var pages = await Task.Run(() =>
+                Directory.EnumerateFiles(selectedPath)
+                    .Where(ImageLoader.IsSupportedImage)
+                    .OrderBy(path => path, new NaturalPathComparer())
+                    .ToList());
+
+            if (pages.Count == 0)
+            {
+                StatusText.Text = "重定位失败：目标文件夹内没有支持的图片。";
+                return;
+            }
+
+            var totalBytes = await Task.Run(() => ImageLoader.SumFileBytes(pages));
+
+            var oldId = _currentBook.Id;
+            _currentBook.FolderPath = selectedPath;
+            _currentBook.Id = BookId.FromFolderPath(selectedPath);
+            _currentBook.PageCount = pages.Count;
+            _currentBook.TotalBytes = totalBytes;
+            _currentBook.IsMissing = false;
+            _currentBook.CoverPageIndex = Math.Clamp(_currentBook.CoverPageIndex, 0, pages.Count - 1);
+            _currentBook.LastReadPageIndex = Math.Clamp(_currentBook.LastReadPageIndex, 0, pages.Count - 1);
+            _currentBook.Pages.Clear();
+            foreach (var page in pages)
+            {
+                _currentBook.Pages.Add(page);
+            }
+
+            var book = _currentBook;
+            await Task.Run(() =>
+            {
+                _database.RelocateBook(oldId, book);
+            });
+            _currentBook.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
+            _currentBook.NotifyAll();
+            FillMetadataEditors(_currentBook);
+            StatusText.Text = "重定位完成。";
         }
-
-        var totalBytes = await Task.Run(() => ImageLoader.SumFileBytes(pages));
-
-        _currentBook.FolderPath = selectedPath;
-        _currentBook.PageCount = pages.Count;
-        _currentBook.TotalBytes = totalBytes;
-        _currentBook.IsMissing = false;
-        _currentBook.CoverPageIndex = Math.Clamp(_currentBook.CoverPageIndex, 0, pages.Count - 1);
-        _currentBook.LastReadPageIndex = Math.Clamp(_currentBook.LastReadPageIndex, 0, pages.Count - 1);
-        _currentBook.Pages.Clear();
-        foreach (var page in pages)
+        catch (Exception ex)
         {
-            _currentBook.Pages.Add(page);
+            StatusText.Text = $"重定位失败：{ex.Message}";
         }
-
-        var book = _currentBook;
-        await Task.Run(() =>
-        {
-            _database.UpdateFolderPath(book);
-            _database.SaveMetadata(book);
-        });
-        _currentBook.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
-        _currentBook.NotifyAll();
-        FillMetadataEditors(_currentBook);
-        StatusText.Text = "重定位完成。";
     }
 
     private void Settings_Click(object sender, RoutedEventArgs e)
@@ -2257,6 +2343,41 @@ public partial class MainWindow : Window
         StatusText.Text = _currentBook is null
             ? $"已创建独立标签：{tag}"
             : $"已添加 Tag：{tag}";
+    }
+
+    private async void AddTagToCategory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string category)
+        {
+            return;
+        }
+
+        var input = Microsoft.VisualBasic.Interaction.InputBox($"在「{category}」分类下添加新 Tag：", "添加 Tag", "");
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
+        var tagName = input.Trim();
+
+        // 如果已存在同名 tag，沿用其属性；否则直接用默认值创建
+        var existing = EnumerateKnownTags().FirstOrDefault(name => string.Equals(name, tagName, StringComparison.OrdinalIgnoreCase));
+        var isExclusive = existing is not null && IsExclusiveTag(existing);
+        var color = existing is not null ? TagColor(existing) : "";
+
+        UpsertManagedTag(tagName, category, isExclusive, color);
+        if (_currentBook is not null)
+        {
+            AddTagToBookRespectingRules(_currentBook, tagName);
+            TagsBox.Text = _currentBook.Tags;
+            RefreshEditTagEditor(_currentBook.Tags);
+            var book = _currentBook;
+            await Task.Run(() => _database.SaveMetadata(book));
+            _currentBook.NotifyAll();
+        }
+
+        RefreshLibraryViews(authors: false, sort: false);
+        StatusText.Text = $"已在「{category}」下添加 Tag：{tagName}";
     }
 
     private void BatchSelection_Changed(object sender, RoutedEventArgs e)
@@ -2658,7 +2779,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.ClickCount >= 2)
+        var requireDoubleClick = _database.LoadSetting("app.tag_double_click", "1") == "1";
+        if (!requireDoubleClick || e.ClickCount >= 2)
         {
             ApplyTagFilter(chip);
             e.Handled = true;
@@ -3398,28 +3520,11 @@ public partial class MainWindow : Window
             .Select(tag => CreateTagChip(tag, _activeTagFilters.Contains(tag)))
             .Where(tag => string.IsNullOrWhiteSpace(query) || tag.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
 
-        var sortMode = WaterfallTagSortBox?.SelectedIndex ?? 0;
-        var tags = sortMode switch
-        {
-            1 => filtered
-                .OrderByDescending(tag => !string.IsNullOrWhiteSpace(tag.UpdatedAt))
-                .ThenByDescending(tag => tag.UpdatedAt, StringComparer.Ordinal)
-                .ThenBy(tag => tag.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ToList(),
-            2 => filtered
-                .OrderBy(tag => tag.Color, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(tag => TagCategoryOrder(tag.Category))
-                .ThenBy(tag => tag.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ToList(),
-            3 => filtered
-                .OrderByDescending(tag => tag.UsageCount)
-                .ThenBy(tag => tag.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ToList(),
-            _ => filtered
-                .OrderBy(tag => TagCategoryOrder(tag.Category))
-                .ThenBy(tag => tag.Name)
-                .ToList(),
-        };
+        // 分组后排序已无意义，始终按分类序+名称排序
+        var tags = filtered
+            .OrderBy(tag => TagCategoryOrder(tag.Category))
+            .ThenBy(tag => tag.Name)
+            .ToList();
 
         var groups = tags
             .GroupBy(tag => string.IsNullOrWhiteSpace(tag.Category) ? "未分类" : tag.Category)
@@ -3429,17 +3534,26 @@ public partial class MainWindow : Window
                 {
                     Category = g.Key,
                     TotalCount = g.Count(),
+                    TotalUsageCount = g.Sum(t => t.UsageCount),
                     IsExpanded = ResolveCategoryExpanded(g.Key, hasMatches: g.Any())
                 };
                 group.Tags.AddRange(g);
                 group.ExpandedChanged += TagCategoryGroup_ExpandedChanged;
                 return group;
             })
-            .OrderBy(g => TagCategoryOrder(g.Category))
-            .ThenBy(g => g.Category, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
-        VisibleTagGroups.ReplaceRange(groups);
+        // 按 TagGroupSortBox 排序
+        var sortMode = TagGroupSortBox?.SelectedIndex ?? 0;
+        var sortedGroups = sortMode switch
+        {
+            1 => groups.OrderByDescending(g => g.TotalCount).ThenBy(g => g.Category, StringComparer.CurrentCultureIgnoreCase).ToList(),
+            2 => groups.OrderByDescending(g => g.TotalUsageCount).ThenBy(g => g.Category, StringComparer.CurrentCultureIgnoreCase).ToList(),
+            3 => groups.OrderBy(g => g.Category, StringComparer.CurrentCultureIgnoreCase).ToList(),
+            _ => groups.OrderBy(g => TagCategoryOrder(g.Category)).ThenBy(g => g.Category, StringComparer.CurrentCultureIgnoreCase).ToList(),
+        };
+
+        VisibleTagGroups.ReplaceRange(sortedGroups);
         VisibleTags.ReplaceRange(tags);
     }
 
@@ -3457,8 +3571,8 @@ public partial class MainWindow : Window
             return false;
         }
 
-        // 默认策略：核心分类（互斥三分类）展开，其他折叠
-        return TagService.IsMutuallyExclusiveCategory(category);
+        // 默认策略：全部展开，用户手动折叠才收起
+        return true;
     }
 
     private void TagCategoryGroup_ExpandedChanged(TagCategoryGroup group, bool isExpanded)
@@ -3509,7 +3623,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void WaterfallTagSort_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void ToggleAllTagGroups_Click(object sender, RoutedEventArgs e)
+    {
+        if (ToggleAllTagGroupsButton is null) return;
+
+        var anyExpanded = VisibleTagGroups.Any(g => g.IsExpanded);
+        foreach (var group in VisibleTagGroups)
+        {
+            group.IsExpanded = !anyExpanded;
+        }
+
+        ToggleAllTagGroupsButton.Content = anyExpanded ? "全展开" : "全折叠";
+    }
+
+    private void TagGroupSortBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         RefreshVisibleTags();
     }
@@ -3611,6 +3738,27 @@ public partial class MainWindow : Window
     private void ToggleLibraryChrome_Click(object sender, RoutedEventArgs e)
     {
         SetLibraryChromeCollapsed(!_libraryChromeCollapsed);
+    }
+
+    private void ToggleLibraryFilter_Click(object sender, RoutedEventArgs e)
+    {
+        SetLibraryFilterCollapsed(!_libraryFilterCollapsed);
+    }
+
+    private void SetLibraryFilterCollapsed(bool collapsed)
+    {
+        _libraryFilterCollapsed = collapsed;
+        if (LibraryFilterControlsPanel is not null)
+        {
+            LibraryFilterControlsPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        }
+        if (LibraryFilterToggleButton is not null)
+        {
+            LibraryFilterToggleButton.Content = collapsed ? "打开排序" : "收起排序";
+        }
+        StatusText.Text = collapsed
+            ? "已收起排序筛选控件。"
+            : "已展开排序筛选控件。";
     }
 
     private void ToggleStatusPanel_Click(object sender, RoutedEventArgs e)
@@ -4755,6 +4903,7 @@ public partial class MainWindow : Window
         };
         reader.Closed += (_, _) =>
         {
+            _sessionBooksRead++;
             book.NotifyAll();
             ApplyBookSort(refresh: false);
             RefreshBookFilter(resetPage: false);
@@ -4905,6 +5054,41 @@ public partial class MainWindow : Window
     private void NavHome_Click(object sender, RoutedEventArgs e)
     {
         ShowHomeView();
+    }
+
+    private bool ConfirmLeaveLibrary()
+    {
+        var summary = BuildSessionSummary();
+        var dialog = new ExitConfirmDialog(summary) { Owner = this };
+        var result = dialog.ShowDialog();
+        if (dialog.ViewLogRequested)
+        {
+            _isLogPanelVisible = true;
+            UpdateLogPanelVisibility();
+        }
+        return result == true && dialog.Confirmed;
+    }
+
+    private string BuildSessionSummary()
+    {
+        var lines = new List<string>();
+        if (_sessionBooksRead > 0)
+        {
+            lines.Add($"本次阅读了 {_sessionBooksRead} 本漫画");
+        }
+        if (_sessionBooksModified > 0)
+        {
+            lines.Add($"修改了 {_sessionBooksModified} 本漫画信息");
+        }
+        if (_sessionNewTags.Count > 0)
+        {
+            lines.Add($"新增 Tag：{string.Join("、", _sessionNewTags)}");
+        }
+        if (lines.Count == 0)
+        {
+            lines.Add("本次未做任何操作");
+        }
+        return string.Join("\n", lines);
     }
 
     private void NavLibrary_Click(object sender, RoutedEventArgs e)
@@ -5438,6 +5622,7 @@ public partial class MainWindow : Window
 
     private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null, string? color = null)
     {
+        var isNew = !_managedTags.Contains(tag);
         var resolvedCategory = NormalizeManagedTagCategory(tag, category ?? TagCategory(tag));
         var resolvedExclusive = isExclusive ?? IsExclusiveTag(tag);
         var requestedColor = color ?? (_managedTagColors.TryGetValue(tag, out var existing) ? existing : "");
@@ -5447,6 +5632,10 @@ public partial class MainWindow : Window
         _tagGroupFilterOptionsDirty = true;
         ApplyCategoryColorLocally(resolvedCategory, resolvedColor, tag, resolvedExclusive);
         _ = Task.Run(() => SaveCategoryColor(resolvedCategory, resolvedColor, tag, resolvedExclusive));
+        if (isNew && !_sessionNewTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+        {
+            _sessionNewTags.Add(tag);
+        }
     }
 
     private List<string> EnumerateTagsInCategory(string category, string? requiredTag = null)

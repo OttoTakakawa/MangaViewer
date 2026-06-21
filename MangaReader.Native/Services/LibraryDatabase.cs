@@ -1,4 +1,4 @@
-﻿using MangaReader.Native.Models;
+﻿﻿﻿﻿using MangaReader.Native.Models;
 using Microsoft.Data.Sqlite;
 
 namespace MangaReader.Native.Services;
@@ -574,6 +574,40 @@ public sealed class LibraryDatabase
             command.CommandText = "DELETE FROM books WHERE id = $id;";
             command.Parameters.AddWithValue("$id", book.Id);
             command.ExecuteNonQuery();
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public void RelocateBook(string oldId, MangaBook book)
+    {
+        BackupDatabase("before-relocate-book", force: true);
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            // Delete old record
+            using (var deleteCmd = connection.CreateCommand())
+            {
+                deleteCmd.Transaction = transaction;
+                deleteCmd.CommandText = "DELETE FROM books WHERE id = $oldId;";
+                deleteCmd.Parameters.AddWithValue("$oldId", oldId);
+                deleteCmd.ExecuteNonQuery();
+            }
+
+            // Insert with new id
+            using (var insertCmd = connection.CreateCommand())
+            {
+                insertCmd.Transaction = transaction;
+                insertCmd.CommandText = UpsertBookSql;
+                AddBookParameters(insertCmd, book);
+                insertCmd.ExecuteNonQuery();
+            }
+
             transaction.Commit();
         }
         catch

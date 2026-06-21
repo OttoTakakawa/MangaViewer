@@ -50,6 +50,8 @@ public sealed class TagCategoryGroup : INotifyPropertyChanged
         }
     }
 
+    public int TotalUsageCount { get; set; }
+
     public string Header => $"{Category}（{TotalCount}）";
 
     /// <summary>用户手动切换折叠/展开时触发，用于持久化。程序matic 设置不触发。</summary>
