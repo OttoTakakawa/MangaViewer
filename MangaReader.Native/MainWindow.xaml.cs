@@ -3218,15 +3218,12 @@ public partial class MainWindow : Window
     {
         if (_currentBook is null) return;
         var title = _currentBook.Title ?? "";
-        try
+        // 异步写入剪贴板，避免 IME 锁定剪贴板时阻塞 UI
+        Dispatcher.BeginInvoke(() =>
         {
             SafeSetClipboard(title);
-            StatusText.Text = string.IsNullOrEmpty(title) ? "标题为空，已复制空字符串。" : $"已复制标题：{title}";
-        }
-        catch
-        {
-            StatusText.Text = "标题复制失败，可能剪贴板被其他进程占用。";
-        }
+        }, System.Windows.Threading.DispatcherPriority.Input);
+        ShowToast(string.IsNullOrEmpty(title) ? "标题为空，已复制空字符串" : $"已复制标题：{title}");
         e.Handled = true;
     }
 
@@ -3335,9 +3332,15 @@ public partial class MainWindow : Window
                 System.Windows.Clipboard.SetDataObject(text, true);
                 return;
             }
-            catch (System.Runtime.InteropServices.COMException) when (i < 2)
+            catch (System.Runtime.InteropServices.COMException)
             {
-                System.Threading.Thread.Sleep(30);
+                // 不阻塞 UI 线程，用 DoEvents 替代 Thread.Sleep
+                if (i < 2)
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(
+                        System.Windows.Threading.DispatcherPriority.Background,
+                        new Action(() => { }));
+                }
             }
         }
     }

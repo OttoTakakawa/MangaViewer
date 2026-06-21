@@ -881,15 +881,16 @@
                                     CornerRadius="{StaticResource RadiusPanel}"/>
                         </Grid>
                     </Border>
-                    <Border Padding="7,3"
+                    <Border Grid.ColumnSpan="2"
+                            Padding="7,3"
                             CornerRadius="{StaticResource RadiusControl}"
                             BorderThickness="1"
-                            HorizontalAlignment="Left"
+                            HorizontalAlignment="Right"
                             VerticalAlignment="Top"
-                            Margin="42,0,0,0">
+                            Margin="0,0,0,0">
                         <ContentControl ContentTemplate="{StaticResource RatingBadgeTemplate}" Content="{Binding}"/>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="10,4,0,0">
+                    <StackPanel Grid.Column="1" Margin="10,4,56,0">
                         <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Author}" Margin="0,4,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding ReadingMetaText}" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" FontWeight="SemiBold"/>

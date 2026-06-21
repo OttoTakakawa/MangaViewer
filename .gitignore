@@ -25,3 +25,4 @@ vite.config.ts
 Data/
 _tmp_icons/
 _release_tmp_icons/
+_release_tmp/
