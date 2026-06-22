@@ -16,6 +16,7 @@ public partial class SettingsDialog : Window
     public bool ShortcutsChanged { get; private set; }
     public bool WaterfallRightClickChanged { get; private set; }
     public bool TagDoubleClickChanged { get; private set; }
+    public bool LibraryExitConfirmChanged { get; private set; }
     public bool ThemeChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
 
@@ -86,6 +87,7 @@ public partial class SettingsDialog : Window
         CatalogDeleteCheckBox.IsChecked = _database.LoadSetting("app.catalog_delete_source_enabled", "1") == "1";
         WaterfallRightClickCheckBox.IsChecked = _database.LoadSetting("app.waterfall_right_click", "0") == "1";
         TagDoubleClickCheckBox.IsChecked = _database.LoadSetting("app.tag_double_click", "1") == "1";
+        LibraryExitConfirmCheckBox.IsChecked = _database.LoadSetting("app.library_exit_confirm", "1") == "1";
 
         // 主题
         var theme = _database.LoadSetting("app.theme", "Warm");
@@ -318,6 +320,7 @@ public partial class SettingsDialog : Window
     private void CatalogDeleteCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void WaterfallRightClickCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void TagDoubleClickCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void LibraryExitConfirmCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
 
     private void ChangePassword_Click(object sender, RoutedEventArgs e)
     {
@@ -397,6 +400,7 @@ public partial class SettingsDialog : Window
         _database.SaveSetting("app.catalog_delete_source_enabled", "1");
         _database.SaveSetting("app.waterfall_right_click", "0");
         _database.SaveSetting("app.tag_double_click", "1");
+        _database.SaveSetting("app.library_exit_confirm", "1");
         _database.SaveSetting("mark.color_group", "A");
         for (var i = 0; i < 5; i++)
             _database.SaveSetting(KeySettingKeys[i], KeyDefaultValues[i]);
@@ -444,6 +448,15 @@ public partial class SettingsDialog : Window
         {
             _database.SaveSetting("app.tag_double_click", newTdc ? "1" : "0");
             TagDoubleClickChanged = true;
+        }
+
+        // 关闭漫画库确认提示
+        var newExitConfirm = LibraryExitConfirmCheckBox.IsChecked == true;
+        var oldExitConfirm = _database.LoadSetting("app.library_exit_confirm", "1") == "1";
+        if (newExitConfirm != oldExitConfirm)
+        {
+            _database.SaveSetting("app.library_exit_confirm", newExitConfirm ? "1" : "0");
+            LibraryExitConfirmChanged = true;
         }
 
         // 快捷键

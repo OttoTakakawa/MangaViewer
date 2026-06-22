@@ -525,107 +525,50 @@
                 CornerRadius="{StaticResource RadiusPanel}"
                 Effect="{StaticResource ToolbarShadow}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Name="DisplayMenuButton"
-                        Content="显示:适高"
-                        Style="{StaticResource ReaderButton}"
-                        MinWidth="92"
-                        Click="DisplayMenuButton_Click">
-                    <Button.ContextMenu>
-                        <ContextMenu x:Name="DisplayMenu">
-                            <MenuItem Header="适宽" Click="FitWidth_Click"/>
-                            <MenuItem Header="适高" Click="FitHeight_Click"/>
-                            <MenuItem Header="原始" Click="OriginalSize_Click"/>
-                            <Separator/>
-                            <MenuItem x:Name="QualityModeMenuItem" Header="质量模式" Click="ToggleQualityModeButton_Click"/>
-                            <MenuItem x:Name="BackgroundMenuItem" Header="切换背景" Click="CycleBackgroundButton_Click"/>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
-                <Button x:Name="PageMenuButton"
-                        Content="页面:单页"
-                        Style="{StaticResource ReaderButton}"
-                        MinWidth="92"
-                        Click="PageMenuButton_Click">
-                    <Button.ContextMenu>
-                        <ContextMenu x:Name="PageMenu">
-                            <MenuItem Header="单页" Click="SinglePageMenuItem_Click"/>
-                            <MenuItem Header="双页" Click="DoublePageMenuItem_Click"/>
-                            <Separator/>
-                            <MenuItem Header="从左到右" Click="LeftToRightMenuItem_Click"/>
-                            <MenuItem Header="从右到左" Click="RightToLeftMenuItem_Click"/>
-                            <Separator/>
-                            <MenuItem x:Name="DoublePageGapMenuItem" StaysOpenOnClick="True">
-                                <MenuItem.Header>
-                                    <StackPanel Width="180">
-                                        <TextBlock x:Name="DoublePageGapText"
-                                                   Text="双页间距 8"
-                                                   Foreground="{DynamicResource Brush.Reader.Text}"
-                                                   FontWeight="SemiBold"
-                                                   Margin="0,0,0,6"/>
-                                        <Slider x:Name="DoublePageGapSlider"
-                                                Minimum="0"
-                                                Maximum="80"
-                                                Value="8"
-                                                ValueChanged="DoublePageGapSlider_ValueChanged"
-                                                Focusable="False"/>
-                                    </StackPanel>
-                                </MenuItem.Header>
-                            </MenuItem>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
-                <Button x:Name="WheelMenuButton"
-                        Content="滚轮:翻页"
-                        Style="{StaticResource ReaderButton}"
-                        MinWidth="92"
-                        Click="WheelMenuButton_Click">
-                    <Button.ContextMenu>
-                        <ContextMenu x:Name="WheelMenu">
-                            <MenuItem Header="滚轮翻页" Click="WheelPageMenuItem_Click"/>
-                            <MenuItem Header="滚轮缩放" Click="WheelZoomMenuItem_Click"/>
-                            <MenuItem Header="滚轮滚动" Click="WheelScrollMenuItem_Click"/>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
-                <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="8,0"/>
-                <Button x:Name="CatalogButton" Content="目录" Style="{StaticResource ReaderButton}" Margin="0,0,4,0" Click="CatalogButton_Click"/>
-                <Button x:Name="SignButton" Content="标记" Style="{StaticResource ReaderButton}" Margin="0,0,4,0" Click="SignButton_Click"/>
-                <Button x:Name="MoreMenuButton"
-                        Content="更多"
-                        Style="{StaticResource ReaderButton}"
-                        Margin="0,0,4,0"
-                        Click="MoreMenuButton_Click">
+                <!-- 适配模式组 -->
+                <Button x:Name="FitWidthButton" Content="适宽" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="FitWidth_Click"/>
+                <Button x:Name="FitHeightButton" Content="适高" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="FitHeight_Click"/>
+                <Button x:Name="OriginalSizeButton" Content="原始" Style="{StaticResource ReaderButton}" Click="OriginalSize_Click"/>
+                <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
+                <!-- 质量与背景组 -->
+                <Button x:Name="QualityModeButton" Content="质量" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="ToggleQualityModeButton_Click"/>
+                <Button x:Name="BackgroundButton" Content="背景" Style="{StaticResource ReaderButton}" Click="CycleBackgroundButton_Click"/>
+                <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
+                <!-- 页面模式组 -->
+                <ComboBox x:Name="ReadingModeBox" MinWidth="60" Margin="0,0,6,0" VerticalAlignment="Center" SelectionChanged="ReadingModeBox_SelectionChanged">
+                    <ComboBoxItem Content="单页" IsSelected="True"/>
+                    <ComboBoxItem Content="双页"/>
+                </ComboBox>
+                <ComboBox x:Name="DirectionBox" MinWidth="76" Margin="0,0,6,0" VerticalAlignment="Center" SelectionChanged="ReadingModeBox_SelectionChanged">
+                    <ComboBoxItem Content="从左到右" IsSelected="True"/>
+                    <ComboBoxItem Content="从右到左"/>
+                </ComboBox>
+                <StackPanel x:Name="DoublePageGapPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock x:Name="DoublePageGapText" Text="间距 8" Foreground="{DynamicResource Brush.Reader.Text}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Slider x:Name="DoublePageGapSlider" Minimum="0" Maximum="80" Value="8" Width="70" VerticalAlignment="Center" ValueChanged="DoublePageGapSlider_ValueChanged" Focusable="False"/>
+                </StackPanel>
+                <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
+                <!-- 滚轮模式组 -->
+                <ComboBox x:Name="WheelModeBox" MinWidth="76" Margin="0,0,0,0" VerticalAlignment="Center" SelectionChanged="WheelModeBox_SelectionChanged">
+                    <ComboBoxItem Content="滚轮翻页" IsSelected="True"/>
+                    <ComboBoxItem Content="滚轮缩放"/>
+                    <ComboBoxItem Content="滚轮滚动"/>
+                </ComboBox>
+                <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
+                <!-- 功能组 -->
+                <Button x:Name="CatalogButton" Content="目录" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="CatalogButton_Click"/>
+                <Button x:Name="SignButton" Content="标记" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="SignButton_Click"/>
+                <Button x:Name="ToggleControlsButton" Content="隐藏" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="ToggleControlsButton_Click"/>
+                <Button x:Name="MoreMenuButton" Content="更多" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MoreMenuButton_Click">
                     <Button.ContextMenu>
                         <ContextMenu x:Name="MoreMenu">
                             <MenuItem Header="打开详情页" Click="OpenDetailFromReader_Click"/>
-                            <MenuItem x:Name="ToggleControlsMenuItem" Header="隐藏界面" Click="ToggleControlsButton_Click"/>
                             <Separator/>
                             <MenuItem Header="返回第一页" Click="NextBookGoFirst_Click"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
                 <Button x:Name="FullscreenButton" Content="全屏" Style="{StaticResource ReaderButton}" Click="FullscreenButton_Click"/>
-                <Grid Visibility="Collapsed">
-                    <Button x:Name="FitWidthButton" Content="适宽" Click="FitWidth_Click"/>
-                    <Button x:Name="FitHeightButton" Content="适高" Click="FitHeight_Click"/>
-                    <Button x:Name="OriginalSizeButton" Content="原始" Click="OriginalSize_Click"/>
-                    <Button x:Name="QualityModeButton" Content="质量" Click="ToggleQualityModeButton_Click"/>
-                    <Button x:Name="BackgroundButton" Content="背景" Click="CycleBackgroundButton_Click"/>
-                    <Button x:Name="ToggleControlsButton" Content="隐藏" Click="ToggleControlsButton_Click"/>
-                    <ComboBox x:Name="WheelModeBox" SelectionChanged="WheelModeBox_SelectionChanged">
-                        <ComboBoxItem Content="滚轮翻页" IsSelected="True"/>
-                        <ComboBoxItem Content="滚轮缩放"/>
-                        <ComboBoxItem Content="滚轮滚动"/>
-                    </ComboBox>
-                    <ComboBox x:Name="ReadingModeBox" SelectionChanged="ReadingModeBox_SelectionChanged">
-                        <ComboBoxItem Content="单页" IsSelected="True"/>
-                        <ComboBoxItem Content="双页"/>
-                    </ComboBox>
-                    <ComboBox x:Name="DirectionBox" SelectionChanged="ReadingModeBox_SelectionChanged">
-                        <ComboBoxItem Content="从左到右" IsSelected="True"/>
-                        <ComboBoxItem Content="从右到左"/>
-                    </ComboBox>
-                </Grid>
             </StackPanel>
         </Border>
 

@@ -214,7 +214,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_currentNavigationKey is "library" or "tags" or "authors")
+        if (_currentNavigationKey is "library" or "tags" or "authors"
+            && _database.LoadSetting("app.library_exit_confirm", "1") == "1")
         {
             e.Cancel = true;
             var summary = BuildSessionSummary();
@@ -2376,7 +2377,7 @@ public partial class MainWindow : Window
             _currentBook.NotifyAll();
         }
 
-        RefreshLibraryViews(authors: false, sort: false);
+        RefreshVisibleTags();
         StatusText.Text = $"已在「{category}」下添加 Tag：{tagName}";
     }
 
@@ -5869,10 +5870,11 @@ public partial class MainWindow : Window
         var isBuiltIn = preset is not null;
         var category = TagCategory(tag);
         var usageCount = GetTagUsageCount(tag);
+        var displayName = StripCategoryPrefix(tag, category);
         return preset is not null
             ? new TagChip
             {
-                Name = preset.Name,
+                Name = displayName,
                 Category = category,
                 Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
@@ -5885,7 +5887,7 @@ public partial class MainWindow : Window
             }
             : new TagChip
             {
-                Name = tag,
+                Name = displayName,
                 Category = category,
                 Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
@@ -5896,6 +5898,18 @@ public partial class MainWindow : Window
                 UpdatedAt = ResolveTagUpdatedAt(tag),
                 PreviewBooks = GetTagBooks(tag).Take(3).ToList()
             };
+    }
+
+    private static string StripCategoryPrefix(string tag, string category)
+    {
+        if (string.IsNullOrWhiteSpace(category) || category == "自定义")
+            return tag;
+        var prefix = category + " ";
+        if (tag.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return tag[prefix.Length..];
+        if (tag.Equals(category, StringComparison.OrdinalIgnoreCase))
+            return tag;
+        return tag;
     }
 
     private static int TagCategoryOrder(string category)

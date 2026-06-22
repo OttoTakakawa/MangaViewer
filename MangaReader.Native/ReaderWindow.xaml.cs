@@ -643,18 +643,17 @@ public partial class ReaderWindow : Window
 
     private void ReadingModeBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        if (!IsLoaded) return;
         UpdateToolbarMenuLabels();
-        if (IsLoaded) RequestPageLoad(_requestedPageIndex, immediate: true, forceReload: true);
+        RequestPageLoad(_requestedPageIndex, immediate: true, forceReload: true);
     }
 
     private void WheelModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!IsLoaded) return;
         UpdateToolbarMenuLabels();
-        if (IsLoaded)
-        {
-            var value = WheelModeBox.SelectedIndex.ToString();
-            _ = Task.Run(() => _database.SaveShortcut("reader.wheelmode", value));
-        }
+        var value = WheelModeBox.SelectedIndex.ToString();
+        _ = Task.Run(() => _database.SaveShortcut("reader.wheelmode", value));
     }
 
     private void ToggleQualityModeButton_Click(object sender, RoutedEventArgs e)
@@ -958,8 +957,8 @@ public partial class ReaderWindow : Window
         ReaderMessagePanel.Visibility = Visibility.Collapsed;
     }
 
-    private bool IsDoublePageMode() => (ReadingModeBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "双页";
-    private bool IsRightToLeftMode() => (DirectionBox.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "从右到左";
+    private bool IsDoublePageMode() => (ReadingModeBox?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "双页";
+    private bool IsRightToLeftMode() => (DirectionBox?.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == "从右到左";
     private int GetPreviousStep() => IsDoublePageMode() ? 2 : 1;
     private int GetNavigationStepForRequestedPage()
     {
@@ -1673,7 +1672,6 @@ public partial class ReaderWindow : Window
         if (BottomToolbar is not null) BottomToolbar.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
         if (HiddenControlsBadge is not null) HiddenControlsBadge.Visibility = hidden ? Visibility.Visible : Visibility.Collapsed;
         if (ToggleControlsButton is not null) ToggleControlsButton.Content = hidden ? "显示" : "隐藏";
-        if (ToggleControlsMenuItem is not null) ToggleControlsMenuItem.Header = hidden ? "显示界面" : "隐藏界面";
         UpdatePresentationButton();
 
         if (hidden)
@@ -1687,9 +1685,6 @@ public partial class ReaderWindow : Window
         if (WheelModeBox is not null) WheelModeBox.IsDropDownOpen = false;
         if (ReadingModeBox is not null) ReadingModeBox.IsDropDownOpen = false;
         if (DirectionBox is not null) DirectionBox.IsDropDownOpen = false;
-        if (DisplayMenu is not null) DisplayMenu.IsOpen = false;
-        if (PageMenu is not null) PageMenu.IsOpen = false;
-        if (WheelMenu is not null) WheelMenu.IsOpen = false;
         if (MoreMenu is not null) MoreMenu.IsOpen = false;
     }
 
@@ -1962,43 +1957,14 @@ public partial class ReaderWindow : Window
         QualityModeButton.ToolTip = _qualityMode == ReaderQualityMode.Quality
             ? "当前为质量模式：原图解码，适配模式生成清晰适配图；原始模式为 1:1"
             : "当前为性能模式：按视口降采样，降低内存压力";
-        if (QualityModeMenuItem is not null)
-        {
-            QualityModeMenuItem.Header = _qualityMode == ReaderQualityMode.Quality ? "切换到性能模式" : "切换到质量模式";
-        }
         UpdateToolbarMenuLabels();
     }
 
     private void UpdateToolbarMenuLabels()
     {
-        if (DisplayMenuButton is not null)
+        if (DoublePageGapPanel is not null)
         {
-            var fitLabel = _fitMode switch
-            {
-                FitMode.Width => "适宽",
-                FitMode.Original => "原始",
-                _ => "适高"
-            };
-            var qualityLabel = _qualityMode == ReaderQualityMode.Quality ? "质量" : "性能";
-            DisplayMenuButton.Content = $"显示:{fitLabel}/{qualityLabel}";
-        }
-
-        if (PageMenuButton is not null)
-        {
-            var readingLabel = GetSelectedComboText(ReadingModeBox, "单页");
-            var directionLabel = DirectionBox?.SelectedIndex == 1 ? "右向" : "左向";
-            PageMenuButton.Content = $"页面:{readingLabel}/{directionLabel}";
-        }
-
-        if (WheelMenuButton is not null)
-        {
-            var wheelLabel = GetSelectedComboText(WheelModeBox, "滚轮翻页").Replace("滚轮", "");
-            WheelMenuButton.Content = $"滚轮:{wheelLabel}";
-        }
-
-        if (DoublePageGapMenuItem is not null)
-        {
-            DoublePageGapMenuItem.Visibility = IsDoublePageMode() ? Visibility.Visible : Visibility.Collapsed;
+            DoublePageGapPanel.Visibility = IsDoublePageMode() ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 
@@ -2046,25 +2012,7 @@ public partial class ReaderWindow : Window
         return WheelModeBox?.IsDropDownOpen == true
             || ReadingModeBox?.IsDropDownOpen == true
             || DirectionBox?.IsDropDownOpen == true
-            || DisplayMenu?.IsOpen == true
-            || PageMenu?.IsOpen == true
-            || WheelMenu?.IsOpen == true
             || MoreMenu?.IsOpen == true;
-    }
-
-    private void DisplayMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        OpenButtonContextMenu(DisplayMenuButton);
-    }
-
-    private void PageMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        OpenButtonContextMenu(PageMenuButton);
-    }
-
-    private void WheelMenuButton_Click(object sender, RoutedEventArgs e)
-    {
-        OpenButtonContextMenu(WheelMenuButton);
     }
 
     private void MoreMenuButton_Click(object sender, RoutedEventArgs e)
@@ -2160,10 +2108,6 @@ public partial class ReaderWindow : Window
         ReaderScrollViewer.Background = outerBrush;
         ImageHost.Background = pageBrush;
         BackgroundButton.Content = $"背景:{label}";
-        if (BackgroundMenuItem is not null)
-        {
-            BackgroundMenuItem.Header = $"切换背景（当前:{label}）";
-        }
         UpdateToolbarMenuLabels();
     }
 

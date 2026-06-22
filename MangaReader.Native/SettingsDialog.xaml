@@ -106,6 +106,7 @@
                                 <CheckBox x:Name="CatalogDeleteCheckBox" Content="在详情页目录右键中显示「删除源文件」" FontSize="14" Margin="0,0,0,14" Checked="CatalogDeleteCheckBox_Changed" Unchecked="CatalogDeleteCheckBox_Changed"/>
                                 <CheckBox x:Name="WaterfallRightClickCheckBox" Content="启用瀑布流右键菜单（切换样式、隐藏、打开源文件夹等）" FontSize="14" Margin="0,0,0,14" Checked="WaterfallRightClickCheckBox_Changed" Unchecked="WaterfallRightClickCheckBox_Changed"/>
                                 <CheckBox x:Name="TagDoubleClickCheckBox" Content="双击选中 Tag（取消勾选则单击即可筛选）" FontSize="14" Margin="0,0,0,14" Checked="TagDoubleClickCheckBox_Changed" Unchecked="TagDoubleClickCheckBox_Changed"/>
+                                <CheckBox x:Name="LibraryExitConfirmCheckBox" Content="关闭漫画库时弹出确认提示" FontSize="14" Margin="0,0,0,14" Checked="LibraryExitConfirmCheckBox_Changed" Unchecked="LibraryExitConfirmCheckBox_Changed"/>
                                 <TextBlock Text="主题" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                                     <RadioButton x:Name="ThemeWarmRadio" Content="暖纸" IsChecked="True" Style="{StaticResource AppRadioButton}" Margin="0,0,12,0" Checked="ThemeRadio_Checked" Tag="Warm"/>

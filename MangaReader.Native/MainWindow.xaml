@@ -998,6 +998,35 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
+        <DataTemplate x:Key="TagPoolChipTemplate" DataType="{x:Type models:TagChip}">
+            <Border Margin="3" Padding="10,6" Background="{Binding Color}"
+                    MouseEnter="TagChip_MouseEnter" MouseLeave="TagChip_MouseLeave"
+                    PreviewMouseLeftButtonDown="TagChip_PreviewMouseLeftButtonDown"
+                    PreviewMouseLeftButtonUp="TagChip_PreviewMouseLeftButtonUp"
+                    MouseMove="TagChip_MouseMove" MouseLeftButtonDown="TagChip_MouseLeftButtonDown">
+                <Border.ContextMenu>
+                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                        <MenuItem Header="编辑标签" Click="TagContextRename_Click"/>
+                        <MenuItem Header="删除标签" Click="TagContextDelete_Click"/>
+                        <Separator/>
+                        <MenuItem Header="前往标签页" Click="TagContextOpenManager_Click"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource AppTagChipBorder}">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter Property="Cursor" Value="Arrow"/>
+                                <Setter Property="Opacity" Value="0.38"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -1416,9 +1445,11 @@
                                             <ScrollViewer Grid.Row="1"
                                                           HorizontalScrollBarVisibility="Disabled"
                                                           VerticalScrollBarVisibility="Hidden"
-                                                          MaxHeight="100"
-                                                          Visibility="{Binding TagsVisibility}">
-                                                <ItemsControl ItemsSource="{Binding Tags}" ItemTemplate="{StaticResource TagChipItemTemplate}">
+                                                          MaxHeight="120"
+                                                          Visibility="{Binding TagsVisibility}"
+                                                          PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                                                <ItemsControl ItemsSource="{Binding Tags}"
+                                                              ItemTemplate="{StaticResource TagPoolChipTemplate}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
                                                             <WrapPanel/>
