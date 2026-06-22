@@ -1331,43 +1331,62 @@ public partial class ReaderWindow : Window
     {
         if (scale >= 0.85)
         {
-            return 0.04;
+            return 0.025;
         }
 
-        if (scale >= 0.65)
-        {
-            return 0.14;
-        }
-
-        if (scale >= 0.45)
-        {
-            return 0.18;
-        }
-
-        return 0.22;
+        return 0;
     }
 
     private static BitmapSource CreateCrispFitBitmap(BitmapSource source, double scale, double sharpenAmount)
     {
         var targetWidth = Math.Max(1, (int)Math.Round(source.PixelWidth * scale));
         var targetHeight = Math.Max(1, (int)Math.Round(source.PixelHeight * scale));
-        var scaled = new TransformedBitmap(
-            source,
-            new ScaleTransform(
-                (double)targetWidth / source.PixelWidth,
-                (double)targetHeight / source.PixelHeight));
-        scaled.Freeze();
+        var scaled = DownsampleInSteps(source, targetWidth, targetHeight);
 
         var converted = new FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
         converted.Freeze();
         var stride = targetWidth * 4;
         var pixels = new byte[stride * targetHeight];
         converted.CopyPixels(pixels, stride, 0);
-        SharpenBgraPixels(pixels, targetWidth, targetHeight, stride, sharpenAmount);
+        if (sharpenAmount > 0)
+        {
+            SharpenBgraPixels(pixels, targetWidth, targetHeight, stride, sharpenAmount);
+        }
 
         var result = BitmapSource.Create(targetWidth, targetHeight, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
         result.Freeze();
         return result;
+    }
+
+    private static BitmapSource DownsampleInSteps(BitmapSource source, int targetWidth, int targetHeight)
+    {
+        BitmapSource current = source;
+        var currentWidth = source.PixelWidth;
+        var currentHeight = source.PixelHeight;
+
+        while (currentWidth > targetWidth * 2 && currentHeight > targetHeight * 2)
+        {
+            var nextWidth = Math.Max(targetWidth, currentWidth / 2);
+            var nextHeight = Math.Max(targetHeight, currentHeight / 2);
+            current = ScaleBitmap(current, nextWidth, nextHeight);
+            currentWidth = nextWidth;
+            currentHeight = nextHeight;
+        }
+
+        return currentWidth == targetWidth && currentHeight == targetHeight
+            ? current
+            : ScaleBitmap(current, targetWidth, targetHeight);
+    }
+
+    private static BitmapSource ScaleBitmap(BitmapSource source, int targetWidth, int targetHeight)
+    {
+        var scaled = new TransformedBitmap(
+            source,
+            new ScaleTransform(
+                (double)targetWidth / source.PixelWidth,
+                (double)targetHeight / source.PixelHeight));
+        scaled.Freeze();
+        return scaled;
     }
 
     private static void SharpenBgraPixels(byte[] pixels, int width, int height, int stride, double amount)

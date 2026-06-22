@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using MangaReader.Native.Models;
+﻿using MangaReader.Native.Models;
 using Microsoft.Data.Sqlite;
 
 namespace MangaReader.Native.Services;
