@@ -1026,7 +1026,15 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                    <TextBlock Text="{Binding UsageCount}"
+                               FontSize="10"
+                               Margin="5,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.TextMuted}"
+                               FontWeight="SemiBold"/>
+                </StackPanel>
             </Border>
         </DataTemplate>
     </Window.Resources>
