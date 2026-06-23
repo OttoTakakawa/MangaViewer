@@ -42,8 +42,10 @@ public partial class ReaderWindow : Window
     private static readonly SolidColorBrush FitActiveFg = FrozenBrush("#0F172A");
     private static readonly SolidColorBrush FitInactiveFg = FrozenBrush("#F9FAFB");
     private static readonly SolidColorBrush QuickRatingFilledBrush = FrozenBrush("#F59E0B");
-    private static readonly SolidColorBrush QuickRatingEmptyBrush = FrozenBrush("#8EA0B8");
-    private static readonly SolidColorBrush QuickRatingActiveBg = FrozenBrush("#2AF59E0B");
+    private static readonly SolidColorBrush QuickRatingEmptyBrush = FrozenBrush("#D1D5DB");
+    private static readonly System.Windows.Media.Brush QuickRatingHitBrush = System.Windows.Media.Brushes.Transparent;
+    private static readonly Geometry QuickRatingStarGeometry = Geometry.Parse(
+        "M 12,2 L 14.39,8.59 L 21,9.39 L 16,14 L 17.39,21 L 12,17.27 L 6.61,21 L 8,14 L 3,9.39 L 9.61,8.59 Z");
     // ApplyReaderBackground brushes
     private static readonly SolidColorBrush BgWhiteOuter = FrozenBrush("#F8FAFC");
     private static readonly SolidColorBrush BgWhitePage = FrozenBrush("#FFFFFF");
@@ -272,36 +274,100 @@ public partial class ReaderWindow : Window
 
         for (var rating = 1; rating <= 5; rating++)
         {
-            var isFilled = _book.Rating >= rating;
-            var button = new System.Windows.Controls.Button
-            {
-                Content = isFilled ? "★" : "☆",
-                Tag = rating,
-                Width = 34,
-                Height = 34,
-                MinHeight = 34,
-                Padding = new Thickness(0),
-                Margin = new Thickness(2, 0, 0, 0),
-                FontSize = 18,
-                FontWeight = FontWeights.Bold,
-                Foreground = isFilled ? QuickRatingFilledBrush : QuickRatingEmptyBrush,
-                Background = isFilled ? QuickRatingActiveBg : System.Windows.Media.Brushes.Transparent,
-                BorderBrush = isFilled ? QuickRatingFilledBrush : QuickRatingEmptyBrush,
-                ToolTip = $"评分 {rating} 分"
-            };
-            button.SetResourceReference(StyleProperty, "ReaderGhostButton");
-            button.Click += QuickRatingButton_Click;
-            QuickRatingStarsHost.Children.Add(button);
+            QuickRatingStarsHost.Children.Add(CreateQuickRatingStar(_book.Rating, rating));
         }
     }
 
-    private async void QuickRatingButton_Click(object sender, RoutedEventArgs e)
+    private System.Windows.Controls.Grid CreateQuickRatingStar(double rating, int starIndex)
     {
-        if (sender is not System.Windows.Controls.Button { Tag: int rating })
+        const double starSize = 22;
+        var grid = new System.Windows.Controls.Grid
+        {
+            Width = starSize,
+            Height = starSize,
+            Margin = new Thickness(3, 0, 3, 0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            ToolTip = $"左半 {starIndex - 0.5:0.#} 分，右半 {starIndex} 分"
+        };
+
+        grid.Children.Add(BuildQuickRatingStarPath(starSize, QuickRatingEmptyBrush, System.Windows.HorizontalAlignment.Center, fillToWidth: null));
+
+        double fillWidth = 0;
+        if (rating >= starIndex)
+        {
+            fillWidth = starSize;
+        }
+        else if (rating >= starIndex - 0.5)
+        {
+            fillWidth = starSize / 2.0;
+        }
+
+        if (fillWidth > 0)
+        {
+            var clip = new Border
+            {
+                Width = fillWidth,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+                ClipToBounds = true
+            };
+            clip.Child = BuildQuickRatingStarPath(starSize, QuickRatingFilledBrush, System.Windows.HorizontalAlignment.Left, fillToWidth: starSize);
+            grid.Children.Add(clip);
+        }
+
+        var leftHit = new System.Windows.Shapes.Rectangle
+        {
+            Width = starSize / 2.0,
+            Fill = QuickRatingHitBrush,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            Tag = $"{starIndex}|L"
+        };
+        var rightHit = new System.Windows.Shapes.Rectangle
+        {
+            Width = starSize / 2.0,
+            Fill = QuickRatingHitBrush,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Tag = $"{starIndex}|R"
+        };
+        leftHit.MouseLeftButtonUp += QuickRatingStar_Click;
+        rightHit.MouseLeftButtonUp += QuickRatingStar_Click;
+        grid.Children.Add(leftHit);
+        grid.Children.Add(rightHit);
+
+        return grid;
+    }
+
+    private static System.Windows.Shapes.Path BuildQuickRatingStarPath(double size, SolidColorBrush brush, System.Windows.HorizontalAlignment alignment, double? fillToWidth)
+    {
+        return new System.Windows.Shapes.Path
+        {
+            Data = QuickRatingStarGeometry,
+            Fill = brush,
+            Stroke = brush,
+            StrokeThickness = 1.5,
+            StrokeLineJoin = PenLineJoin.Round,
+            Stretch = Stretch.Uniform,
+            Width = fillToWidth ?? size,
+            Height = size,
+            HorizontalAlignment = alignment,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+    }
+
+    private async void QuickRatingStar_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Shapes.Rectangle { Tag: string tag })
         {
             return;
         }
 
+        e.Handled = true;
+        var parts = tag.Split('|');
+        if (parts.Length != 2 || !int.TryParse(parts[0], out var starIndex))
+        {
+            return;
+        }
+
+        var rating = parts[1] == "L" ? starIndex - 0.5 : starIndex;
         var newRating = Math.Abs(_book.Rating - rating) < 0.01 ? 0 : rating;
         _book.Rating = newRating;
         BuildQuickRatingStars();
