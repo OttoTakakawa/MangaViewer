@@ -1503,7 +1503,7 @@
                              ItemsSource="{Binding Books}"
                              ItemContainerStyle="{StaticResource LibraryListItemStyle}"
                              ItemTemplate="{StaticResource LibraryBookTemplate}"
-                             Margin="8,0,56,0"
+                             Margin="8,10,56,10"
                              SelectionChanged="BooksList_SelectionChanged"
                              MouseDoubleClick="BooksList_MouseDoubleClick"
                              PreviewMouseLeftButtonDown="BooksList_PreviewMouseLeftButtonDown"
@@ -1534,7 +1534,7 @@
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                     </ListBox>
-                    <Canvas x:Name="RubberBandLayer" Grid.Row="0" IsHitTestVisible="False" Margin="8,0,56,0">
+                    <Canvas x:Name="RubberBandLayer" Grid.Row="0" IsHitTestVisible="False" Margin="8,10,56,10">
                         <Rectangle x:Name="RubberBandRect"
                                    Stroke="{DynamicResource Brush.BorderStrong}"
                                    StrokeThickness="1"
@@ -1544,6 +1544,32 @@
                                    RadiusY="3"
                                    Visibility="Collapsed"/>
                     </Canvas>
+                    <Border Grid.Row="0"
+                            Height="26"
+                            Margin="8,10,56,0"
+                            VerticalAlignment="Top"
+                            IsHitTestVisible="False"
+                            Panel.ZIndex="2">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="{DynamicResource Color.SurfaceMuted}" Offset="0"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <Border Grid.Row="0"
+                            Height="26"
+                            Margin="8,0,56,10"
+                            VerticalAlignment="Bottom"
+                            IsHitTestVisible="False"
+                            Panel.ZIndex="2">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                                <GradientStop Color="{DynamicResource Color.SurfaceMuted}" Offset="0"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
 
                     <Border x:Name="ShelfEmptyState" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                         <StackPanel Width="320">
