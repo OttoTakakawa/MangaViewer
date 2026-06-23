@@ -1503,7 +1503,7 @@
                              ItemsSource="{Binding Books}"
                              ItemContainerStyle="{StaticResource LibraryListItemStyle}"
                              ItemTemplate="{StaticResource LibraryBookTemplate}"
-                             Margin="8,0,24,0"
+                             Margin="8,0,56,0"
                              SelectionChanged="BooksList_SelectionChanged"
                              MouseDoubleClick="BooksList_MouseDoubleClick"
                              PreviewMouseLeftButtonDown="BooksList_PreviewMouseLeftButtonDown"
@@ -1534,7 +1534,7 @@
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                     </ListBox>
-                    <Canvas x:Name="RubberBandLayer" Grid.Row="0" IsHitTestVisible="False" Margin="8,0,24,0">
+                    <Canvas x:Name="RubberBandLayer" Grid.Row="0" IsHitTestVisible="False" Margin="8,0,56,0">
                         <Rectangle x:Name="RubberBandRect"
                                    Stroke="{DynamicResource Brush.BorderStrong}"
                                    StrokeThickness="1"
@@ -1551,6 +1551,7 @@
                             <TextBlock x:Name="ShelfEmptyHintText" Text="可以先清空筛选，或者导入新的漫画文件夹。" Margin="0,12,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Brush.TextMuted}" TextAlignment="Center" LineHeight="22"/>
                         </StackPanel>
                     </Border>
+                    <Button x:Name="LibraryPaginationToggle" Grid.Row="0" Content="▼" Click="ToggleLibraryPagination_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Style="{StaticResource LibraryPaginationToggleButton}" Margin="0,0,8,8" Panel.ZIndex="10" ToolTip="折叠分页栏" Visibility="Collapsed"/>
                 </Grid>
 
                 <Border x:Name="LibraryPaginationBar" Grid.Row="3" Padding="12,8" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="0,1,0,0" CornerRadius="0" Visibility="Collapsed">
@@ -1570,8 +1571,6 @@
                         </WrapPanel>
                     </Grid>
                 </Border>
-                <Button x:Name="LibraryPaginationToggle" Grid.Row="3" Content="▼" Click="ToggleLibraryPagination_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource LibraryPaginationToggleButton}" Margin="0,0,8,0" Panel.ZIndex="10" ToolTip="折叠分页栏" Visibility="Collapsed"/>
-
                 <Border x:Name="LibraryLoadProgressPanel"
                         Grid.RowSpan="4"
                         Visibility="Collapsed"
