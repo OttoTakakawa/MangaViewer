@@ -2840,8 +2840,18 @@ public partial class MainWindow : Window
         }
 
         var requireDoubleClick = _database.LoadSetting("app.tag_double_click", "1") == "1";
-        var applyImmediately = !requireDoubleClick || chip.UsageCount == 0 || e.ClickCount >= 2;
-        if (applyImmediately)
+        if (chip.UsageCount == 0)
+        {
+            if (!requireDoubleClick || e.ClickCount >= 2)
+            {
+                StatusText.Text = $"无法筛选空 Tag：{chip.Name}";
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (!requireDoubleClick || e.ClickCount >= 2)
         {
             ApplyTagFilter(chip);
             e.Handled = true;
