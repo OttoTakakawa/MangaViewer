@@ -1010,13 +1010,13 @@ public sealed class LibraryDatabase
         var backupDatabasePath = Path.Combine(_backupPath, $"app_{timestamp}_{safeReason}.db");
 
         File.Copy(_databasePath, backupDatabasePath, overwrite: false);
-        CopyCompanionFile("-wal", backupDatabasePath);
-        CopyCompanionFile("-shm", backupDatabasePath);
+        TryCopyCompanionFile("-wal", backupDatabasePath);
+        TryCopyCompanionFile("-shm", backupDatabasePath);
         PruneBackups();
         return backupDatabasePath;
     }
 
-    private void CopyCompanionFile(string suffix, string backupDatabasePath)
+    private void TryCopyCompanionFile(string suffix, string backupDatabasePath)
     {
         var source = _databasePath + suffix;
         if (!File.Exists(source))
@@ -1024,7 +1024,18 @@ public sealed class LibraryDatabase
             return;
         }
 
-        File.Copy(source, backupDatabasePath + suffix, overwrite: false);
+        try
+        {
+            File.Copy(source, backupDatabasePath + suffix, overwrite: false);
+        }
+        catch (IOException ex)
+        {
+            AppLogger.Warn("database-backup", $"跳过被锁定的 SQLite 伴生文件：{Path.GetFileName(source)}。{ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            AppLogger.Warn("database-backup", $"跳过无权限访问的 SQLite 伴生文件：{Path.GetFileName(source)}。{ex.Message}");
+        }
     }
 
     private void PruneBackups()

@@ -49,8 +49,11 @@ public partial class MainWindow : Window
     private const string DefaultDeleteSourcePassword = "0309";
     private const string CatalogDeleteSourceEnabledKey = "app.catalog_delete_source_enabled";
     private const string LibraryPageSizeSettingKey = "library.page_size";
+    private const string SidebarCollapsedSettingKey = "app.sidebar_collapsed";
     private const int DefaultLibraryPageSize = 140;
     private const string TagDragDataFormat = "MangaReader.TagName";
+    private const double ExpandedSidebarWidth = 228;
+    private const double CollapsedSidebarWidth = 94;
     private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
 
@@ -139,6 +142,7 @@ public partial class MainWindow : Window
     private int _pageSize = DefaultLibraryPageSize;
     private bool _isRefreshingPageSize;
     private bool _paginationFirstShown;
+    private bool _isSidebarCollapsed;
     private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
     private string[] _cachedExcludedTagFilters = [];
@@ -265,8 +269,9 @@ public partial class MainWindow : Window
             var privacyModeTask = Task.Run(() => _database.LoadSetting(PrivacyModeSettingKey));
             var pageSizeTask = Task.Run(() => _database.LoadSetting(LibraryPageSizeSettingKey, DefaultLibraryPageSize.ToString()));
             var tagCollapseTask = Task.Run(() => _database.LoadSetting(TagCategoryCollapseStateKey));
+            var sidebarCollapsedTask = Task.Run(() => _database.LoadSetting(SidebarCollapsedSettingKey));
 
-            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask, tagCollapseTask);
+            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask, tagCollapseTask, sidebarCollapsedTask);
 
             ApplyManagedTags(managedTagsTask.Result, suppressedTagsTask.Result);
             ApplyCustomTagColors(customTagColorsTask.Result);
@@ -275,6 +280,7 @@ public partial class MainWindow : Window
             IsPrivacyMode = string.Equals(privacyModeTask.Result, "1", StringComparison.Ordinal);
             ApplyLibraryPageSizeSetting(pageSizeTask.Result);
             ApplyTagCategoryCollapseState(tagCollapseTask.Result);
+            ApplySidebarCollapsedSetting(sidebarCollapsedTask.Result);
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
@@ -2819,6 +2825,11 @@ public partial class MainWindow : Window
         {
             return;
         }
+        if (chip.IsExcluded)
+        {
+            e.Handled = true;
+            return;
+        }
 
         _tagDragStartPoint = e.GetPosition(this);
         if (IsInsideBooksList(sender as DependencyObject))
@@ -2829,7 +2840,8 @@ public partial class MainWindow : Window
         }
 
         var requireDoubleClick = _database.LoadSetting("app.tag_double_click", "1") == "1";
-        if (!requireDoubleClick || e.ClickCount >= 2)
+        var applyImmediately = !requireDoubleClick || chip.UsageCount == 0 || e.ClickCount >= 2;
+        if (applyImmediately)
         {
             ApplyTagFilter(chip);
             e.Handled = true;
@@ -2841,6 +2853,11 @@ public partial class MainWindow : Window
 
     private void TagChip_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        if (sender is FrameworkElement { DataContext: TagChip chip } && chip.IsExcluded)
+        {
+            return;
+        }
+
         if (sender is UIElement element)
         {
             MotionService.ScaleTo(element, 1.04, MotionService.Fast);
@@ -2857,6 +2874,12 @@ public partial class MainWindow : Window
 
     private void TagChip_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (sender is FrameworkElement { DataContext: TagChip excludedChip } && excludedChip.IsExcluded)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (sender is FrameworkElement { DataContext: TagChip chip } elementInCard
             && IsInsideBooksList(elementInCard))
         {
@@ -2882,7 +2905,7 @@ public partial class MainWindow : Window
 
     private void TagChip_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: TagChip chip } || chip.IsSelected)
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: TagChip chip } || chip.IsSelected || chip.IsExcluded)
         {
             return;
         }
@@ -3044,9 +3067,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        UpsertManagedTag(tag);
-        AddTagToBookRespectingRules(book, tag);
-        await Task.Run(() => _database.SaveMetadata(book));
+        var previousTags = book.Tags;
+        try
+        {
+            UpsertManagedTag(tag);
+            AddTagToBookRespectingRules(book, tag);
+            await Task.Run(() => _database.SaveMetadata(book));
+        }
+        catch (Exception ex)
+        {
+            book.Tags = previousTags;
+            book.NotifyAll();
+            AppLogger.Error("tag-drop", ex, $"拖拽分配 Tag 失败：book={book.Title}, tag={tag}");
+            StatusText.Text = $"分配 Tag 失败：{ex.Message}";
+            e.Handled = true;
+            return;
+        }
+
         book.NotifyAll();
         if (ReferenceEquals(book, _currentBook))
         {
@@ -3566,7 +3603,7 @@ public partial class MainWindow : Window
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
         var filtered = tagNames
-            .Select(tag => CreateTagChip(tag, _activeTagFilters.Contains(tag)))
+            .Select(tag => CreateTagChip(tag, _activeTagFilters.Contains(tag), _excludedTagFilters.Contains(tag)))
             .Where(tag => string.IsNullOrWhiteSpace(query) || tag.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
 
         // 分组后排序已无意义，始终按分类序+名称排序
@@ -3789,6 +3826,11 @@ public partial class MainWindow : Window
         SetLibraryChromeCollapsed(!_libraryChromeCollapsed);
     }
 
+    private void ToggleSidebarCollapse_Click(object sender, RoutedEventArgs e)
+    {
+        SetSidebarCollapsed(!_isSidebarCollapsed);
+    }
+
     private void ToggleLibraryFilter_Click(object sender, RoutedEventArgs e)
     {
         SetLibraryFilterCollapsed(!_libraryFilterCollapsed);
@@ -3808,6 +3850,66 @@ public partial class MainWindow : Window
         StatusText.Text = collapsed
             ? "已收起排序筛选控件。"
             : "已展开排序筛选控件。";
+    }
+
+    private void ApplySidebarCollapsedSetting(string value)
+    {
+        SetSidebarCollapsed(string.Equals(value, "1", StringComparison.Ordinal), animate: false, persist: false);
+    }
+
+    private void SetSidebarCollapsed(bool collapsed, bool animate = true, bool persist = true)
+    {
+        _isSidebarCollapsed = collapsed;
+
+        if (SidebarColumn is not null)
+        {
+            SidebarColumn.Width = new GridLength(collapsed ? CollapsedSidebarWidth : ExpandedSidebarWidth);
+        }
+
+        if (SidebarExpandedPanel is not null && SidebarCollapsedPanel is not null)
+        {
+            if (animate)
+            {
+                if (collapsed)
+                {
+                    SidebarExpandedPanel.Visibility = Visibility.Collapsed;
+                    SidebarExpandedPanel.Opacity = 1;
+                    MotionService.ShowDrawer(SidebarCollapsedPanel, -12);
+                }
+                else
+                {
+                    SidebarCollapsedPanel.Visibility = Visibility.Collapsed;
+                    SidebarCollapsedPanel.Opacity = 1;
+                    MotionService.ShowDrawer(SidebarExpandedPanel, -20);
+                }
+            }
+            else
+            {
+                SidebarExpandedPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+                SidebarCollapsedPanel.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+                SidebarExpandedPanel.Opacity = 1;
+                SidebarCollapsedPanel.Opacity = 1;
+            }
+        }
+
+        if (SidebarCollapseButton is not null)
+        {
+            SidebarCollapseButton.ToolTip = "收起导航栏";
+        }
+
+        if (SidebarExpandButton is not null)
+        {
+            SidebarExpandButton.ToolTip = "展开导航栏";
+        }
+
+        StatusText.Text = collapsed
+            ? "已收起左侧主导航栏。"
+            : "已展开左侧主导航栏。";
+
+        if (persist)
+        {
+            _ = Task.Run(() => _database.SaveSetting(SidebarCollapsedSettingKey, collapsed ? "1" : "0"));
+        }
     }
 
     private void ToggleStatusPanel_Click(object sender, RoutedEventArgs e)
@@ -4276,14 +4378,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_activeTagFilters.Contains(chip.Name))
+        var tagName = TagKey(chip);
+        if (_activeTagFilters.Contains(tagName))
         {
-            _activeTagFilters.Remove(chip.Name);
+            _activeTagFilters.Remove(tagName);
             StatusText.Text = $"已取消 Tag：{chip.Name}";
         }
         else
         {
-            _activeTagFilters.Add(chip.Name);
+            _excludedTagFilters.Remove(tagName);
+            _activeTagFilters.Add(tagName);
             StatusText.Text = $"已追加 Tag：{chip.Name}";
         }
 
@@ -4301,18 +4405,27 @@ public partial class MainWindow : Window
         BooksList.SelectedItem = null;
         _currentBook = null;
         SetDetailVisible(false);
-        if (!_activeTagFilters.Contains(chip.Name))
+        var tagName = TagKey(chip);
+        if (!_activeTagFilters.Contains(tagName))
         {
-            _activeTagFilters.Add(chip.Name);
+            _excludedTagFilters.Remove(tagName);
+            _activeTagFilters.Add(tagName);
         }
 
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true, ensureLibraryView: true);
-        StatusText.Text = $"已按 Tag 筛选：{chip.Name}";
+        StatusText.Text = chip.UsageCount == 0
+            ? $"已按 Tag 筛选：{chip.Name}。当前没有关联漫画，所以结果为空。"
+            : $"已按 Tag 筛选：{chip.Name}";
     }
 
     private static bool IsTagSummaryChip(TagChip chip)
     {
         return chip.Name.StartsWith("+", StringComparison.Ordinal);
+    }
+
+    private static string TagKey(TagChip chip)
+    {
+        return string.IsNullOrWhiteSpace(chip.RawName) ? chip.Name : chip.RawName;
     }
 
     private static bool IsTagChipEventSource(object source)
@@ -4344,23 +4457,15 @@ public partial class MainWindow : Window
         }
         if (e.ClickCount >= 2)
         {
-            if (chip.IsExcluded)
-            {
-                _excludedTagFilters.Remove(chip.Name);
-                RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
-                StatusText.Text = $"已取消排除 Tag：{chip.Name}";
-            }
-            else
-            {
-                ApplyTagFilter(chip);
-            }
+            ApplyTagFilter(chip);
             e.Handled = true;
             return;
         }
 
         if (chip.IsExcluded)
         {
-            if (_excludedTagFilters.Remove(chip.Name))
+            var tagName = TagKey(chip);
+            if (_excludedTagFilters.Remove(tagName))
             {
                 RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
                 StatusText.Text = $"已取消排除 Tag：{chip.Name}";
@@ -4368,7 +4473,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            if (_activeTagFilters.Remove(chip.Name))
+            var tagName = TagKey(chip);
+            if (_activeTagFilters.Remove(tagName))
             {
                 RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
                 StatusText.Text = $"已移除 Tag：{chip.Name}";
@@ -4482,24 +4588,20 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            if (activeTags.Length > 0)
+            HashSet<string>? bookTagSet = null;
+            if (activeTags.Length > 0 || excludedTags.Length > 0)
             {
-                var bookTagSet = new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
-                if (!activeTags.All(activeTag => bookTagSet.Contains(activeTag)))
-                {
-                    return false;
-                }
+                bookTagSet = new HashSet<string>(TagService.ParseTags(book.Tags), StringComparer.OrdinalIgnoreCase);
             }
 
-            if (excludedTags.Length > 0)
+            if (activeTags.Length > 0 && !activeTags.All(activeTag => bookTagSet!.Contains(activeTag)))
             {
-                var bookTagSetEx = activeTags.Length > 0
-                    ? new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase)
-                    : new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
-                if (excludedTags.Any(exTag => bookTagSetEx.Contains(exTag)))
-                {
-                    return false;
-                }
+                return false;
+            }
+
+            if (excludedTags.Length > 0 && excludedTags.Any(exTag => bookTagSet!.Contains(exTag)))
+            {
+                return false;
             }
 
             if (string.IsNullOrWhiteSpace(searchQuery))
@@ -5968,6 +6070,7 @@ public partial class MainWindow : Window
             ? new TagChip
             {
                 Name = displayName,
+                RawName = tag,
                 Category = category,
                 Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
@@ -5982,6 +6085,7 @@ public partial class MainWindow : Window
             : new TagChip
             {
                 Name = displayName,
+                RawName = tag,
                 Category = category,
                 Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
@@ -6303,13 +6407,14 @@ public partial class MainWindow : Window
 
         if (chip.IsExcluded)
         {
-            _excludedTagFilters.Remove(chip.Name);
+            _excludedTagFilters.Remove(TagKey(chip));
             StatusText.Text = $"已取消排除 Tag：{chip.Name}";
         }
         else
         {
-            _activeTagFilters.Remove(chip.Name);
-            _excludedTagFilters.Add(chip.Name);
+            var tagName = TagKey(chip);
+            _activeTagFilters.Remove(tagName);
+            _excludedTagFilters.Add(tagName);
             StatusText.Text = $"已排除 Tag：{chip.Name}";
         }
 
@@ -6497,9 +6602,11 @@ public partial class MainWindow : Window
             return;
         }
         ShowLibraryView("library");
-        if (!_activeTagFilters.Contains(chip.Name))
+        var tagName = TagKey(chip);
+        if (!_activeTagFilters.Contains(tagName))
         {
-            _activeTagFilters.Add(chip.Name);
+            _excludedTagFilters.Remove(tagName);
+            _activeTagFilters.Add(tagName);
         }
         RefreshLibraryViews(tagManager: false, authors: false, activeTags: true);
         StatusText.Text = chip.UsageCount == 0

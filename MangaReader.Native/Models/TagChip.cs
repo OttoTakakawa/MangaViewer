@@ -3,6 +3,7 @@ namespace MangaReader.Native.Models;
 public sealed class TagChip
 {
     public string Name { get; set; } = "";
+    public string RawName { get; set; } = "";
     public string Category { get; set; } = "自定义";
     public string Color { get; set; } = "#EFE5DA";
     public bool IsSelected { get; set; }

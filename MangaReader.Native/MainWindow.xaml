@@ -590,6 +590,28 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="SidebarCollapseButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="MinWidth" Value="42"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Black"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+        </Style>
+        <Style x:Key="SidebarExpandButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="MinWidth" Value="42"/>
+            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Black"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+        </Style>
         <Style x:Key="SidebarLogToggleButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Height" Value="32"/>
@@ -1032,17 +1054,42 @@
                                 <Setter Property="Cursor" Value="Arrow"/>
                                 <Setter Property="Opacity" Value="0.38"/>
                             </DataTrigger>
+                            <DataTrigger Binding="{Binding IsExcluded}" Value="True">
+                                <Setter Property="Cursor" Value="Arrow"/>
+                                <Setter Property="Opacity" Value="0.38"/>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Name}" Style="{StaticResource AppTagChipText}"/>
+                    <TextBlock Text="{Binding Name}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExcluded}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock Text="{Binding UsageCount}"
                                FontSize="10"
                                Margin="5,0,0,0"
                                VerticalAlignment="Center"
-                               Foreground="{DynamicResource Brush.TextMuted}"
-                               FontWeight="SemiBold"/>
+                               FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExcluded}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -1058,77 +1105,124 @@
         </Grid.Background>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="228"/>
+            <ColumnDefinition x:Name="SidebarColumn" Width="228"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition x:Name="DetailColumn" Width="0"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Margin="18" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Effect="{StaticResource PanelShadow}">
-            <DockPanel LastChildFill="True">
-                <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,24">
-                            <Border Width="46" Height="46" CornerRadius="{StaticResource RadiusControl}">
-                                <Border.Background>
-                                    <ImageBrush ImageSource="pack://application:,,,/Assets/icon.png" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                </Border.Background>
-                            </Border>
-                            <StackPanel Margin="12,2,0,0">
-                                <TextBlock Text="漫画库" FontSize="21" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
-                                <TextBlock x:Name="VersionText" FontSize="11" Foreground="{DynamicResource Brush.Dim}" Margin="0,2,0,0"/>
+        <Grid Grid.Column="0">
+            <Border x:Name="SidebarExpandedPanel" Margin="18" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Effect="{StaticResource PanelShadow}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <Grid Margin="0,4,0,24">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="46" Height="46" CornerRadius="{StaticResource RadiusControl}">
+                                        <Border.Background>
+                                            <ImageBrush ImageSource="pack://application:,,,/Assets/icon.png" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Border.Background>
+                                    </Border>
+                                    <StackPanel Margin="12,2,0,0">
+                                        <TextBlock Text="漫画库" FontSize="21" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
+                                        <TextBlock x:Name="VersionText" FontSize="11" Foreground="{DynamicResource Brush.Dim}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Margin="0,0,0,18">
+                                <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                                    <TextBlock Text="浏览"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               FontSize="12"
+                                               FontWeight="Bold"/>
+                                </Border>
+                                <Button x:Name="HomeNavButton" Content="主页" Click="NavHome_Click" Style="{StaticResource SidebarNavButton}"/>
+                                <Button x:Name="LibraryNavButton" Content="书库" Click="NavLibrary_Click" Style="{StaticResource SidebarNavButton}"/>
+                                <Button x:Name="TagsNavButton" Content="标签" Click="NavTags_Click" Style="{StaticResource SidebarNavButton}"/>
+                                <Button x:Name="AuthorsNavButton" Content="作者" Click="NavAuthors_Click" Style="{StaticResource SidebarNavButton}"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,18">
+                                <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                                    <TextBlock Text="工具"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               FontSize="12"
+                                               FontWeight="Bold"/>
+                                </Border>
+                                <StackPanel Width="132" HorizontalAlignment="Center">
+                                    <Button Content="设置" Click="Settings_Click" Style="{StaticResource SidebarActionButton}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,8">
+                                <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
+                                    <TextBlock Text="调试"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               FontSize="12"
+                                               FontWeight="Bold"/>
+                                </Border>
+                                <StackPanel Width="132" HorizontalAlignment="Center">
+                                    <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}"/>
+                                    <Button x:Name="LogPanelToggleButton"
+                                            Content="展开日志"
+                                            Click="ToggleStatusPanel_Click"
+                                            Style="{StaticResource SidebarToggleButton}"/>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
+                    </ScrollViewer>
+                    <Border Grid.Row="1"
+                            Margin="0,14,0,-2"
+                            Padding="0"
+                            Background="Transparent">
+                        <Button x:Name="SidebarCollapseButton"
+                                Content="◀"
+                                Click="ToggleSidebarCollapse_Click"
+                                Style="{StaticResource SidebarCollapseButton}"
+                                HorizontalAlignment="Center"
+                                ToolTip="收起导航栏"/>
+                    </Border>
+                </Grid>
+            </Border>
 
-                        <StackPanel Margin="0,0,0,18">
-                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
-                                <TextBlock Text="浏览"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource Brush.TextMuted}"
-                                           FontSize="12"
-                                           FontWeight="Bold"/>
-                            </Border>
-                            <Button x:Name="HomeNavButton" Content="主页" Click="NavHome_Click" Style="{StaticResource SidebarNavButton}"/>
-                            <Button x:Name="LibraryNavButton" Content="书库" Click="NavLibrary_Click" Style="{StaticResource SidebarNavButton}"/>
-                            <Button x:Name="TagsNavButton" Content="标签" Click="NavTags_Click" Style="{StaticResource SidebarNavButton}"/>
-                            <Button x:Name="AuthorsNavButton" Content="作者" Click="NavAuthors_Click" Style="{StaticResource SidebarNavButton}"/>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,0,18">
-                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
-                                <TextBlock Text="工具"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource Brush.TextMuted}"
-                                           FontSize="12"
-                                           FontWeight="Bold"/>
-                            </Border>
-                            <StackPanel Width="132" HorizontalAlignment="Center">
-                                <Button Content="设置" Click="Settings_Click" Style="{StaticResource SidebarActionButton}"/>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Margin="0,0,0,8">
-                            <Border Height="32" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.ScrollTrack}" Margin="8,0,8,10">
-                                <TextBlock Text="调试"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource Brush.TextMuted}"
-                                           FontSize="12"
-                                           FontWeight="Bold"/>
-                            </Border>
-                            <StackPanel Width="132" HorizontalAlignment="Center">
-                                <Button Content="检查更新" Click="CheckUpdate_Click" Style="{StaticResource SidebarActionButton}"/>
-                                <Button x:Name="LogPanelToggleButton"
-                                        Content="展开日志"
-                                        Click="ToggleStatusPanel_Click"
-                                        Style="{StaticResource SidebarToggleButton}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
-        </Border>
+            <Border x:Name="SidebarCollapsedPanel"
+                    Margin="18"
+                    Padding="0"
+                    CornerRadius="{StaticResource RadiusPanel}"
+                    Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderThickness="1"
+                    Effect="{StaticResource PanelShadow}"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="1"
+                            Margin="0,0,0,14"
+                            Padding="0"
+                            Background="Transparent">
+                        <Button x:Name="SidebarExpandButton"
+                                Content="☰"
+                                Click="ToggleSidebarCollapse_Click"
+                                Style="{StaticResource SidebarExpandButton}"
+                                HorizontalAlignment="Center"
+                                ToolTip="展开导航栏"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
 
         <Grid Grid.Column="1" Margin="0,26,0,26">
             <Grid.RowDefinitions>

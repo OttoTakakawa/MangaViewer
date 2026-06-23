@@ -21,12 +21,17 @@ $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectFile = Join-Path $ProjectRoot 'MangaReader.Native\MangaReader.Native.csproj'
 
-# version: explicit param > git tag > default
+# version: explicit param > project file > git tag > default
 if (-not $Version) {
     $Version = '1.0.0'
     try {
+        $projectXml = Get-Content $ProjectFile -Raw
+        $projectVersionMatch = [regex]::Match($projectXml, '<Version>\s*([^<]+)\s*</Version>', 'IgnoreCase')
+        if ($projectVersionMatch.Success) { $Version = $projectVersionMatch.Groups[1].Value.Trim() }
+    } catch {}
+    try {
         $gitTag = git -C $ProjectRoot describe --tags --abbrev=0 2>$null
-        if ($gitTag) { $Version = $gitTag.TrimStart('v') }
+        if ($Version -eq '1.0.0' -and $gitTag) { $Version = $gitTag.TrimStart('v') }
     } catch {}
 }
 
