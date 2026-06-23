@@ -14,9 +14,14 @@ public partial class BookmarkLabelDialog : Window
         LabelBox.Text = initialLabel;
         Loaded += (_, _) =>
         {
-            Activate();
-            LabelBox.Focus();
-            LabelBox.SelectAll();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Activate();
+                Topmost = true;
+                Focus();
+                LabelBox.Focus();
+                LabelBox.SelectAll();
+            }), System.Windows.Threading.DispatcherPriority.Input);
         };
     }
 
