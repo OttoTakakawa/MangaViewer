@@ -2128,88 +2128,6 @@ public partial class MainWindow : Window
         await CheckUpdateAsync(sender as System.Windows.Controls.Button);
     }
 
-    private void ShowUpdateProgress(string title, string message, double? progress = null)
-    {
-        if (UpdateProgressOverlay is null)
-        {
-            return;
-        }
-
-        UpdateProgressOverlay.Visibility = Visibility.Visible;
-
-        if (UpdateProgressTitleText is not null)
-        {
-            UpdateProgressTitleText.Text = title;
-        }
-
-        if (UpdateProgressMessageText is not null)
-        {
-            UpdateProgressMessageText.Text = message;
-        }
-
-        if (UpdateProgressBar is not null)
-        {
-            if (progress.HasValue)
-            {
-                var normalized = Math.Clamp(progress.Value, 0, 1);
-                UpdateProgressBar.IsIndeterminate = false;
-                UpdateProgressBar.Value = normalized * 100;
-                if (UpdateProgressPercentText is not null)
-                {
-                    UpdateProgressPercentText.Visibility = Visibility.Visible;
-                    UpdateProgressPercentText.Text = $"{normalized:P0}";
-                }
-            }
-            else
-            {
-                UpdateProgressBar.IsIndeterminate = true;
-                UpdateProgressBar.Value = 0;
-                if (UpdateProgressPercentText is not null)
-                {
-                    UpdateProgressPercentText.Visibility = Visibility.Collapsed;
-                    UpdateProgressPercentText.Text = "";
-                }
-            }
-        }
-    }
-
-    private void HideUpdateProgress()
-    {
-        if (UpdateProgressOverlay is null)
-        {
-            return;
-        }
-
-        UpdateProgressOverlay.Visibility = Visibility.Collapsed;
-
-        if (UpdateProgressBar is not null)
-        {
-            UpdateProgressBar.IsIndeterminate = true;
-            UpdateProgressBar.Value = 0;
-        }
-
-        if (UpdateProgressPercentText is not null)
-        {
-            UpdateProgressPercentText.Visibility = Visibility.Collapsed;
-            UpdateProgressPercentText.Text = "";
-        }
-    }
-
-    private void ShowUpdateResultDialog(UpdateCheckResult update)
-    {
-        var image = update.IsCurrent
-            ? MessageBoxImage.Information
-            : update.Source == "失败"
-                ? MessageBoxImage.Warning
-                : MessageBoxImage.Information;
-
-        System.Windows.MessageBox.Show(
-            update.Message,
-            "检查更新",
-            MessageBoxButton.OK,
-            image);
-    }
-
     private async Task CheckUpdateAsync(System.Windows.Controls.Button? triggerButton)
     {
         if (_isCheckingForUpdates)
@@ -2223,44 +2141,58 @@ public partial class MainWindow : Window
             triggerButton.IsEnabled = false;
         }
 
+        var dialog = new UpdateCheckDialog { Owner = this };
+        dialog.Show();
+
         StatusText.Text = $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...";
-        ShowUpdateProgress("检查更新", $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...");
+        dialog.SetChecking(UpdateService.CurrentVersionText);
 
         try
         {
             var update = await _updateService.CheckLatestAsync();
-            HideUpdateProgress();
-            if (!update.HasUpdate)
+            if (dialog.WasClosed)
             {
-                StatusText.Text = update.Message;
-                ShowUpdateResultDialog(update);
                 return;
             }
 
-            var result = System.Windows.MessageBox.Show(
-                $"{update.Message}\n\n当前版本：{UpdateService.CurrentVersionText}\n来源：{update.Source}\n更新包：{update.AssetName}\n\n是否现在准备并安装？安装时软件会关闭，更新完成后自动重启。",
-                "检查更新",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question,
-                MessageBoxResult.Yes);
+            if (!update.HasUpdate)
+            {
+                StatusText.Text = update.Message;
+                if (update.Source == "失败")
+                {
+                    dialog.SetFailed(update.Message);
+                }
+                else
+                {
+                    dialog.SetNoUpdate(update);
+                }
+                return;
+            }
 
-            if (result != MessageBoxResult.Yes)
+            var shouldInstall = await dialog.ShowUpdateAvailableAsync(update);
+            if (!shouldInstall)
             {
                 StatusText.Text = $"已取消安装更新：{update.LatestVersion}。";
                 return;
             }
 
             StatusText.Text = $"{update.Message} 正在准备更新包...";
-            ShowUpdateProgress("准备更新", $"{update.Message} 正在准备更新包...");
+            dialog.SetPreparing($"{update.Message} 正在准备更新包...");
             var progress = new Progress<double>(value =>
             {
                 StatusText.Text = $"{update.Message} 准备中 {value:P0}...";
-                ShowUpdateProgress("准备更新", $"{update.Message} 准备中...", value);
+                if (!dialog.WasClosed)
+                {
+                    dialog.SetProgress($"{update.Message} 准备中...", value);
+                }
             });
 
             var packagePath = await _updateService.DownloadPackageAsync(update, progress);
             StatusText.Text = "更新包已准备完成，软件即将关闭并自动替换文件。";
-            ShowUpdateProgress("准备更新", "更新包已准备完成，软件即将关闭并自动替换文件。", 1);
+            if (!dialog.WasClosed)
+            {
+                dialog.SetProgress("更新包已准备完成，软件即将关闭并自动替换文件。", 1);
+            }
             AppLogger.Info("update", $"Launching updater for {update.LatestVersion}: {packagePath}");
             _updateService.LaunchUpdater(packagePath);
             Close();
@@ -2269,16 +2201,13 @@ public partial class MainWindow : Window
         {
             AppLogger.Error("update", ex, "Update failed.");
             StatusText.Text = $"更新失败：{ex.Message}";
-            HideUpdateProgress();
-            System.Windows.MessageBox.Show(
-                $"更新失败：{ex.Message}",
-                "检查更新",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            if (!dialog.WasClosed)
+            {
+                dialog.SetFailed($"更新失败：{ex.Message}");
+            }
         }
         finally
         {
-            HideUpdateProgress();
             _isCheckingForUpdates = false;
             if (triggerButton is not null)
             {
