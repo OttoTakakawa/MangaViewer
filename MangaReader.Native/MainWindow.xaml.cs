@@ -6514,9 +6514,7 @@ public partial class MainWindow : Window
     private bool IsPollutedTagCategory(string tag, string category)
     {
         var trimmed = category.Trim();
-        return string.Equals(trimmed, tag, StringComparison.OrdinalIgnoreCase)
-            || (_managedTags.Contains(trimmed)
-                && !DefaultTagPresets.Any(preset => string.Equals(preset.Category, trimmed, StringComparison.OrdinalIgnoreCase)));
+        return string.Equals(trimmed, tag, StringComparison.OrdinalIgnoreCase);
     }
 
     private string NormalizeManagedTagCategory(string tag, string category)
@@ -6877,24 +6875,34 @@ public partial class MainWindow : Window
         var tagBatchData = affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList();
         var tagBatchReason = renamedTag ? "before-tag-rename" : "before-tag-regroup";
         var doRename = renamedTag && _managedTags.Contains(originalName);
-        var doSuppress = !doRename && renamedTag && chip.IsBuiltIn;
+        var suppressOriginalBuiltIn = renamedTag && chip.IsBuiltIn;
 
-        await Task.Run(() =>
+        try
         {
-            _database.SaveBookTagsBatch(tagBatchData, tagBatchReason);
-            if (doRename)
+            await Task.Run(() =>
             {
-                _database.RenameManagedTag(originalName, newName, newCategory, newIsExclusive, newColor);
-            }
-            else
-            {
-                if (doSuppress)
+                _database.SaveBookTagsBatch(tagBatchData, tagBatchReason);
+                if (doRename)
+                {
+                    _database.RenameManagedTag(originalName, newName, newCategory, newIsExclusive, newColor);
+                }
+                else
+                {
+                    _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
+                }
+
+                if (suppressOriginalBuiltIn)
                 {
                     _database.SuppressTag(originalName);
                 }
-                _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
-            }
-        });
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("tag-edit", ex, $"编辑 Tag 保存失败：old={originalName}, new={newName}, category={newCategory}");
+            StatusText.Text = $"编辑 Tag 失败：{ex.Message}";
+            return;
+        }
 
         if (doRename)
         {
@@ -6904,7 +6912,7 @@ public partial class MainWindow : Window
             _managedTagUpdatedAt.Remove(originalName);
             _managedTagColors.Remove(originalName);
         }
-        else if (doSuppress)
+        if (suppressOriginalBuiltIn)
         {
             _suppressedTags.Add(originalName);
         }
