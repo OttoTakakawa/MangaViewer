@@ -1343,14 +1343,14 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Border x:Name="LibraryFilterPanel" Grid.Row="0" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
+                <Border x:Name="LibraryFilterPanel" Grid.Row="0" Margin="8,0,22,10" Padding="10" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -1388,21 +1388,21 @@
                                 <Button x:Name="LibraryChromeToggleButton" Content="收起标签筛选" Click="ToggleLibraryChrome_Click" Style="{StaticResource AppGhostButton}"/>
                             </StackPanel>
                         </Grid>
-                        <WrapPanel x:Name="LibraryFilterControlsPanel" Grid.Row="1" VerticalAlignment="Center" ItemHeight="44">
-                            <TextBox x:Name="BookSearchBox" Width="280" Height="44" Margin="0,0,10,0" TextChanged="BookSearchBox_TextChanged" Style="{StaticResource FilterTextBox}" ToolTip="搜索标题、作者、标签"/>
-                            <ComboBox x:Name="AuthorFilterBox" Width="156" Height="44" Margin="0,0,10,0" ItemsSource="{Binding AuthorFilters}" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterComboBox}">
+                        <WrapPanel x:Name="LibraryFilterControlsPanel" Grid.Row="1" VerticalAlignment="Center" ItemHeight="36">
+                            <TextBox x:Name="BookSearchBox" Width="280" Height="36" MinHeight="36" Padding="14,4" Margin="0,0,10,0" TextChanged="BookSearchBox_TextChanged" Style="{StaticResource FilterTextBox}" ToolTip="搜索标题、作者、标签"/>
+                            <ComboBox x:Name="AuthorFilterBox" Width="156" Height="36" MinHeight="36" Padding="14,4" Margin="0,0,10,0" ItemsSource="{Binding AuthorFilters}" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterComboBox}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip="{Binding}"/>
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <ComboBox x:Name="StatusFilterBox" Width="148" Height="44" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterComboBox}">
+                            <ComboBox x:Name="StatusFilterBox" Width="148" Height="36" MinHeight="36" Padding="14,4" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="BookFilter_Changed" Style="{StaticResource FilterComboBox}">
                                 <ComboBoxItem Content="状态：全部"/>
                                 <ComboBoxItem Content="状态：未读"/>
                                 <ComboBoxItem Content="状态：在读"/>
                             </ComboBox>
-                            <ComboBox x:Name="SortBox" Width="174" Height="44" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="SortBox_SelectionChanged" Style="{StaticResource FilterComboBox}">
+                            <ComboBox x:Name="SortBox" Width="174" Height="36" MinHeight="36" Padding="14,4" Margin="0,0,10,0" SelectedIndex="0" SelectionChanged="SortBox_SelectionChanged" Style="{StaticResource FilterComboBox}">
                                 <ComboBoxItem Content="排序：标题"/>
                                 <ComboBoxItem Content="排序：评分"/>
                                 <ComboBoxItem Content="排序：页数"/>
@@ -1411,9 +1411,9 @@
                                 <ComboBoxItem Content="排序：录入时间"/>
                                 <ComboBoxItem Content="排序：出品时间"/>
                             </ComboBox>
-                            <Button x:Name="SortDirectionButton" Content="升序" Click="ToggleSortDirection_Click" Style="{StaticResource FilterActionButton}" Height="44" Margin="0,0,10,0"/>
-                            <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterActionButton}" Height="44" Margin="0,0,10,0"/>
-                            <Button x:Name="ClearFiltersButton" Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterActionButton}" Height="44"/>
+                            <Button x:Name="SortDirectionButton" Content="升序" Click="ToggleSortDirection_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
+                            <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
+                            <Button x:Name="ClearFiltersButton" Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6"/>
                         </WrapPanel>
                         <Border x:Name="BatchManageShell" Grid.Row="2" Margin="0,10,0,0" Padding="8" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.ScrollTrack}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Visibility="Collapsed">
                             <WrapPanel x:Name="BatchManagePanel" VerticalAlignment="Center" ItemHeight="32">
@@ -1438,25 +1438,25 @@
                     </Grid>
                 </Border>
 
-                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,16" Padding="16" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
+                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,10" Padding="10" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                     <StackPanel>
-                        <DockPanel Margin="0,0,0,10">
-                            <Button x:Name="ToggleAllTagGroupsButton" DockPanel.Dock="Right" Content="全折叠" Click="ToggleAllTagGroups_Click" Style="{StaticResource FilterActionButton}" Height="44" Margin="8,0,0,0" ToolTip="折叠/展开所有标签分类"/>
-                            <ComboBox x:Name="TagGroupSortBox" DockPanel.Dock="Right" Width="160" Height="44" SelectedIndex="1" SelectionChanged="TagGroupSortBox_SelectionChanged" Style="{StaticResource FilterComboBox}" ToolTip="标签分类排序方式" Margin="8,0,0,0">
+                        <DockPanel Margin="0,0,0,7">
+                            <Button x:Name="ToggleAllTagGroupsButton" DockPanel.Dock="Right" Content="全折叠" Click="ToggleAllTagGroups_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="8,0,0,0" ToolTip="折叠/展开所有标签分类"/>
+                            <ComboBox x:Name="TagGroupSortBox" DockPanel.Dock="Right" Width="160" Height="36" MinHeight="36" Padding="14,4" SelectedIndex="1" SelectionChanged="TagGroupSortBox_SelectionChanged" Style="{StaticResource FilterComboBox}" ToolTip="标签分类排序方式" Margin="8,0,0,0">
                                 <ComboBoxItem Content="按分类顺序"/>
                                 <ComboBoxItem Content="按标签数量"/>
                                 <ComboBoxItem Content="按作品数量"/>
                                 <ComboBoxItem Content="按名称"/>
                             </ComboBox>
-                            <Button DockPanel.Dock="Right" Content="添加" Click="AddTag_Click" Style="{StaticResource FilterActionButton}" Margin="8,0,0,0" Height="44"/>
-                            <TextBox x:Name="TagSearchBox" DockPanel.Dock="Right" Width="280" TextChanged="TagSearchBox_TextChanged" Style="{StaticResource FilterTextBox}" Height="44" Margin="8,0,0,0" ToolTip="搜索 Tag；点添加可创建候选 Tag，选中漫画时会直接添加到漫画"/>
+                            <Button DockPanel.Dock="Right" Content="添加" Click="AddTag_Click" Style="{StaticResource FilterActionButton}" Margin="8,0,0,0" Height="36" MinHeight="36" Padding="14,6"/>
+                            <TextBox x:Name="TagSearchBox" DockPanel.Dock="Right" Width="280" TextChanged="TagSearchBox_TextChanged" Style="{StaticResource FilterTextBox}" Height="36" MinHeight="36" Padding="14,4" Margin="8,0,0,0" ToolTip="搜索 Tag；点添加可创建候选 Tag，选中漫画时会直接添加到漫画"/>
                             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                                 <CheckBox x:Name="FavoriteOnlyBox" Content="只看收藏" Margin="0,0,6,0" Checked="BookFilter_Changed" Unchecked="BookFilter_Changed"/>
                                 <CheckBox x:Name="OnlyHiddenBox" Content="只看隐藏作品" Margin="0,0,10,0" Checked="OnlyHidden_Changed" Unchecked="OnlyHidden_Changed"/>
                                 <TextBlock x:Name="ActiveTagSummaryText" Text="已选 0 个 Tag" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}"/>
                             </StackPanel>
                         </DockPanel>
-                        <ItemsControl x:Name="ActiveTagFilterList" ItemsSource="{Binding ActiveTagFilters}" Visibility="Collapsed" Margin="0,0,0,12">
+                        <ItemsControl x:Name="ActiveTagFilterList" ItemsSource="{Binding ActiveTagFilters}" Visibility="Collapsed" Margin="0,0,0,7">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel/>
@@ -1464,8 +1464,8 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:TagChip}">
-                                    <Border Margin="0,0,8,8"
-                                            Padding="11,6"
+                                    <Border Margin="0,0,6,6"
+                                            Padding="9,4"
                                             Background="{Binding Color}"
                                             BorderBrush="{DynamicResource Brush.TextPrimary}"
                                             MouseLeftButtonDown="ActiveTagChip_Click">
@@ -1495,7 +1495,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="240" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="168" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
                             <ItemsControl x:Name="TagPool" ItemsSource="{Binding VisibleTagGroups}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -1504,7 +1504,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type models:TagCategoryGroup}">
-                                        <Grid Margin="0,0,6,2" Width="260">
+                                        <Grid Margin="0,0,6,1" Width="260">
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
@@ -1568,7 +1568,7 @@
                                             <ScrollViewer Grid.Row="1"
                                                           HorizontalScrollBarVisibility="Disabled"
                                                           VerticalScrollBarVisibility="Auto"
-                                                          MaxHeight="120"
+                                                          MaxHeight="84"
                                                           Visibility="{Binding TagsVisibility}"
                                                           PreviewMouseWheel="TagGroupScrollViewer_PreviewMouseWheel">
                                                 <ItemsControl ItemsSource="{Binding Tags}"
