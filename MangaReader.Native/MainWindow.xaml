@@ -1567,10 +1567,10 @@
                                             </Border>
                                             <ScrollViewer Grid.Row="1"
                                                           HorizontalScrollBarVisibility="Disabled"
-                                                          VerticalScrollBarVisibility="Hidden"
+                                                          VerticalScrollBarVisibility="Auto"
                                                           MaxHeight="120"
                                                           Visibility="{Binding TagsVisibility}"
-                                                          PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                                                          PreviewMouseWheel="TagGroupScrollViewer_PreviewMouseWheel">
                                                 <ItemsControl ItemsSource="{Binding Tags}"
                                                               ItemTemplate="{StaticResource TagPoolChipTemplate}">
                                                     <ItemsControl.ItemsPanel>

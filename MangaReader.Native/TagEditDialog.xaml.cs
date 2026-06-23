@@ -34,7 +34,7 @@ public partial class TagEditDialog : Window
     {
         InitializeComponent();
         _categoryColors = categoryColors ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        TagNameBox.Text = tag.Name;
+        TagNameBox.Text = string.IsNullOrWhiteSpace(tag.RawName) ? tag.Name : tag.RawName;
         UpdatedAtText.Text = tag.UpdatedAtText;
         UsageCountText.Text = $"已关联 {tag.UsageCount} 本漫画";
         var previews = relatedBooks.Take(3).ToList();

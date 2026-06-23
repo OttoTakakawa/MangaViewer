@@ -2416,15 +2416,29 @@ public partial class MainWindow : Window
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive, color);
+        await UpsertManagedTagAsync(tag, category, isExclusive, color);
         if (_currentBook is not null)
         {
-            AddTagToBookRespectingRules(_currentBook, tag);
-            TagsBox.Text = _currentBook.Tags;
-            RefreshEditTagEditor(_currentBook.Tags);
             var book = _currentBook;
-            await Task.Run(() => _database.SaveMetadata(book));
-            _currentBook.NotifyAll();
+            var previousTags = book.Tags;
+            try
+            {
+                AddTagToBookRespectingRules(book, tag);
+                TagsBox.Text = book.Tags;
+                RefreshEditTagEditor(book.Tags);
+                await Task.Run(() => _database.SaveMetadata(book));
+                book.NotifyAll();
+            }
+            catch (Exception ex)
+            {
+                book.Tags = previousTags;
+                TagsBox.Text = previousTags;
+                RefreshEditTagEditor(previousTags);
+                book.NotifyAll();
+                AppLogger.Error("tag-save", ex, $"添加 Tag 保存失败：book={book.Title}, tag={tag}");
+                StatusText.Text = $"添加 Tag 失败：{ex.Message}";
+                return;
+            }
         }
 
         RefreshLibraryViews(authors: false, sort: false);
@@ -2453,15 +2467,29 @@ public partial class MainWindow : Window
         var isExclusive = existing is not null && IsExclusiveTag(existing);
         var color = existing is not null ? TagColor(existing) : "";
 
-        UpsertManagedTag(tagName, category, isExclusive, color);
+        await UpsertManagedTagAsync(tagName, category, isExclusive, color);
         if (_currentBook is not null)
         {
-            AddTagToBookRespectingRules(_currentBook, tagName);
-            TagsBox.Text = _currentBook.Tags;
-            RefreshEditTagEditor(_currentBook.Tags);
             var book = _currentBook;
-            await Task.Run(() => _database.SaveMetadata(book));
-            _currentBook.NotifyAll();
+            var previousTags = book.Tags;
+            try
+            {
+                AddTagToBookRespectingRules(book, tagName);
+                TagsBox.Text = book.Tags;
+                RefreshEditTagEditor(book.Tags);
+                await Task.Run(() => _database.SaveMetadata(book));
+                book.NotifyAll();
+            }
+            catch (Exception ex)
+            {
+                book.Tags = previousTags;
+                TagsBox.Text = previousTags;
+                RefreshEditTagEditor(previousTags);
+                book.NotifyAll();
+                AppLogger.Error("tag-save", ex, $"分类添加 Tag 保存失败：book={book.Title}, tag={tagName}");
+                StatusText.Text = $"添加 Tag 失败：{ex.Message}";
+                return;
+            }
         }
 
         RefreshVisibleTags();
@@ -2601,7 +2629,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive, color);
+        await UpsertManagedTagAsync(tag, category, isExclusive, color);
+        var previousTagsByBook = selectedBooks.ToDictionary(book => book.Id, book => book.Tags);
         var updates = new List<(string BookId, string Tags)>();
         foreach (var book in selectedBooks)
         {
@@ -2619,7 +2648,27 @@ public partial class MainWindow : Window
             return;
         }
 
-        await Task.Run(() => _database.SaveBookTagsBatch(updates, "before-batch-add-tag"));
+        try
+        {
+            await Task.Run(() => _database.SaveBookTagsBatch(updates, "before-batch-add-tag"));
+        }
+        catch (Exception ex)
+        {
+            foreach (var book in selectedBooks)
+            {
+                if (previousTagsByBook.TryGetValue(book.Id, out var previousTags))
+                {
+                    book.Tags = previousTags;
+                    book.NotifyAll();
+                }
+            }
+            AppLogger.Error("tag-save", ex, $"批量添加 Tag 保存失败：tag={tag}");
+            RefreshLibraryViews(authors: false, sort: false);
+            FillCurrentBookIfAffected(selectedBooks);
+            StatusText.Text = $"批量添加 Tag 失败：{ex.Message}";
+            return;
+        }
+
         foreach (var book in selectedBooks)
         {
             book.NotifyAll();
@@ -2988,9 +3037,10 @@ public partial class MainWindow : Window
         }
 
         _tagDragTriggered = true;
+        var tagName = TagKey(chip);
         var data = new System.Windows.DataObject();
-        data.SetData(TagDragDataFormat, chip.Name);
-        data.SetData(typeof(string), chip.Name);
+        data.SetData(TagDragDataFormat, tagName);
+        data.SetData(typeof(string), tagName);
         DragDrop.DoDragDrop(element, data, System.Windows.DragDropEffects.Copy);
         e.Handled = true;
     }
@@ -3008,21 +3058,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        var tagName = TagKey(chip);
         var tags = TagService.ParseTags(TagsBox.Text).ToList();
-        if (tags.Any(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase)))
+        if (tags.Any(tag => string.Equals(tag, tagName, StringComparison.OrdinalIgnoreCase)))
         {
             return;
         }
 
-        if (IsExclusiveTag(chip.Name))
+        if (IsExclusiveTag(tagName))
         {
-            var category = TagCategory(chip.Name);
+            var category = TagCategory(tagName);
             tags = tags
                 .Where(tag => !IsExclusiveTag(tag) || !string.Equals(TagCategory(tag), category, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
 
-        tags.Add(chip.Name);
+        tags.Add(tagName);
         TagsBox.Text = NormalizeTagsRespectingRules(tags);
         RefreshEditTagEditor(TagsBox.Text);
     }
@@ -3040,8 +3091,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        var tagName = TagKey(chip);
         var tags = TagService.ParseTags(TagsBox.Text)
-            .Where(tag => !string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase))
+            .Where(tag => !string.Equals(tag, tagName, StringComparison.OrdinalIgnoreCase))
             .ToList();
         TagsBox.Text = TagService.FormatTags(tags);
         RefreshEditTagEditor(TagsBox.Text);
@@ -3079,7 +3131,7 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void EditCreateTag_Click(object sender, RoutedEventArgs e)
+    private async void EditCreateTag_Click(object sender, RoutedEventArgs e)
     {
         if (!_isEditMode)
         {
@@ -3091,7 +3143,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive, color);
+        await UpsertManagedTagAsync(tag, category, isExclusive, color);
         var tags = TagService.ParseTags(TagsBox.Text).ToList();
         if (!tags.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
         {
@@ -3137,7 +3189,7 @@ public partial class MainWindow : Window
         var previousTags = book.Tags;
         try
         {
-            UpsertManagedTag(tag);
+            await UpsertManagedTagAsync(tag);
             AddTagToBookRespectingRules(book, tag);
             await Task.Run(() => _database.SaveMetadata(book));
         }
@@ -3267,7 +3319,7 @@ public partial class MainWindow : Window
         RestartDebounceTimer(_authorSearchDebounceTimer);
     }
 
-    private void CreateManagedTag_Click(object sender, RoutedEventArgs e)
+    private async void CreateManagedTag_Click(object sender, RoutedEventArgs e)
     {
         if (!TryResolveTagForCreate(TagManagerSearchBox.Text.Trim(), out var tag, out var category, out var isExclusive, out var color))
         {
@@ -3276,14 +3328,14 @@ public partial class MainWindow : Window
 
         if (EnumerateKnownTags().Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
         {
-            UpsertManagedTag(tag, category, isExclusive, color);
+            await UpsertManagedTagAsync(tag, category, isExclusive, color);
             TagManagerSearchBox.Clear();
             RefreshLibraryViews(authors: false, sort: false, filter: false);
             StatusText.Text = $"标签已存在：{tag}";
             return;
         }
 
-        UpsertManagedTag(tag, category, isExclusive, color);
+        await UpsertManagedTagAsync(tag, category, isExclusive, color);
         TagManagerSearchBox.Clear();
         RefreshLibraryViews(authors: false, sort: false, filter: false);
         StatusText.Text = $"已创建候选标签：{tag}。它会出现在书库 Tag 池，可拖拽到漫画或添加到当前漫画。";
@@ -5522,6 +5574,23 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void TagGroupScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ScrollViewer viewer || viewer.ScrollableHeight <= 0)
+        {
+            return;
+        }
+
+        var nextOffset = ClampOffset(viewer.VerticalOffset - e.Delta * WheelScrollMultiplier, viewer.ScrollableHeight);
+        if (Math.Abs(nextOffset - viewer.VerticalOffset) < 0.1)
+        {
+            return;
+        }
+
+        viewer.ScrollToVerticalOffset(nextOffset);
+        e.Handled = true;
+    }
+
     private void HorizontalShelfScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (sender is not System.Windows.Controls.ScrollViewer viewer || viewer.ScrollableWidth <= 0)
@@ -5897,7 +5966,7 @@ public partial class MainWindow : Window
         return value.Skip(1).All(Uri.IsHexDigit);
     }
 
-    private void UpsertManagedTag(string tag, string? category = null, bool? isExclusive = null, string? color = null)
+    private async Task UpsertManagedTagAsync(string tag, string? category = null, bool? isExclusive = null, string? color = null)
     {
         var isNew = !_managedTags.Contains(tag);
         var resolvedCategory = NormalizeManagedTagCategory(tag, category ?? TagCategory(tag));
@@ -5906,9 +5975,12 @@ public partial class MainWindow : Window
         var resolvedColor = !string.IsNullOrWhiteSpace(requestedColor)
             ? requestedColor
             : ResolveCategoryColor(resolvedCategory, tag) ?? TagService.GetColor(tag);
+        var tagsToSave = EnumerateTagsInCategory(resolvedCategory, tag).ToList();
+        await Task.Run(() => SaveCategoryColor(resolvedCategory, resolvedColor, tag, resolvedExclusive, tagsToSave));
+
         _tagGroupFilterOptionsDirty = true;
         ApplyCategoryColorLocally(resolvedCategory, resolvedColor, tag, resolvedExclusive);
-        _ = Task.Run(() => SaveCategoryColor(resolvedCategory, resolvedColor, tag, resolvedExclusive));
+        MarkTagIndexDirty();
         if (isNew && !_sessionNewTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
         {
             _sessionNewTags.Add(tag);
@@ -5947,10 +6019,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SaveCategoryColor(string category, string color, string? primaryTag = null, bool? primaryIsExclusive = null)
+    private void SaveCategoryColor(
+        string category,
+        string color,
+        string? primaryTag = null,
+        bool? primaryIsExclusive = null,
+        IReadOnlyList<string>? tagsToSave = null)
     {
         var resolvedCategory = NormalizeManagedTagCategory(primaryTag ?? "", category);
-        foreach (var tag in EnumerateTagsInCategory(resolvedCategory, primaryTag))
+        foreach (var tag in tagsToSave ?? EnumerateTagsInCategory(resolvedCategory, primaryTag))
         {
             var isExclusive = primaryTag is not null && string.Equals(tag, primaryTag, StringComparison.OrdinalIgnoreCase)
                 ? primaryIsExclusive ?? IsExclusiveTag(tag)
@@ -6718,8 +6795,9 @@ public partial class MainWindow : Window
 
     private async void EditTagAcrossLibrary(TagChip chip)
     {
+        var originalName = TagKey(chip);
         var relatedBooks = _allBooks
-            .Where(book => book.TagItems.Any(item => string.Equals(item.Name, chip.Name, StringComparison.OrdinalIgnoreCase)))
+            .Where(book => TagService.ParseTags(book.Tags).Any(tag => string.Equals(tag, originalName, StringComparison.OrdinalIgnoreCase)))
             .Take(3)
             .ToList();
         var dialog = new TagEditDialog(chip, relatedBooks, EnumerateKnownTagCategories(), BuildTagCategoryColorMap(), _customTagColors) { Owner = this };
@@ -6745,7 +6823,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (string.Equals(chip.Name, newName, StringComparison.OrdinalIgnoreCase)
+        if (string.Equals(originalName, newName, StringComparison.OrdinalIgnoreCase)
             && string.Equals(chip.Category, newCategory, StringComparison.OrdinalIgnoreCase)
             && chip.IsExclusive == newIsExclusive
             && string.Equals(chip.Color, newColor, StringComparison.OrdinalIgnoreCase))
@@ -6754,12 +6832,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        var renamedTag = !string.Equals(chip.Name, newName, StringComparison.OrdinalIgnoreCase);
+        var renamedTag = !string.Equals(originalName, newName, StringComparison.OrdinalIgnoreCase);
         var existing = renamedTag && EnumerateKnownTags().Any(tag => string.Equals(tag, newName, StringComparison.OrdinalIgnoreCase));
         if (existing)
         {
             var mergeResult = System.Windows.MessageBox.Show(
-                $"标签“{newName}”已经存在，继续后会把“{chip.Name}”合并到它名下。是否继续？",
+                $"标签“{newName}”已经存在，继续后会把“{originalName}”合并到它名下。是否继续？",
                 "合并标签",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -6774,14 +6852,14 @@ public partial class MainWindow : Window
         {
             foreach (var book in _allBooks)
             {
-                var tags = book.TagItems.Select(item => item.Name).ToList();
-                if (!tags.Any(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase)))
+                var tags = TagService.ParseTags(book.Tags).ToList();
+                if (!tags.Any(tag => string.Equals(tag, originalName, StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }
 
                 var normalized = tags
-                    .Select(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase) ? newName : tag)
+                    .Select(tag => string.Equals(tag, originalName, StringComparison.OrdinalIgnoreCase) ? newName : tag)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 if (newIsExclusive)
@@ -6798,7 +6876,7 @@ public partial class MainWindow : Window
 
         var tagBatchData = affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList();
         var tagBatchReason = renamedTag ? "before-tag-rename" : "before-tag-regroup";
-        var doRename = renamedTag && _managedTags.Remove(chip.Name);
+        var doRename = renamedTag && _managedTags.Contains(originalName);
         var doSuppress = !doRename && renamedTag && chip.IsBuiltIn;
 
         await Task.Run(() =>
@@ -6806,50 +6884,58 @@ public partial class MainWindow : Window
             _database.SaveBookTagsBatch(tagBatchData, tagBatchReason);
             if (doRename)
             {
-                _database.RenameManagedTag(chip.Name, newName, newCategory, newIsExclusive, newColor);
+                _database.RenameManagedTag(originalName, newName, newCategory, newIsExclusive, newColor);
             }
             else
             {
                 if (doSuppress)
                 {
-                    _database.SuppressTag(chip.Name);
+                    _database.SuppressTag(originalName);
                 }
                 _database.SaveManagedTag(newName, newCategory, newIsExclusive, newColor);
             }
-            SaveCategoryColor(newCategory, newColor, newName, newIsExclusive);
         });
 
         if (doRename)
         {
-            _managedTagCategories.Remove(chip.Name);
-            _managedTagIsExclusive.Remove(chip.Name);
-            _managedTagUpdatedAt.Remove(chip.Name);
-            _managedTagColors.Remove(chip.Name);
+            _managedTags.Remove(originalName);
+            _managedTagCategories.Remove(originalName);
+            _managedTagIsExclusive.Remove(originalName);
+            _managedTagUpdatedAt.Remove(originalName);
+            _managedTagColors.Remove(originalName);
         }
         else if (doSuppress)
         {
-            _suppressedTags.Add(chip.Name);
+            _suppressedTags.Add(originalName);
         }
+        _suppressedTags.Remove(newName);
         _managedTags.Add(newName);
         _managedTagCategories[newName] = newCategory;
         _managedTagIsExclusive[newName] = newIsExclusive;
         _managedTagUpdatedAt[newName] = DateTimeOffset.Now.ToString("O");
+        if (!string.IsNullOrWhiteSpace(newColor))
+        {
+            _managedTagColors[newName] = newColor;
+        }
+        else
+        {
+            _managedTagColors.Remove(newName);
+        }
         _tagGroupFilterOptionsDirty = true;
-        ApplyCategoryColorLocally(newCategory, newColor, newName, newIsExclusive);
+        MarkTagIndexDirty();
 
         foreach (var (book, tags) in affectedBooks)
         {
             book.Tags = tags;
-            MarkTagIndexDirty();
             book.NotifyAll();
         }
 
-        if (_activeTagFilters.Remove(chip.Name))
+        if (_activeTagFilters.Remove(originalName))
         {
             _activeTagFilters.Add(newName);
         }
 
-        if (_excludedTagFilters.Remove(chip.Name))
+        if (_excludedTagFilters.Remove(originalName))
         {
             _excludedTagFilters.Add(newName);
         }
@@ -6862,15 +6948,16 @@ public partial class MainWindow : Window
         RefreshLibraryViews(authors: false, sort: false, activeTags: true);
         StatusText.Text = renamedTag
             ? existing
-                ? $"已将标签“{chip.Name}”合并到“{newName}”，影响 {affectedBooks.Count} 本漫画。"
-                : $"已将标签“{chip.Name}”重命名为“{newName}”，影响 {affectedBooks.Count} 本漫画。"
-            : $"已将标签“{chip.Name}”更新为“{newCategory} / {(newIsExclusive ? "互斥" : "不互斥")}”。";
+                ? $"已将标签“{originalName}”合并到“{newName}”，影响 {affectedBooks.Count} 本漫画。"
+                : $"已将标签“{originalName}”重命名为“{newName}”，影响 {affectedBooks.Count} 本漫画。"
+            : $"已将标签“{originalName}”移动到“{newCategory}”，规则为“{(newIsExclusive ? "互斥" : "不互斥")}”。";
     }
 
     private async void DeleteTagAcrossLibrary(TagChip chip)
     {
+        var tagName = TagKey(chip);
         var result = System.Windows.MessageBox.Show(
-            $"确定删除标签“{chip.Name}”吗？\n\n这会把它从所有漫画记录中移除，并从独立标签库中删除。",
+            $"确定删除标签“{tagName}”吗？\n\n这会把它从所有漫画记录中移除，并从独立标签库中删除。",
             "删除标签",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -6882,56 +6969,55 @@ public partial class MainWindow : Window
         var affectedBooks = new List<(MangaBook Book, string Tags)>();
         foreach (var book in _allBooks)
         {
-            var tags = book.TagItems.Select(item => item.Name).ToList();
-            if (!tags.Any(tag => string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase)))
+            var tags = TagService.ParseTags(book.Tags).ToList();
+            if (!tags.Any(tag => string.Equals(tag, tagName, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
 
-            var remaining = tags.Where(tag => !string.Equals(tag, chip.Name, StringComparison.OrdinalIgnoreCase));
+            var remaining = tags.Where(tag => !string.Equals(tag, tagName, StringComparison.OrdinalIgnoreCase));
             affectedBooks.Add((book, string.Join(", ", remaining)));
         }
 
         var tagBatchData = affectedBooks.Select(item => (item.Book.Id, item.Tags)).ToList();
         var isBuiltIn = chip.IsBuiltIn;
-        var chipName = chip.Name;
 
         await Task.Run(() =>
         {
             _database.SaveBookTagsBatch(tagBatchData, "before-tag-delete");
-            _database.DeleteManagedTag(chipName);
+            _database.DeleteManagedTag(tagName);
             if (isBuiltIn)
             {
-                _database.SuppressTag(chipName);
+                _database.SuppressTag(tagName);
             }
         });
 
-        _managedTags.Remove(chip.Name);
-        _managedTagCategories.Remove(chip.Name);
-        _managedTagIsExclusive.Remove(chip.Name);
-        _managedTagUpdatedAt.Remove(chip.Name);
-        _managedTagColors.Remove(chip.Name);
+        _managedTags.Remove(tagName);
+        _managedTagCategories.Remove(tagName);
+        _managedTagIsExclusive.Remove(tagName);
+        _managedTagUpdatedAt.Remove(tagName);
+        _managedTagColors.Remove(tagName);
         _tagGroupFilterOptionsDirty = true;
+        MarkTagIndexDirty();
         if (isBuiltIn)
         {
-            _suppressedTags.Add(chip.Name);
+            _suppressedTags.Add(tagName);
         }
 
         foreach (var (book, tags) in affectedBooks)
         {
             book.Tags = tags;
-            MarkTagIndexDirty();
             book.NotifyAll();
         }
 
-        _activeTagFilters.Remove(chip.Name);
-        _excludedTagFilters.Remove(chip.Name);
+        _activeTagFilters.Remove(tagName);
+        _excludedTagFilters.Remove(tagName);
         if (_currentBook is not null)
         {
             FillMetadataEditors(_currentBook);
         }
 
         RefreshLibraryViews(authors: false, sort: false, activeTags: true);
-        StatusText.Text = $"已删除标签“{chip.Name}”，影响 {affectedBooks.Count} 本漫画。";
+        StatusText.Text = $"已删除标签“{tagName}”，影响 {affectedBooks.Count} 本漫画。";
     }
 }
