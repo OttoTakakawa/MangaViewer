@@ -3,6 +3,8 @@ obj/
 _release/
 MangaReader_Data/
 MangaReader_DataLocation.txt
+Books/
+DATA/
 node_modules/
 dist/
 .trae/

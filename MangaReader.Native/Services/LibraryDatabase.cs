@@ -1,5 +1,6 @@
 using MangaReader.Native.Models;
 using Microsoft.Data.Sqlite;
+using System.Collections.Concurrent;
 
 namespace MangaReader.Native.Services;
 
@@ -34,7 +35,7 @@ public sealed class LibraryDatabase
     private readonly string _connectionString;
     private readonly string _databasePath;
     private readonly string _backupPath;
-    private readonly Dictionary<string, string> _settingsCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _settingsCache = new(StringComparer.OrdinalIgnoreCase);
     private DateTimeOffset _lastMetadataBackupAt = DateTimeOffset.MinValue;
 
     public LibraryDatabase(AppStorage storage)
@@ -722,16 +723,14 @@ public sealed class LibraryDatabase
 
     public string LoadSetting(string key, string defaultValue = "")
     {
-        if (_settingsCache.TryGetValue(key, out var cached))
-            return cached;
-
-        using var connection = Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT value FROM app_settings WHERE key = $key;";
-        command.Parameters.AddWithValue("$key", key);
-        var result = command.ExecuteScalar() as string ?? defaultValue;
-        _settingsCache[key] = result;
-        return result;
+        return _settingsCache.GetOrAdd(key, _ =>
+        {
+            using var connection = Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT value FROM app_settings WHERE key = $key;";
+            command.Parameters.AddWithValue("$key", key);
+            return command.ExecuteScalar() as string ?? defaultValue;
+        });
     }
 
     public List<ManagedTagRecord> LoadManagedTags()
