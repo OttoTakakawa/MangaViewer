@@ -2146,10 +2146,14 @@ public partial class MainWindow : Window
 
         StatusText.Text = $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...";
         dialog.SetChecking(UpdateService.CurrentVersionText);
+        using var updateCancellation = new CancellationTokenSource();
+        EventHandler cancelOnClose = (_, _) => updateCancellation.Cancel();
+        dialog.Closed += cancelOnClose;
+        await Dispatcher.Yield(DispatcherPriority.Background);
 
         try
         {
-            var update = await _updateService.CheckLatestAsync();
+            var update = await _updateService.CheckLatestAsync(updateCancellation.Token);
             if (dialog.WasClosed)
             {
                 return;
@@ -2187,7 +2191,7 @@ public partial class MainWindow : Window
                 }
             });
 
-            var packagePath = await _updateService.DownloadPackageAsync(update, progress);
+            var packagePath = await _updateService.DownloadPackageAsync(update, progress, updateCancellation.Token);
             StatusText.Text = "更新包已准备完成，软件即将关闭并自动替换文件。";
             if (!dialog.WasClosed)
             {
@@ -2196,6 +2200,10 @@ public partial class MainWindow : Window
             AppLogger.Info("update", $"Launching updater for {update.LatestVersion}: {packagePath}");
             _updateService.LaunchUpdater(packagePath);
             Close();
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "已取消检查更新。";
         }
         catch (Exception ex)
         {
@@ -2208,6 +2216,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            dialog.Closed -= cancelOnClose;
             _isCheckingForUpdates = false;
             if (triggerButton is not null)
             {

@@ -23,7 +23,7 @@ public sealed class UpdateService
 
     public async Task<UpdateCheckResult> CheckLatestAsync(CancellationToken cancellationToken = default)
     {
-        var localUpdate = CheckLocalUpdate();
+        var localUpdate = await Task.Run(() => CheckLocalUpdate(cancellationToken), cancellationToken);
         if (localUpdate is not null)
         {
             return localUpdate;
@@ -178,12 +178,13 @@ public sealed class UpdateService
         return developmentPath;
     }
 
-    private UpdateCheckResult? CheckLocalUpdate()
+    private UpdateCheckResult? CheckLocalUpdate(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var currentVersion = GetCurrentVersion();
         var currentBuild = GetCurrentBuildInfo(currentVersion);
         AppLogger.Info("update", $"本地更新检查开始：currentVersion={FormatVersion(currentVersion)}, baseDirectory={currentBuild.BaseDirectory}, processPath={Environment.ProcessPath}");
-        var bestPackage = FindBestLocalPackage(currentBuild, _storage.Root);
+        var bestPackage = FindBestLocalPackage(currentBuild, _storage.Root, cancellationToken);
         if (bestPackage is not null)
         {
             AppLogger.Info("update", $"检测到本地更新：latestVersion={FormatVersion(bestPackage.Version)}, path={bestPackage.Path}, source={bestPackage.DisplayName}");
@@ -194,9 +195,10 @@ public sealed class UpdateService
                 bestPackage.DisplayName);
         }
 
-        var projectPath = FindLocalProjectPath();
+        var projectPath = FindLocalProjectPath(cancellationToken);
         if (!string.IsNullOrWhiteSpace(projectPath))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var projectVersion = ReadProjectVersion(projectPath);
             if (projectVersion is not null && projectVersion > currentVersion)
             {
@@ -265,9 +267,9 @@ public sealed class UpdateService
         return outputDirectory;
     }
 
-    private static LocalUpdatePackage? FindBestLocalPackage(CurrentBuildInfo currentBuild, string? storageRoot)
+    private static LocalUpdatePackage? FindBestLocalPackage(CurrentBuildInfo currentBuild, string? storageRoot, CancellationToken cancellationToken)
     {
-        return EnumerateLocalPackages(storageRoot)
+        return EnumerateLocalPackages(storageRoot, cancellationToken)
             .Where(package => IsCandidateLocalPackage(package, currentBuild))
             .OrderByDescending(package => package.Version)
             .ThenByDescending(package => package.ModifiedUtc)
@@ -327,16 +329,18 @@ public sealed class UpdateService
         return acceptedByModifiedTime;
     }
 
-    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages(string? storageRoot)
+    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages(string? storageRoot, CancellationToken cancellationToken)
     {
         var scannedUpdateDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in EnumerateSearchRoots())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var releaseDirectory = Path.Combine(root, "_release");
             if (Directory.Exists(releaseDirectory))
             {
                 foreach (var directory in Directory.EnumerateDirectories(releaseDirectory))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var version = ParseVersion(Path.GetFileName(directory));
                     var executablePath = Path.Combine(directory, "MangaReader.Native.exe");
                     if (version is not null && File.Exists(executablePath))
@@ -354,6 +358,7 @@ public sealed class UpdateService
 
                 foreach (var zip in Directory.EnumerateFiles(releaseDirectory, "*.zip"))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
                     if (version is not null)
                     {
@@ -371,6 +376,7 @@ public sealed class UpdateService
 
             foreach (var updatesDirectory in EnumerateUpdateDirectories(root, storageRoot))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var normalizedDirectory = NormalizePath(updatesDirectory);
                 if (!Directory.Exists(updatesDirectory) || !scannedUpdateDirectories.Add(normalizedDirectory))
                 {
@@ -379,6 +385,7 @@ public sealed class UpdateService
 
                 foreach (var zip in Directory.EnumerateFiles(updatesDirectory, "*.zip"))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
                     if (version is not null)
                     {
@@ -409,10 +416,11 @@ public sealed class UpdateService
         yield return Path.Combine(AppStorage.DefaultRoot, "updates");
     }
 
-    private static string? FindLocalProjectPath()
+    private static string? FindLocalProjectPath(CancellationToken cancellationToken)
     {
         foreach (var root in EnumerateSearchRoots())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var projectPath = Path.Combine(root, "MangaReader.Native", "MangaReader.Native.csproj");
             if (File.Exists(projectPath))
             {
