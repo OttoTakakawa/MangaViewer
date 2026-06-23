@@ -41,6 +41,9 @@ public partial class ReaderWindow : Window
     private static readonly SolidColorBrush FitInactiveBorder = FrozenBrush("#22FFFFFF");
     private static readonly SolidColorBrush FitActiveFg = FrozenBrush("#0F172A");
     private static readonly SolidColorBrush FitInactiveFg = FrozenBrush("#F9FAFB");
+    private static readonly SolidColorBrush QuickRatingFilledBrush = FrozenBrush("#F59E0B");
+    private static readonly SolidColorBrush QuickRatingEmptyBrush = FrozenBrush("#8EA0B8");
+    private static readonly SolidColorBrush QuickRatingActiveBg = FrozenBrush("#2AF59E0B");
     // ApplyReaderBackground brushes
     private static readonly SolidColorBrush BgWhiteOuter = FrozenBrush("#F8FAFC");
     private static readonly SolidColorBrush BgWhitePage = FrozenBrush("#FFFFFF");
@@ -160,6 +163,7 @@ public partial class ReaderWindow : Window
         UpdateFitButtons();
         UpdateQualityModeButton();
         UpdateToolbarMenuLabels();
+        BuildQuickRatingStars();
     }
 
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
@@ -250,9 +254,70 @@ public partial class ReaderWindow : Window
         BindNextBookCard(NextBookCard1, NextBookTitle1, recs.NextInView);
         BindNextBookCard(NextBookCard2, NextBookTitle2, recs.SameAuthor);
         BindNextBookCard(NextBookCard3, NextBookTitle3, recs.SimilarTags);
+        BuildQuickRatingStars();
 
         if (NextBookConfirmOverlay is not null)
             NextBookConfirmOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void BuildQuickRatingStars()
+    {
+        if (QuickRatingStarsHost is null || QuickRatingText is null)
+        {
+            return;
+        }
+
+        QuickRatingStarsHost.Children.Clear();
+        QuickRatingText.Text = _book.HasRating ? $"当前 {_book.RatingText} 分 · 再点同分清零" : "未评分";
+
+        for (var rating = 1; rating <= 5; rating++)
+        {
+            var isFilled = _book.Rating >= rating;
+            var button = new System.Windows.Controls.Button
+            {
+                Content = isFilled ? "★" : "☆",
+                Tag = rating,
+                Width = 34,
+                Height = 34,
+                MinHeight = 34,
+                Padding = new Thickness(0),
+                Margin = new Thickness(2, 0, 0, 0),
+                FontSize = 18,
+                FontWeight = FontWeights.Bold,
+                Foreground = isFilled ? QuickRatingFilledBrush : QuickRatingEmptyBrush,
+                Background = isFilled ? QuickRatingActiveBg : System.Windows.Media.Brushes.Transparent,
+                BorderBrush = isFilled ? QuickRatingFilledBrush : QuickRatingEmptyBrush,
+                ToolTip = $"评分 {rating} 分"
+            };
+            button.SetResourceReference(StyleProperty, "ReaderGhostButton");
+            button.Click += QuickRatingButton_Click;
+            QuickRatingStarsHost.Children.Add(button);
+        }
+    }
+
+    private async void QuickRatingButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: int rating })
+        {
+            return;
+        }
+
+        var newRating = Math.Abs(_book.Rating - rating) < 0.01 ? 0 : rating;
+        _book.Rating = newRating;
+        BuildQuickRatingStars();
+
+        try
+        {
+            await Task.Run(() => _database.SaveMetadata(_book));
+            _boundaryHint = _book.HasRating ? $"已评分 {_book.RatingText}" : "评分已清除";
+            UpdateNavigationState();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("reader-rating", ex, $"阅读器快捷评分保存失败：book={_book.Title}, rating={newRating}");
+            _boundaryHint = "评分保存失败";
+            UpdateNavigationState();
+        }
     }
 
     private async void BindNextBookCard(Border? card, System.Windows.Controls.TextBlock? title, MangaBook? book)

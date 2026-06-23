@@ -353,20 +353,58 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center">
+                    <Border Margin="0,0,0,18"
+                            Padding="14,10"
+                            CornerRadius="{StaticResource RadiusControl}"
+                            Background="{DynamicResource Brush.Reader.ButtonBgDark}"
+                            BorderBrush="{DynamicResource Brush.Reader.ButtonBorder}"
+                            BorderThickness="1">
+                        <DockPanel LastChildFill="False">
+                            <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                                <TextBlock Text="读完评分"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource Brush.Reader.Text}"/>
+                                <TextBlock x:Name="QuickRatingText"
+                                           Text="未评分"
+                                           FontSize="11"
+                                           Margin="0,3,0,0"
+                                           Foreground="{DynamicResource Brush.Reader.SubtleText}"/>
+                            </StackPanel>
+                            <StackPanel x:Name="QuickRatingStarsHost"
+                                        DockPanel.Dock="Right"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="18,0,0,0"/>
+                        </DockPanel>
+                    </Border>
+                    <UniformGrid Columns="3"
+                                 HorizontalAlignment="Center">
                         <Button Content="返回第一页"
+                                MinWidth="132"
+                                Height="42"
+                                Padding="16,0"
+                                VerticalContentAlignment="Center"
+                                Margin="0,0,8,0"
                                 Style="{StaticResource ReaderButton}"
                                 Click="NextBookGoFirst_Click"/>
                         <Button Content="打开详情页"
-                                Margin="8,0"
+                                MinWidth="132"
+                                Height="42"
+                                Padding="16,0"
+                                VerticalContentAlignment="Center"
+                                Margin="4,0"
                                 Style="{StaticResource ReaderButton}"
                                 Click="OpenDetailFromReader_Click"/>
                         <Button Content="留在当前页"
-                                Margin="8,0"
+                                MinWidth="132"
+                                Height="42"
+                                Padding="16,0"
+                                VerticalContentAlignment="Center"
+                                Margin="8,0,0,0"
                                 Style="{StaticResource ReaderButton}"
                                 Click="NextBookCancel_Click"/>
-                    </StackPanel>
+                    </UniformGrid>
                 </StackPanel>
             </Border>
         </Grid>
