@@ -104,6 +104,15 @@
             <Setter Property="Padding" Value="11,6"/>
             <Setter Property="FontSize" Value="12"/>
         </Style>
+        <Style x:Key="LibraryPaginationToggleButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="MinWidth" Value="42"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Black"/>
+        </Style>
         <Style x:Key="DetailActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
             <Setter Property="Height" Value="38"/>
             <Setter Property="MinHeight" Value="38"/>
@@ -1561,7 +1570,7 @@
                         </WrapPanel>
                     </Grid>
                 </Border>
-                <Button x:Name="LibraryPaginationToggle" Grid.Row="3" Content="▼" Click="ToggleLibraryPagination_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource TinyButton}" Width="22" Height="22" Padding="0" Margin="0,0,8,0" Panel.ZIndex="10" ToolTip="折叠分页栏" Visibility="Collapsed"/>
+                <Button x:Name="LibraryPaginationToggle" Grid.Row="3" Content="▼" Click="ToggleLibraryPagination_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource LibraryPaginationToggleButton}" Margin="0,0,8,0" Panel.ZIndex="10" ToolTip="折叠分页栏" Visibility="Collapsed"/>
 
                 <Border x:Name="LibraryLoadProgressPanel"
                         Grid.RowSpan="4"
