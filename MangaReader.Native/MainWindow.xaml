@@ -1544,33 +1544,6 @@
                                    RadiusY="3"
                                    Visibility="Collapsed"/>
                     </Canvas>
-                    <Border Grid.Row="0"
-                            Height="14"
-                            Margin="8,4,56,0"
-                            VerticalAlignment="Top"
-                            IsHitTestVisible="False"
-                            Panel.ZIndex="2">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="{DynamicResource Color.SurfaceMuted}" Offset="0"/>
-                                <GradientStop Color="#00FFFFFF" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-                    <Border Grid.Row="0"
-                            Height="14"
-                            Margin="8,0,56,4"
-                            VerticalAlignment="Bottom"
-                            IsHitTestVisible="False"
-                            Panel.ZIndex="2">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
-                                <GradientStop Color="{DynamicResource Color.SurfaceMuted}" Offset="0"/>
-                                <GradientStop Color="#00FFFFFF" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                    </Border>
-
                     <Border x:Name="ShelfEmptyState" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
                         <StackPanel Width="320">
                             <TextBlock Text="当前漫画列表是空的" FontSize="26" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" TextAlignment="Center"/>
