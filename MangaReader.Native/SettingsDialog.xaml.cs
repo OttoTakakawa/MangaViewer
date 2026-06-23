@@ -15,7 +15,6 @@ public partial class SettingsDialog : Window
     public bool PrivacyModeChanged { get; private set; }
     public bool ShortcutsChanged { get; private set; }
     public bool WaterfallRightClickChanged { get; private set; }
-    public bool TagDoubleClickChanged { get; private set; }
     public bool LibraryExitConfirmChanged { get; private set; }
     public bool ThemeChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
@@ -86,7 +85,8 @@ public partial class SettingsDialog : Window
         PrivacyModeCheckBox.IsChecked = _database.LoadSetting("app.privacy_mode") == "1";
         CatalogDeleteCheckBox.IsChecked = _database.LoadSetting("app.catalog_delete_source_enabled", "1") == "1";
         WaterfallRightClickCheckBox.IsChecked = _database.LoadSetting("app.waterfall_right_click", "0") == "1";
-        TagDoubleClickCheckBox.IsChecked = _database.LoadSetting("app.tag_double_click", "1") == "1";
+        TagClickFilterCheckBox.IsChecked = _database.LoadSetting("app.tag_click_filter_enabled", "1") == "1";
+        TagDragAssignCheckBox.IsChecked = _database.LoadSetting("app.tag_drag_assign_enabled", "1") == "1";
         LibraryExitConfirmCheckBox.IsChecked = _database.LoadSetting("app.library_exit_confirm", "1") == "1";
 
         // 主题
@@ -319,7 +319,8 @@ public partial class SettingsDialog : Window
     private void PrivacyModeCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void CatalogDeleteCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void WaterfallRightClickCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
-    private void TagDoubleClickCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void TagClickFilterCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void TagDragAssignCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void LibraryExitConfirmCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
 
     private void ChangePassword_Click(object sender, RoutedEventArgs e)
@@ -399,7 +400,8 @@ public partial class SettingsDialog : Window
         _database.SaveSetting("app.permission_password", "0309");
         _database.SaveSetting("app.catalog_delete_source_enabled", "1");
         _database.SaveSetting("app.waterfall_right_click", "0");
-        _database.SaveSetting("app.tag_double_click", "1");
+        _database.SaveSetting("app.tag_click_filter_enabled", "1");
+        _database.SaveSetting("app.tag_drag_assign_enabled", "1");
         _database.SaveSetting("app.library_exit_confirm", "1");
         _database.SaveSetting("mark.color_group", "A");
         for (var i = 0; i < 5; i++)
@@ -441,14 +443,9 @@ public partial class SettingsDialog : Window
             WaterfallRightClickChanged = true;
         }
 
-        // 双击选中Tag
-        var newTdc = TagDoubleClickCheckBox.IsChecked == true;
-        var oldTdc = _database.LoadSetting("app.tag_double_click", "1") == "1";
-        if (newTdc != oldTdc)
-        {
-            _database.SaveSetting("app.tag_double_click", newTdc ? "1" : "0");
-            TagDoubleClickChanged = true;
-        }
+        // Tag 交互
+        _database.SaveSetting("app.tag_click_filter_enabled", TagClickFilterCheckBox.IsChecked == true ? "1" : "0");
+        _database.SaveSetting("app.tag_drag_assign_enabled", TagDragAssignCheckBox.IsChecked == true ? "1" : "0");
 
         // 关闭漫画库确认提示
         var newExitConfirm = LibraryExitConfirmCheckBox.IsChecked == true;

@@ -50,6 +50,8 @@ public partial class MainWindow : Window
     private const string CatalogDeleteSourceEnabledKey = "app.catalog_delete_source_enabled";
     private const string LibraryPageSizeSettingKey = "library.page_size";
     private const string SidebarCollapsedSettingKey = "app.sidebar_collapsed";
+    private const string TagClickFilterEnabledSettingKey = "app.tag_click_filter_enabled";
+    private const string TagDragAssignEnabledSettingKey = "app.tag_drag_assign_enabled";
     private const int DefaultLibraryPageSize = 140;
     private const string TagDragDataFormat = "MangaReader.TagName";
     private const double ExpandedSidebarWidth = 228;
@@ -143,7 +145,11 @@ public partial class MainWindow : Window
     private bool _isRefreshingPageSize;
     private bool _paginationFirstShown;
     private bool _isSidebarCollapsed;
+    private bool _tagClickFilterEnabled = true;
+    private bool _tagDragAssignEnabled = true;
+    private bool _tagDragTriggered;
     private System.Windows.Point? _tagDragStartPoint;
+    private FrameworkElement? _tagPressedElement;
     private string[] _cachedActiveTagFilters = [];
     private string[] _cachedExcludedTagFilters = [];
 
@@ -281,6 +287,7 @@ public partial class MainWindow : Window
             ApplyLibraryPageSizeSetting(pageSizeTask.Result);
             ApplyTagCategoryCollapseState(tagCollapseTask.Result);
             ApplySidebarCollapsedSetting(sidebarCollapsedTask.Result);
+            RefreshTagInteractionSettings();
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
             if (roots.Count == 0)
@@ -2121,6 +2128,88 @@ public partial class MainWindow : Window
         await CheckUpdateAsync(sender as System.Windows.Controls.Button);
     }
 
+    private void ShowUpdateProgress(string title, string message, double? progress = null)
+    {
+        if (UpdateProgressOverlay is null)
+        {
+            return;
+        }
+
+        UpdateProgressOverlay.Visibility = Visibility.Visible;
+
+        if (UpdateProgressTitleText is not null)
+        {
+            UpdateProgressTitleText.Text = title;
+        }
+
+        if (UpdateProgressMessageText is not null)
+        {
+            UpdateProgressMessageText.Text = message;
+        }
+
+        if (UpdateProgressBar is not null)
+        {
+            if (progress.HasValue)
+            {
+                var normalized = Math.Clamp(progress.Value, 0, 1);
+                UpdateProgressBar.IsIndeterminate = false;
+                UpdateProgressBar.Value = normalized * 100;
+                if (UpdateProgressPercentText is not null)
+                {
+                    UpdateProgressPercentText.Visibility = Visibility.Visible;
+                    UpdateProgressPercentText.Text = $"{normalized:P0}";
+                }
+            }
+            else
+            {
+                UpdateProgressBar.IsIndeterminate = true;
+                UpdateProgressBar.Value = 0;
+                if (UpdateProgressPercentText is not null)
+                {
+                    UpdateProgressPercentText.Visibility = Visibility.Collapsed;
+                    UpdateProgressPercentText.Text = "";
+                }
+            }
+        }
+    }
+
+    private void HideUpdateProgress()
+    {
+        if (UpdateProgressOverlay is null)
+        {
+            return;
+        }
+
+        UpdateProgressOverlay.Visibility = Visibility.Collapsed;
+
+        if (UpdateProgressBar is not null)
+        {
+            UpdateProgressBar.IsIndeterminate = true;
+            UpdateProgressBar.Value = 0;
+        }
+
+        if (UpdateProgressPercentText is not null)
+        {
+            UpdateProgressPercentText.Visibility = Visibility.Collapsed;
+            UpdateProgressPercentText.Text = "";
+        }
+    }
+
+    private void ShowUpdateResultDialog(UpdateCheckResult update)
+    {
+        var image = update.IsCurrent
+            ? MessageBoxImage.Information
+            : update.Source == "失败"
+                ? MessageBoxImage.Warning
+                : MessageBoxImage.Information;
+
+        System.Windows.MessageBox.Show(
+            update.Message,
+            "检查更新",
+            MessageBoxButton.OK,
+            image);
+    }
+
     private async Task CheckUpdateAsync(System.Windows.Controls.Button? triggerButton)
     {
         if (_isCheckingForUpdates)
@@ -2135,13 +2224,16 @@ public partial class MainWindow : Window
         }
 
         StatusText.Text = $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...";
+        ShowUpdateProgress("检查更新", $"正在检查更新，当前版本 {UpdateService.CurrentVersionText}...");
 
         try
         {
             var update = await _updateService.CheckLatestAsync();
+            HideUpdateProgress();
             if (!update.HasUpdate)
             {
                 StatusText.Text = update.Message;
+                ShowUpdateResultDialog(update);
                 return;
             }
 
@@ -2159,13 +2251,16 @@ public partial class MainWindow : Window
             }
 
             StatusText.Text = $"{update.Message} 正在准备更新包...";
+            ShowUpdateProgress("准备更新", $"{update.Message} 正在准备更新包...");
             var progress = new Progress<double>(value =>
             {
                 StatusText.Text = $"{update.Message} 准备中 {value:P0}...";
+                ShowUpdateProgress("准备更新", $"{update.Message} 准备中...", value);
             });
 
             var packagePath = await _updateService.DownloadPackageAsync(update, progress);
             StatusText.Text = "更新包已准备完成，软件即将关闭并自动替换文件。";
+            ShowUpdateProgress("准备更新", "更新包已准备完成，软件即将关闭并自动替换文件。", 1);
             AppLogger.Info("update", $"Launching updater for {update.LatestVersion}: {packagePath}");
             _updateService.LaunchUpdater(packagePath);
             Close();
@@ -2174,9 +2269,16 @@ public partial class MainWindow : Window
         {
             AppLogger.Error("update", ex, "Update failed.");
             StatusText.Text = $"更新失败：{ex.Message}";
+            HideUpdateProgress();
+            System.Windows.MessageBox.Show(
+                $"更新失败：{ex.Message}",
+                "检查更新",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {
+            HideUpdateProgress();
             _isCheckingForUpdates = false;
             if (triggerButton is not null)
             {
@@ -2336,6 +2438,8 @@ public partial class MainWindow : Window
             var shortcuts = _database.LoadShortcuts();
             ApplyShortcuts(shortcuts);
         }
+
+        RefreshTagInteractionSettings();
 
         if (dialog.ThemeChanged)
         {
@@ -2817,7 +2921,7 @@ public partial class MainWindow : Window
 
     private void TagChip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: TagChip chip })
+        if (sender is not FrameworkElement { DataContext: TagChip chip } element)
         {
             return;
         }
@@ -2830,35 +2934,10 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-
-        _tagDragStartPoint = e.GetPosition(this);
-        if (IsInsideBooksList(sender as DependencyObject))
+        if (IsInsideBooksList(element))
         {
-            ApplyTagFilter(chip);
             e.Handled = true;
-            return;
         }
-
-        var requireDoubleClick = _database.LoadSetting("app.tag_double_click", "1") == "1";
-        if (chip.UsageCount == 0)
-        {
-            if (!requireDoubleClick || e.ClickCount >= 2)
-            {
-                StatusText.Text = $"无法筛选空 Tag：{chip.Name}";
-                e.Handled = true;
-            }
-
-            return;
-        }
-
-        if (!requireDoubleClick || e.ClickCount >= 2)
-        {
-            ApplyTagFilter(chip);
-            e.Handled = true;
-            return;
-        }
-
-        StatusText.Text = $"双击 Tag 筛选：{chip.Name}";
     }
 
     private void TagChip_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -2886,22 +2965,37 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement { DataContext: TagChip excludedChip } && excludedChip.IsExcluded)
         {
+            ResetTagInteractionState();
             e.Handled = true;
             return;
         }
 
-        if (sender is FrameworkElement { DataContext: TagChip chip } elementInCard
-            && IsInsideBooksList(elementInCard))
+        if (sender is FrameworkElement { DataContext: TagChip chip } element)
         {
-            MotionService.PressBounce(elementInCard);
-            ApplyTagFilter(chip);
-            e.Handled = true;
-            return;
-        }
+            if (IsTagSummaryChip(chip))
+            {
+                ResetTagInteractionState();
+                return;
+            }
 
-        if (sender is UIElement element)
-        {
+            _tagDragStartPoint = e.GetPosition(this);
+            _tagPressedElement = element;
+            _tagDragTriggered = false;
+            _tagDragTriggered = false;
+
             MotionService.PressBounce(element);
+            if (IsInsideBooksList(element))
+            {
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (sender is UIElement uiElement)
+        {
+            ResetTagInteractionState();
+            MotionService.PressBounce(uiElement);
         }
     }
 
@@ -2911,11 +3005,43 @@ public partial class MainWindow : Window
         {
             MotionService.ScaleTo(element, element.IsMouseOver ? 1.04 : 1.0, MotionService.Fast);
         }
+
+        if (sender is not FrameworkElement { DataContext: TagChip chip } releaseElement)
+        {
+            ResetTagInteractionState();
+            return;
+        }
+
+        var shouldSuppressClick = _tagDragTriggered;
+        var shouldApplyFilter = !shouldSuppressClick
+            && _tagClickFilterEnabled
+            && ReferenceEquals(_tagPressedElement, releaseElement)
+            && !chip.IsExcluded
+            && !IsTagSummaryChip(chip);
+
+        ResetTagInteractionState();
+
+        if (shouldSuppressClick)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (shouldApplyFilter)
+        {
+            ApplyTagFilter(chip);
+            e.Handled = true;
+        }
     }
 
     private void TagChip_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || sender is not FrameworkElement { DataContext: TagChip chip } || chip.IsSelected || chip.IsExcluded)
+        if (!_tagDragAssignEnabled
+            || e.LeftButton != MouseButtonState.Pressed
+            || sender is not FrameworkElement { DataContext: TagChip chip } element
+            || chip.IsSelected
+            || chip.IsExcluded
+            || !ReferenceEquals(_tagPressedElement, element))
         {
             return;
         }
@@ -2932,10 +3058,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        _tagDragTriggered = true;
         var data = new System.Windows.DataObject();
         data.SetData(TagDragDataFormat, chip.Name);
         data.SetData(typeof(string), chip.Name);
-        DragDrop.DoDragDrop((DependencyObject)sender, data, System.Windows.DragDropEffects.Copy);
+        DragDrop.DoDragDrop(element, data, System.Windows.DragDropEffects.Copy);
+        e.Handled = true;
     }
 
     private void EditTagOption_Click(object sender, MouseButtonEventArgs e)
@@ -4423,9 +4551,24 @@ public partial class MainWindow : Window
         }
 
         RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true, ensureLibraryView: true);
-        StatusText.Text = chip.UsageCount == 0
-            ? $"已按 Tag 筛选：{chip.Name}。当前没有关联漫画，所以结果为空。"
-            : $"已按 Tag 筛选：{chip.Name}";
+        StatusText.Text = $"已按 Tag 筛选：{chip.Name}";
+    }
+
+    private void RefreshTagInteractionSettings()
+    {
+        _tagClickFilterEnabled = _database.LoadSetting(TagClickFilterEnabledSettingKey, "1") == "1";
+        _tagDragAssignEnabled = _database.LoadSetting(TagDragAssignEnabledSettingKey, "1") == "1";
+        if (!_tagDragAssignEnabled)
+        {
+            _tagDragTriggered = false;
+        }
+    }
+
+    private void ResetTagInteractionState()
+    {
+        _tagDragStartPoint = null;
+        _tagPressedElement = null;
+        _tagDragTriggered = false;
     }
 
     private static bool IsTagSummaryChip(TagChip chip)
@@ -4934,7 +5077,7 @@ public partial class MainWindow : Window
 
         return reasons.Count == 0
             ? "这里还没有可显示的漫画，可以先导入新的漫画文件夹。"
-            : $"当前筛选没有命中结果，先尝试清空{string.Join("、", reasons)}。";
+            : $"没有命中任何一本。可尝试清空{string.Join("、", reasons)}。";
     }
 
     private static string MapStatusText(string status)
@@ -5387,8 +5530,7 @@ public partial class MainWindow : Window
 
         if (HasActiveLibraryFilter())
         {
-            ResetLibraryFilters();
-            StatusText.Text = "书库中有漫画，但当前筛选没有命中，已自动回到全部漫画。";
+            ShelfEmptyHintText.Text = BuildEmptyHint();
             return;
         }
 
@@ -6408,6 +6550,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TagContextFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TagChip chip })
+        {
+            ApplyTagFilter(chip);
+        }
+    }
+
     private void TagContextExclude_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TagChip chip })
@@ -6619,9 +6769,7 @@ public partial class MainWindow : Window
             _activeTagFilters.Add(tagName);
         }
         RefreshLibraryViews(tagManager: false, authors: false, activeTags: true);
-        StatusText.Text = chip.UsageCount == 0
-            ? $"已按 Tag 筛选：{chip.Name}。当前没有关联漫画，所以结果为空。"
-            : $"已在书库按 Tag 查看：{chip.Name}";
+        StatusText.Text = $"已在书库按 Tag 查看：{chip.Name}";
     }
 
     private void TagUsage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -183,7 +183,7 @@ public sealed class UpdateService
         var currentVersion = GetCurrentVersion();
         var currentBuild = GetCurrentBuildInfo(currentVersion);
         AppLogger.Info("update", $"本地更新检查开始：currentVersion={FormatVersion(currentVersion)}, baseDirectory={currentBuild.BaseDirectory}, processPath={Environment.ProcessPath}");
-        var bestPackage = FindBestLocalPackage(currentBuild);
+        var bestPackage = FindBestLocalPackage(currentBuild, _storage.Root);
         if (bestPackage is not null)
         {
             AppLogger.Info("update", $"检测到本地更新：latestVersion={FormatVersion(bestPackage.Version)}, path={bestPackage.Path}, source={bestPackage.DisplayName}");
@@ -265,9 +265,9 @@ public sealed class UpdateService
         return outputDirectory;
     }
 
-    private static LocalUpdatePackage? FindBestLocalPackage(CurrentBuildInfo currentBuild)
+    private static LocalUpdatePackage? FindBestLocalPackage(CurrentBuildInfo currentBuild, string? storageRoot)
     {
-        return EnumerateLocalPackages()
+        return EnumerateLocalPackages(storageRoot)
             .Where(package => IsCandidateLocalPackage(package, currentBuild))
             .OrderByDescending(package => package.Version)
             .ThenByDescending(package => package.ModifiedUtc)
@@ -327,8 +327,9 @@ public sealed class UpdateService
         return acceptedByModifiedTime;
     }
 
-    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages()
+    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages(string? storageRoot)
     {
+        var scannedUpdateDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in EnumerateSearchRoots())
         {
             var releaseDirectory = Path.Combine(root, "_release");
@@ -368,28 +369,44 @@ public sealed class UpdateService
                 }
             }
 
-            var updatesDirectory = Path.Combine(root, "updates");
-            if (!Directory.Exists(updatesDirectory))
+            foreach (var updatesDirectory in EnumerateUpdateDirectories(root, storageRoot))
             {
-                continue;
-            }
-
-            foreach (var zip in Directory.EnumerateFiles(updatesDirectory, "*.zip"))
-            {
-                var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
-                if (version is not null)
+                var normalizedDirectory = NormalizePath(updatesDirectory);
+                if (!Directory.Exists(updatesDirectory) || !scannedUpdateDirectories.Add(normalizedDirectory))
                 {
-                    yield return new LocalUpdatePackage(
-                        version,
-                        zip,
-                        Path.GetFileName(zip),
-                        File.GetLastWriteTimeUtc(zip),
-                        null,
-                        null,
-                        false);
+                    continue;
+                }
+
+                foreach (var zip in Directory.EnumerateFiles(updatesDirectory, "*.zip"))
+                {
+                    var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
+                    if (version is not null)
+                    {
+                        yield return new LocalUpdatePackage(
+                            version,
+                            zip,
+                            Path.GetFileName(zip),
+                            File.GetLastWriteTimeUtc(zip),
+                            null,
+                            null,
+                            false);
+                    }
                 }
             }
         }
+    }
+
+    private static IEnumerable<string> EnumerateUpdateDirectories(string root, string? storageRoot)
+    {
+        yield return Path.Combine(root, "updates");
+        yield return Path.Combine(root, "MangaReader_Data", "updates");
+
+        if (!string.IsNullOrWhiteSpace(storageRoot))
+        {
+            yield return Path.Combine(storageRoot, "updates");
+        }
+
+        yield return Path.Combine(AppStorage.DefaultRoot, "updates");
     }
 
     private static string? FindLocalProjectPath()

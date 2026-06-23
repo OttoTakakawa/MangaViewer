@@ -105,7 +105,8 @@
                                 <CheckBox x:Name="PrivacyModeCheckBox" Content="隐私模式（隐藏所有作品封面）" FontSize="14" Margin="0,0,0,14" Checked="PrivacyModeCheckBox_Changed" Unchecked="PrivacyModeCheckBox_Changed"/>
                                 <CheckBox x:Name="CatalogDeleteCheckBox" Content="在详情页目录右键中显示「删除源文件」" FontSize="14" Margin="0,0,0,14" Checked="CatalogDeleteCheckBox_Changed" Unchecked="CatalogDeleteCheckBox_Changed"/>
                                 <CheckBox x:Name="WaterfallRightClickCheckBox" Content="启用瀑布流右键菜单（切换样式、隐藏、打开源文件夹等）" FontSize="14" Margin="0,0,0,14" Checked="WaterfallRightClickCheckBox_Changed" Unchecked="WaterfallRightClickCheckBox_Changed"/>
-                                <CheckBox x:Name="TagDoubleClickCheckBox" Content="双击选中 Tag（取消勾选则单击即可筛选）" FontSize="14" Margin="0,0,0,14" Checked="TagDoubleClickCheckBox_Changed" Unchecked="TagDoubleClickCheckBox_Changed"/>
+                                <CheckBox x:Name="TagClickFilterCheckBox" Content="启用单击 Tag 筛选" FontSize="14" Margin="0,0,0,14" Checked="TagClickFilterCheckBox_Changed" Unchecked="TagClickFilterCheckBox_Changed"/>
+                                <CheckBox x:Name="TagDragAssignCheckBox" Content="启用拖动分配 Tag（长按后拖拽到漫画）" FontSize="14" Margin="0,0,0,14" Checked="TagDragAssignCheckBox_Changed" Unchecked="TagDragAssignCheckBox_Changed"/>
                                 <CheckBox x:Name="LibraryExitConfirmCheckBox" Content="关闭漫画库时弹出确认提示" FontSize="14" Margin="0,0,0,14" Checked="LibraryExitConfirmCheckBox_Changed" Unchecked="LibraryExitConfirmCheckBox_Changed"/>
                                 <TextBlock Text="主题" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
