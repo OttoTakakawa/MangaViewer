@@ -9,6 +9,7 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
 {
     private BitmapSource? _thumbnail;
     private bool _isBookmarked;
+    private string _bookmarkLabel = "";
     private string _bookmarkColor = "#EF4444";
     private SolidColorBrush? _bookmarkBrushCache;
 
@@ -40,8 +41,24 @@ public sealed class PageCatalogItem : INotifyPropertyChanged
             _isBookmarked = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(BookmarkMenuHeader));
+            OnPropertyChanged(nameof(IsNotBookmarked));
         }
     }
+
+    public bool IsNotBookmarked => !_isBookmarked;
+
+    public string BookmarkLabel
+    {
+        get => _bookmarkLabel;
+        set
+        {
+            _bookmarkLabel = value ?? "";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasBookmarkLabel));
+        }
+    }
+
+    public bool HasBookmarkLabel => _bookmarkLabel.Length > 0;
 
     public string BookmarkColor
     {

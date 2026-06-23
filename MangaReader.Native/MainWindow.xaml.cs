@@ -88,6 +88,7 @@ public partial class MainWindow : Window
     private List<Key> _prevKeys = [Key.Left];
     private bool _isEditMode;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedTags = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedAuthors = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _managedTagCategories = new(StringComparer.OrdinalIgnoreCase);
@@ -140,6 +141,7 @@ public partial class MainWindow : Window
     private bool _paginationFirstShown;
     private System.Windows.Point? _tagDragStartPoint;
     private string[] _cachedActiveTagFilters = [];
+    private string[] _cachedExcludedTagFilters = [];
 
     public RangeObservableCollection<MangaBook> Books { get; } = [];
     public RangeObservableCollection<TagChip> VisibleTags { get; } = [];
@@ -1598,10 +1600,10 @@ public partial class MainWindow : Window
         };
     }
 
-    private void AssignBookmarkColors(IList<PageCatalogItem> items, HashSet<int> bookmarks)
+    private void AssignBookmarkColors(IList<PageCatalogItem> items, Dictionary<int, string> bookmarks)
     {
         var colors = GetActiveMarkColors();
-        var sorted = bookmarks.OrderBy(x => x).ToList();
+        var sorted = bookmarks.Keys.OrderBy(x => x).ToList();
         foreach (var item in items)
         {
             if (item.IsBookmarked)
@@ -1620,7 +1622,8 @@ public partial class MainWindow : Window
         {
             foreach (var item in DetailPageCatalogItems)
             {
-                item.IsBookmarked = bookmarks.Contains(item.PageIndex);
+                item.IsBookmarked = bookmarks.ContainsKey(item.PageIndex);
+                item.BookmarkLabel = bookmarks.GetValueOrDefault(item.PageIndex, "");
             }
             AssignBookmarkColors(DetailPageCatalogItems, bookmarks);
             return;
@@ -1629,7 +1632,8 @@ public partial class MainWindow : Window
         var items = book.Pages
             .Select((path, index) => new PageCatalogItem(index, path)
             {
-                IsBookmarked = bookmarks.Contains(index)
+                IsBookmarked = bookmarks.ContainsKey(index),
+                BookmarkLabel = bookmarks.GetValueOrDefault(index, "")
             })
             .ToList();
         AssignBookmarkColors(items, bookmarks);
@@ -1797,7 +1801,7 @@ public partial class MainWindow : Window
         OpenBook(book);
     }
 
-    private void ToggleDetailCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    private void MarkDetailCatalogBookmark_Click(object sender, RoutedEventArgs e)
     {
         if (_detailCatalogBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
         {
@@ -1805,29 +1809,73 @@ public partial class MainWindow : Window
         }
 
         var book = _detailCatalogBook;
-        var newState = !item.IsBookmarked;
-        item.IsBookmarked = newState;
-
-        _ = Task.Run(() =>
+        var dialog = new BookmarkLabelDialog(item.PageIndex) { Owner = this };
+        var label = "";
+        if (dialog.ShowDialog() == true && !dialog.IsSkipped)
         {
-            if (newState)
-            {
-                _database.AddBookmark(book.Id, item.PageIndex);
-            }
-            else
-            {
-                _database.RemoveBookmark(book.Id, item.PageIndex);
-            }
-        });
+            label = dialog.BookmarkLabel;
+        }
 
-        // 重新分配标记颜色
-        var bookmarks = new HashSet<int>(
-            DetailPageCatalogItems.Where(i => i.IsBookmarked).Select(i => i.PageIndex));
+        item.IsBookmarked = true;
+        item.BookmarkLabel = label;
+        _ = Task.Run(() => _database.AddBookmark(book.Id, item.PageIndex, label));
+
+        var bookmarks = DetailPageCatalogItems
+            .Where(i => i.IsBookmarked)
+            .ToDictionary(i => i.PageIndex, i => i.BookmarkLabel);
         AssignBookmarkColors(DetailPageCatalogItems, bookmarks);
 
-        StatusText.Text = newState
-            ? $"已标记第 {item.PageIndex + 1} 页。"
-            : $"已取消标记第 {item.PageIndex + 1} 页。";
+        StatusText.Text = label.Length > 0
+            ? $"已标记第 {item.PageIndex + 1} 页：「{label}」"
+            : $"已标记第 {item.PageIndex + 1} 页。";
+    }
+
+    private void EditDetailCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detailCatalogBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var book = _detailCatalogBook;
+        var dialog = new BookmarkLabelDialog(item.PageIndex, item.BookmarkLabel) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var label = dialog.IsSkipped ? "" : dialog.BookmarkLabel;
+        item.BookmarkLabel = label;
+        _ = Task.Run(() => _database.AddBookmark(book.Id, item.PageIndex, label));
+
+        var bookmarks = DetailPageCatalogItems
+            .Where(i => i.IsBookmarked)
+            .ToDictionary(i => i.PageIndex, i => i.BookmarkLabel);
+        AssignBookmarkColors(DetailPageCatalogItems, bookmarks);
+
+        StatusText.Text = label.Length > 0
+            ? $"已更新标记：「{label}」"
+            : "已清空标记内容。";
+    }
+
+    private void RemoveDetailCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detailCatalogBook is null || (sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var book = _detailCatalogBook;
+        item.IsBookmarked = false;
+        item.BookmarkLabel = "";
+        _ = Task.Run(() => _database.RemoveBookmark(book.Id, item.PageIndex));
+
+        var bookmarks = DetailPageCatalogItems
+            .Where(i => i.IsBookmarked)
+            .ToDictionary(i => i.PageIndex, i => i.BookmarkLabel);
+        AssignBookmarkColors(DetailPageCatalogItems, bookmarks);
+
+        StatusText.Text = $"已取消标记第 {item.PageIndex + 1} 页。";
     }
 
     private async void DeleteSourceFromCatalog_Click(object sender, RoutedEventArgs e)
@@ -3921,6 +3969,7 @@ public partial class MainWindow : Window
         var showHidden = _cachedShowHidden;
         var onlyHidden = _cachedOnlyHidden;
         var activeTags = _cachedActiveTagFilters.ToArray();
+        var excludedTags = _cachedExcludedTagFilters.ToArray();
         var token = _filterCts.Token;
 
         _ = ExecuteBookViewRefreshAsync(
@@ -3934,6 +3983,7 @@ public partial class MainWindow : Window
             showHidden,
             onlyHidden,
             activeTags,
+            excludedTags,
             refreshShelf,
             ensureLibrary,
             resetPageAfterFilter,
@@ -3951,6 +4001,7 @@ public partial class MainWindow : Window
         bool showHidden,
         bool onlyHidden,
         string[] activeTags,
+        string[] excludedTags,
         bool refreshShelfOverview,
         bool ensureLibraryView,
         bool resetPage,
@@ -3971,6 +4022,7 @@ public partial class MainWindow : Window
                     showHidden,
                     onlyHidden,
                     activeTags,
+                    excludedTags,
                     token),
                 token);
         }
@@ -4175,6 +4227,7 @@ public partial class MainWindow : Window
         _cachedShowHidden = false;
         _cachedOnlyHidden = OnlyHiddenBox?.IsChecked == true;
         _cachedActiveTagFilters = _activeTagFilters.ToArray();
+        _cachedExcludedTagFilters = _excludedTagFilters.ToArray();
     }
 
     private void RefreshLibraryViews(
@@ -4291,15 +4344,35 @@ public partial class MainWindow : Window
         }
         if (e.ClickCount >= 2)
         {
-            ApplyTagFilter(chip);
+            if (chip.IsExcluded)
+            {
+                _excludedTagFilters.Remove(chip.Name);
+                RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
+                StatusText.Text = $"已取消排除 Tag：{chip.Name}";
+            }
+            else
+            {
+                ApplyTagFilter(chip);
+            }
             e.Handled = true;
             return;
         }
 
-        if (_activeTagFilters.Remove(chip.Name))
+        if (chip.IsExcluded)
         {
-            RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
-            StatusText.Text = $"已移除 Tag：{chip.Name}";
+            if (_excludedTagFilters.Remove(chip.Name))
+            {
+                RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
+                StatusText.Text = $"已取消排除 Tag：{chip.Name}";
+            }
+        }
+        else
+        {
+            if (_activeTagFilters.Remove(chip.Name))
+            {
+                RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true);
+                StatusText.Text = $"已移除 Tag：{chip.Name}";
+            }
         }
     }
 
@@ -4309,6 +4382,7 @@ public partial class MainWindow : Window
         BookSearchBox.Text = "";
         TagSearchBox.Text = "";
         _activeTagFilters.Clear();
+        _excludedTagFilters.Clear();
         AuthorFilterBox.SelectedItem = "全部作者";
         StatusFilterBox.SelectedIndex = 0;
         FavoriteOnlyBox.IsChecked = false;
@@ -4375,6 +4449,7 @@ public partial class MainWindow : Window
         bool showHidden,
         bool onlyHidden,
         string[] activeTags,
+        string[] excludedTags,
         CancellationToken token)
     {
         var filtered = allBooks.Where(book =>
@@ -4411,6 +4486,17 @@ public partial class MainWindow : Window
             {
                 var bookTagSet = new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
                 if (!activeTags.All(activeTag => bookTagSet.Contains(activeTag)))
+                {
+                    return false;
+                }
+            }
+
+            if (excludedTags.Length > 0)
+            {
+                var bookTagSetEx = activeTags.Length > 0
+                    ? new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase)
+                    : new HashSet<string>(book.TagItems.Select(t => t.Name), StringComparer.OrdinalIgnoreCase);
+                if (excludedTags.Any(exTag => bookTagSetEx.Contains(exTag)))
                 {
                     return false;
                 }
@@ -4685,6 +4771,11 @@ public partial class MainWindow : Window
         if (_cachedActiveTagFilters.Length > 0)
         {
             parts.Add($"Tag {string.Join(" + ", _cachedActiveTagFilters.OrderBy(tag => tag))}");
+        }
+
+        if (_cachedExcludedTagFilters.Length > 0)
+        {
+            parts.Add($"排除 {string.Join(" + ", _cachedExcludedTagFilters.OrderBy(tag => tag))}");
         }
 
         if (_cachedFavoriteOnly)
@@ -5162,6 +5253,7 @@ public partial class MainWindow : Window
         BookSearchBox.Text = "";
         TagSearchBox.Text = "";
         _activeTagFilters.Clear();
+        _excludedTagFilters.Clear();
         AuthorFilterBox.SelectedItem = "全部作者";
         StatusFilterBox.SelectedIndex = 0;
         FavoriteOnlyBox.IsChecked = false;
@@ -5206,6 +5298,7 @@ public partial class MainWindow : Window
         return !string.IsNullOrWhiteSpace(BookSearchBox?.Text)
             || !string.IsNullOrWhiteSpace(TagSearchBox?.Text)
             || _activeTagFilters.Count > 0
+            || _excludedTagFilters.Count > 0
             || (!string.IsNullOrWhiteSpace(selectedAuthor) && selectedAuthor != "全部作者")
             || StatusFilterBox?.SelectedIndex > 0
             || FavoriteOnlyBox?.IsChecked == true
@@ -5864,7 +5957,7 @@ public partial class MainWindow : Window
         return ResolveCategoryColor(TagCategory(tag)) ?? TagService.GetColor(tag);
     }
 
-    private TagChip CreateTagChip(string tag, bool isSelected = false)
+    private TagChip CreateTagChip(string tag, bool isSelected = false, bool isExcluded = false)
     {
         var preset = DefaultTagPresets.FirstOrDefault(item => string.Equals(item.Name, tag, StringComparison.OrdinalIgnoreCase));
         var isBuiltIn = preset is not null;
@@ -5879,6 +5972,7 @@ public partial class MainWindow : Window
                 Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
+                IsExcluded = isExcluded,
                 UsageCount = usageCount,
                 IsBuiltIn = isBuiltIn,
                 SourceText = "内置预设",
@@ -5892,6 +5986,7 @@ public partial class MainWindow : Window
                 Color = TagColor(tag),
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
+                IsExcluded = isExcluded,
                 UsageCount = usageCount,
                 IsBuiltIn = false,
                 SourceText = _managedTags.Contains(tag) ? "用户标签" : "书籍标签",
@@ -5924,17 +6019,31 @@ public partial class MainWindow : Window
             return;
         }
 
-        var chips = _activeTagFilters
+        var includeChips = _activeTagFilters
             .OrderBy(tag => TagCategoryOrder(TagCategory(tag)))
             .ThenBy(tag => tag)
-            .Select(tag => CreateTagChip(tag))
+            .Select(tag => CreateTagChip(tag, isExcluded: false))
             .ToList();
+
+        var excludeChips = _excludedTagFilters
+            .OrderBy(tag => TagCategoryOrder(TagCategory(tag)))
+            .ThenBy(tag => tag)
+            .Select(tag => CreateTagChip(tag, isExcluded: true))
+            .ToList();
+
+        var chips = includeChips.Concat(excludeChips).ToList();
 
         ActiveTagFilters.ReplaceRange(chips);
 
-        ActiveTagSummaryText.Text = chips.Count == 0
-            ? "已选 0 个 Tag"
-            : $"已选 {chips.Count} 个 Tag";
+        var includeCount = includeChips.Count;
+        var excludeCount = excludeChips.Count;
+        ActiveTagSummaryText.Text = (includeCount, excludeCount) switch
+        {
+            (0, 0) => "已选 0 个 Tag",
+            ( > 0, 0) => $"已选 {includeCount} 个 Tag",
+            (0, > 0) => $"排除 {excludeCount} 个 Tag",
+            _ => $"已选 {includeCount} · 排除 {excludeCount} 个 Tag"
+        };
         ActiveTagFilterList.Visibility = chips.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
@@ -6183,6 +6292,28 @@ public partial class MainWindow : Window
         {
             EditTagAcrossLibrary(chip);
         }
+    }
+
+    private void TagContextExclude_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TagChip chip })
+        {
+            return;
+        }
+
+        if (chip.IsExcluded)
+        {
+            _excludedTagFilters.Remove(chip.Name);
+            StatusText.Text = $"已取消排除 Tag：{chip.Name}";
+        }
+        else
+        {
+            _activeTagFilters.Remove(chip.Name);
+            _excludedTagFilters.Add(chip.Name);
+            StatusText.Text = $"已排除 Tag：{chip.Name}";
+        }
+
+        RefreshLibraryViews(tagManager: false, authors: false, sort: false, activeTags: true, ensureLibraryView: true);
     }
 
     private void TagContextDelete_Click(object sender, RoutedEventArgs e)
@@ -6524,6 +6655,11 @@ public partial class MainWindow : Window
             _activeTagFilters.Add(newName);
         }
 
+        if (_excludedTagFilters.Remove(chip.Name))
+        {
+            _excludedTagFilters.Add(newName);
+        }
+
         if (_currentBook is not null)
         {
             FillMetadataEditors(_currentBook);
@@ -6595,6 +6731,7 @@ public partial class MainWindow : Window
         }
 
         _activeTagFilters.Remove(chip.Name);
+        _excludedTagFilters.Remove(chip.Name);
         if (_currentBook is not null)
         {
             FillMetadataEditors(_currentBook);

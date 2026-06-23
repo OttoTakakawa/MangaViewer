@@ -454,7 +454,12 @@
                                     <Border.ContextMenu>
                                         <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                             <MenuItem Header="设为封面" Click="SetCatalogPageAsCover_Click"/>
-                                            <MenuItem Header="{Binding BookmarkMenuHeader}" Click="ToggleCatalogBookmark_Click"/>
+                                            <MenuItem Header="标记此页" Click="MarkCatalogBookmark_Click"
+                                                      Visibility="{Binding IsNotBookmarked, Converter={StaticResource BoolToVisibility}}"/>
+                                            <MenuItem Header="编辑标记内容" Click="EditCatalogBookmark_Click"
+                                                      Visibility="{Binding IsBookmarked, Converter={StaticResource BoolToVisibility}}"/>
+                                            <MenuItem Header="取消标记" Click="RemoveCatalogBookmark_Click"
+                                                      Visibility="{Binding IsBookmarked, Converter={StaticResource BoolToVisibility}}"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Grid>
@@ -486,6 +491,14 @@
                                                    Foreground="{DynamicResource Brush.Reader.Decoration}"
                                                    FontSize="12"
                                                    FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding BookmarkLabel}"
+                                                   Margin="0,2,0,0"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource Brush.Reader.SubtleText}"
+                                                   FontSize="10"
+                                                   FontWeight="Normal"
+                                                   Visibility="{Binding HasBookmarkLabel, Converter={StaticResource BoolToVisibility}}"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

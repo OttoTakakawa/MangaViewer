@@ -1,4 +1,4 @@
-﻿using MangaReader.Native.Models;
+using MangaReader.Native.Models;
 using Microsoft.Data.Sqlite;
 
 namespace MangaReader.Native.Services;
@@ -120,6 +120,7 @@ public sealed class LibraryDatabase
             CREATE TABLE IF NOT EXISTS book_bookmarks (
                 book_id TEXT NOT NULL,
                 page_index INTEGER NOT NULL,
+                label TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 PRIMARY KEY (book_id, page_index),
                 FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
@@ -151,6 +152,7 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
         EnsureColumn(connection, "managed_tags", "is_exclusive", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "color", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(connection, "book_bookmarks", "label", "TEXT NOT NULL DEFAULT ''");
     }
 
     public void SaveLibraryRoot(string path)
@@ -659,33 +661,34 @@ public sealed class LibraryDatabase
         return result;
     }
 
-    public HashSet<int> LoadBookmarks(string bookId)
+    public Dictionary<int, string> LoadBookmarks(string bookId)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT page_index FROM book_bookmarks WHERE book_id = $bookId ORDER BY page_index ASC;";
+        command.CommandText = "SELECT page_index, label FROM book_bookmarks WHERE book_id = $bookId ORDER BY page_index ASC;";
         command.Parameters.AddWithValue("$bookId", bookId);
         using var reader = command.ExecuteReader();
-        var result = new HashSet<int>();
+        var result = new Dictionary<int, string>();
         while (reader.Read())
         {
-            result.Add(reader.GetInt32(0));
+            result[reader.GetInt32(0)] = reader.GetString(1);
         }
         return result;
     }
 
-    public void AddBookmark(string bookId, int pageIndex)
+    public void AddBookmark(string bookId, int pageIndex, string? label = null)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText =
             """
-            INSERT INTO book_bookmarks(book_id, page_index, created_at)
-            VALUES ($bookId, $pageIndex, $createdAt)
-            ON CONFLICT(book_id, page_index) DO NOTHING;
+            INSERT INTO book_bookmarks(book_id, page_index, label, created_at)
+            VALUES ($bookId, $pageIndex, $label, $createdAt)
+            ON CONFLICT(book_id, page_index) DO UPDATE SET label = $label;
             """;
         command.Parameters.AddWithValue("$bookId", bookId);
         command.Parameters.AddWithValue("$pageIndex", pageIndex);
+        command.Parameters.AddWithValue("$label", label ?? "");
         command.Parameters.AddWithValue("$createdAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
     }

@@ -95,7 +95,7 @@ public partial class ReaderWindow : Window
     private double _pageSlotHeight;
     private NextBookRecommendations? _pendingRecommendations;
     private CancellationTokenSource? _catalogLoadCancellation;
-    private HashSet<int> _bookmarks = [];
+    private Dictionary<int, string> _bookmarks = [];
     private System.Windows.Point? _holdZoomLastPointerInViewport;
     private readonly object _pageCacheLock = new();
     private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _pageCache = new(StringComparer.OrdinalIgnoreCase);
@@ -769,6 +769,9 @@ public partial class ReaderWindow : Window
             case Key.OemPeriod:
                 GoToNextBookmark();
                 return true;
+            case Key.M:
+                ToggleCurrentPageBookmark();
+                return true;
             default:
                 return false;
         }
@@ -782,7 +785,7 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        var prev = _bookmarks.Where(b => b < _requestedPageIndex).DefaultIfEmpty(-1).Max();
+        var prev = _bookmarks.Keys.Where(b => b < _requestedPageIndex).DefaultIfEmpty(-1).Max();
         if (prev < 0)
         {
             StatusCatalogFeedback("已经是第一个标记。");
@@ -801,7 +804,7 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        var next = _bookmarks.Where(b => b > _requestedPageIndex).DefaultIfEmpty(-1).Min();
+        var next = _bookmarks.Keys.Where(b => b > _requestedPageIndex).DefaultIfEmpty(-1).Min();
         if (next < 0)
         {
             StatusCatalogFeedback("已经是最后一个标记。");
@@ -2237,37 +2240,77 @@ public partial class ReaderWindow : Window
         {
             catalogItems.Add(new PageCatalogItem(i, _book.Pages[i])
             {
-                IsBookmarked = _bookmarks.Contains(i)
+                IsBookmarked = _bookmarks.ContainsKey(i),
+                BookmarkLabel = _bookmarks.GetValueOrDefault(i, "")
             });
         }
         PageCatalogItems.AddRange(catalogItems);
         AssignBookmarkColors();
     }
 
-    private void ToggleCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    private void MarkCatalogBookmark_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
         {
             return;
         }
 
-        var newState = !item.IsBookmarked;
-        item.IsBookmarked = newState;
+        var dialog = new BookmarkLabelDialog(item.PageIndex) { Owner = this };
+        var label = "";
+        if (dialog.ShowDialog() == true && !dialog.IsSkipped)
+        {
+            label = dialog.BookmarkLabel;
+        }
 
-        if (newState)
-        {
-            _bookmarks.Add(item.PageIndex);
-            _ = Task.Run(() => _database.AddBookmark(_book.Id, item.PageIndex));
-            StatusCatalogFeedback($"已标记第 {item.PageIndex + 1} 页。");
-        }
-        else
-        {
-            _bookmarks.Remove(item.PageIndex);
-            _ = Task.Run(() => _database.RemoveBookmark(_book.Id, item.PageIndex));
-            StatusCatalogFeedback($"已取消标记第 {item.PageIndex + 1} 页。");
-        }
+        item.IsBookmarked = true;
+        item.BookmarkLabel = label;
+        _bookmarks[item.PageIndex] = label;
+        _ = Task.Run(() => _database.AddBookmark(_book.Id, item.PageIndex, label));
         AssignBookmarkColors();
         UpdateSignButton();
+        StatusCatalogFeedback(label.Length > 0
+            ? $"已标记第 {item.PageIndex + 1} 页：「{label}」"
+            : $"已标记第 {item.PageIndex + 1} 页。");
+    }
+
+    private void EditCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        var dialog = new BookmarkLabelDialog(item.PageIndex, item.BookmarkLabel) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var label = dialog.IsSkipped ? "" : dialog.BookmarkLabel;
+        item.BookmarkLabel = label;
+        _bookmarks[item.PageIndex] = label;
+        _ = Task.Run(() => _database.AddBookmark(_book.Id, item.PageIndex, label));
+        AssignBookmarkColors();
+        UpdateSignButton();
+        StatusCatalogFeedback(label.Length > 0
+            ? $"已更新标记：「{label}」"
+            : "已清空标记内容。");
+    }
+
+    private void RemoveCatalogBookmark_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
+        {
+            return;
+        }
+
+        item.IsBookmarked = false;
+        item.BookmarkLabel = "";
+        _bookmarks.Remove(item.PageIndex);
+        _ = Task.Run(() => _database.RemoveBookmark(_book.Id, item.PageIndex));
+        AssignBookmarkColors();
+        UpdateSignButton();
+        StatusCatalogFeedback($"已取消标记第 {item.PageIndex + 1} 页。");
     }
 
     private void SignButton_Click(object sender, RoutedEventArgs e)
@@ -2277,28 +2320,56 @@ public partial class ReaderWindow : Window
 
     private void ToggleCurrentPageBookmark()
     {
-        var isBookmarked = _bookmarks.Contains(_requestedPageIndex);
+        var isBookmarked = _bookmarks.ContainsKey(_requestedPageIndex);
         if (isBookmarked)
         {
             _bookmarks.Remove(_requestedPageIndex);
             _ = Task.Run(() => _database.RemoveBookmark(_book.Id, _requestedPageIndex));
+            SyncCatalogItemBookmarkLabel();
+            AssignBookmarkColors();
+            UpdateSignButton();
             StatusCatalogFeedback($"已取消标记第 {_requestedPageIndex + 1} 页。");
+            return;
         }
-        else
+
+        var dialog = new BookmarkLabelDialog(_requestedPageIndex)
         {
-            _bookmarks.Add(_requestedPageIndex);
-            _ = Task.Run(() => _database.AddBookmark(_book.Id, _requestedPageIndex));
-            StatusCatalogFeedback($"已标记第 {_requestedPageIndex + 1} 页。");
+            Owner = this
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
         }
+
+        var label = dialog.IsSkipped ? "" : dialog.BookmarkLabel;
+        _bookmarks[_requestedPageIndex] = label;
+        _ = Task.Run(() => _database.AddBookmark(_book.Id, _requestedPageIndex, label));
+        SyncCatalogItemBookmarkLabel();
         AssignBookmarkColors();
         UpdateSignButton();
+        StatusCatalogFeedback(label.Length > 0
+            ? $"已标记第 {_requestedPageIndex + 1} 页：「{label}」"
+            : $"已标记第 {_requestedPageIndex + 1} 页。");
     }
 
     private void UpdateSignButton()
     {
-        var isBookmarked = _bookmarks.Contains(_requestedPageIndex);
-        SignButton.Content = isBookmarked ? "✓已标记" : "标记";
+        var isBookmarked = _bookmarks.ContainsKey(_requestedPageIndex);
+        var label = isBookmarked ? _bookmarks[_requestedPageIndex] : "";
+        SignButton.Content = isBookmarked
+            ? (label.Length > 0 ? $"✓{label}" : "✓已标记")
+            : "标记";
         SignButton.Opacity = isBookmarked ? 1.0 : 0.7;
+    }
+
+    private void SyncCatalogItemBookmarkLabel()
+    {
+        var item = PageCatalogItems.FirstOrDefault(ci => ci.PageIndex == _requestedPageIndex);
+        if (item is not null)
+        {
+            item.IsBookmarked = _bookmarks.ContainsKey(_requestedPageIndex);
+            item.BookmarkLabel = _bookmarks.GetValueOrDefault(_requestedPageIndex, "");
+        }
     }
 
     private static readonly string[] MarkColorGroupA =
@@ -2317,7 +2388,7 @@ public partial class ReaderWindow : Window
     private void AssignBookmarkColors()
     {
         var colors = _database.LoadSetting("mark.color_group", "A") == "B" ? MarkColorGroupB : MarkColorGroupA;
-        var sorted = _bookmarks.OrderBy(x => x).ToList();
+        var sorted = _bookmarks.Keys.OrderBy(x => x).ToList();
         foreach (var item in PageCatalogItems)
         {
             if (item.IsBookmarked)
