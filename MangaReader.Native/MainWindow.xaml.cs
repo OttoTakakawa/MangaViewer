@@ -2542,7 +2542,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e)
+    private async void Settings_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SettingsDialog(_storage, _database) { Owner = this };
         if (dialog.ShowDialog() != true)
@@ -2595,7 +2595,7 @@ public partial class MainWindow : Window
                 RunDuplicateCheck_Click(sender, e);
                 break;
             case SettingsAction.OpenReverseOrganize:
-                ShowReverseOrganizeDialog();
+                await ShowReverseOrganizeDialogAsync();
                 break;
         }
 
@@ -5795,7 +5795,7 @@ public partial class MainWindow : Window
         ShowGovernanceDialog(BuildActivityGovernanceReport());
     }
 
-    private void ShowReverseOrganizeDialog()
+    private async Task ShowReverseOrganizeDialogAsync()
     {
         try
         {
@@ -5807,6 +5807,7 @@ public partial class MainWindow : Window
 
             var forbiddenRoots = BuildReverseOrganizeForbiddenRoots();
             var dialog = new ReverseOrganizeDialog(
+                _database,
                 _allBooks.ToList(),
                 _pagedSourceBooks.Count > 0 ? _pagedSourceBooks.ToList() : Books.ToList(),
                 GetSelectedBatchBooks(),
@@ -5818,18 +5819,38 @@ public partial class MainWindow : Window
             dialog.ShowDialog();
             if (dialog.CompletedResult is not { } result)
             {
-                return;
+                if (dialog.RedirectedCount <= 0)
+                {
+                    return;
+                }
             }
 
-            _activityLog.Record(
-                "reverse-organize-copy",
-                $"反向规整目录安全导出：成功 {result.CopiedCount} 本",
-                affectedCount: result.TotalCount,
-                succeededCount: result.CopiedCount,
-                skippedCount: result.SkippedCount,
-                failedCount: result.FailedCount,
-                detail: $"路径：{result.TargetRoot}{Environment.NewLine}manifest：{result.ManifestPath}{Environment.NewLine}取消：{(result.Canceled ? "是" : "否")}");
-            StatusText.Text = $"反向规整目录完成：成功 {result.CopiedCount}，跳过 {result.SkippedCount}，失败 {result.FailedCount}。";
+            if (dialog.CompletedResult is { } completed)
+            {
+                _activityLog.Record(
+                    "reverse-organize-copy",
+                    $"反向规整目录安全导出：成功 {completed.CopiedCount} 本",
+                    affectedCount: completed.TotalCount,
+                    succeededCount: completed.CopiedCount,
+                    skippedCount: completed.SkippedCount,
+                    failedCount: completed.FailedCount,
+                    detail: $"路径：{completed.TargetRoot}{Environment.NewLine}manifest：{completed.ManifestPath}{Environment.NewLine}取消：{(completed.Canceled ? "是" : "否")}");
+                StatusText.Text = $"反向规整目录完成：成功 {completed.CopiedCount}，跳过 {completed.SkippedCount}，失败 {completed.FailedCount}。";
+            }
+
+            if (dialog.RedirectedCount > 0)
+            {
+                _activityLog.Record(
+                    "reverse-organize-redirect",
+                    $"反向规整目录重定向：{dialog.RedirectedCount} 本",
+                    affectedCount: dialog.RedirectedCount,
+                    succeededCount: dialog.RedirectedCount,
+                    detail: "已将已复制漫画的数据库路径切换到反向规整后的目标目录。");
+
+                var roots = await Task.Run(() => _database.LoadLibraryRoots());
+                await ScanRootsAsync(roots);
+                StatusText.Text = $"目录重定向完成：已切换 {dialog.RedirectedCount} 本漫画。";
+            }
         }
         catch (Exception ex)
         {

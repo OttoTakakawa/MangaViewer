@@ -127,6 +127,18 @@ public sealed class LibraryDatabase
                 FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS reverse_organize_pending_redirects (
+                book_id TEXT PRIMARY KEY,
+                title TEXT NOT NULL DEFAULT '',
+                author TEXT NOT NULL DEFAULT '',
+                source_path TEXT NOT NULL,
+                target_path TEXT NOT NULL,
+                manifest_path TEXT NOT NULL DEFAULT '',
+                target_root TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_books_author ON books(author);
             CREATE INDEX IF NOT EXISTS idx_books_reading_status ON books(reading_status);
             CREATE INDEX IF NOT EXISTS idx_books_is_favorite ON books(is_favorite);
@@ -134,6 +146,7 @@ public sealed class LibraryDatabase
             CREATE INDEX IF NOT EXISTS idx_books_folder_path ON books(folder_path);
             CREATE INDEX IF NOT EXISTS idx_book_bookmarks_book_id ON book_bookmarks(book_id);
             CREATE INDEX IF NOT EXISTS idx_books_last_opened_at ON books(last_opened_at);
+            CREATE INDEX IF NOT EXISTS idx_reverse_organize_pending_target_root ON reverse_organize_pending_redirects(target_root);
             """;
         command.ExecuteNonQuery();
         EnsureColumn(connection, "books", "character_name", "TEXT NOT NULL DEFAULT ''");
@@ -646,6 +659,172 @@ public sealed class LibraryDatabase
         command.Parameters.AddWithValue("$isMissing", book.IsMissing ? 1 : 0);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
         command.ExecuteNonQuery();
+    }
+
+    public void UpdateFolderPathBatch(IReadOnlyCollection<MangaBook> books, string reason)
+    {
+        if (books.Count == 0)
+        {
+            return;
+        }
+
+        BackupDatabase(reason, force: true);
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                UPDATE books
+                SET folder_path = $folderPath,
+                    page_count = $pageCount,
+                    total_bytes = $totalBytes,
+                    cover_page_index = $coverPageIndex,
+                    last_read_page_index = $lastReadPageIndex,
+                    is_missing = $isMissing,
+                    updated_at = $updatedAt
+                WHERE id = $id;
+                """;
+
+            var updatedAt = DateTimeOffset.Now.ToString("O");
+            foreach (var book in books)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$id", book.Id);
+                command.Parameters.AddWithValue("$folderPath", book.FolderPath);
+                command.Parameters.AddWithValue("$pageCount", book.PageCount);
+                command.Parameters.AddWithValue("$totalBytes", book.TotalBytes);
+                command.Parameters.AddWithValue("$coverPageIndex", book.CoverPageIndex);
+                command.Parameters.AddWithValue("$lastReadPageIndex", book.LastReadPageIndex);
+                command.Parameters.AddWithValue("$isMissing", book.IsMissing ? 1 : 0);
+                command.Parameters.AddWithValue("$updatedAt", updatedAt);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+            _lastMetadataBackupAt = DateTimeOffset.Now;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public List<ReverseOrganizePendingRedirectRecord> LoadPendingReverseOrganizeRedirects()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT book_id, title, author, source_path, target_path, manifest_path, target_root, created_at, updated_at
+            FROM reverse_organize_pending_redirects
+            ORDER BY updated_at DESC;
+            """;
+        using var reader = command.ExecuteReader();
+        var result = new List<ReverseOrganizePendingRedirectRecord>();
+        while (reader.Read())
+        {
+            result.Add(new ReverseOrganizePendingRedirectRecord
+            {
+                BookId = reader.GetString(0),
+                Title = reader.GetString(1),
+                Author = reader.GetString(2),
+                SourcePath = reader.GetString(3),
+                TargetPath = reader.GetString(4),
+                ManifestPath = reader.GetString(5),
+                TargetRoot = reader.GetString(6),
+                CreatedAt = reader.GetString(7),
+                UpdatedAt = reader.GetString(8)
+            });
+        }
+
+        return result;
+    }
+
+    public void SavePendingReverseOrganizeRedirects(IReadOnlyCollection<ReverseOrganizePendingRedirectRecord> records)
+    {
+        if (records.Count == 0)
+        {
+            return;
+        }
+
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                INSERT INTO reverse_organize_pending_redirects
+                    (book_id, title, author, source_path, target_path, manifest_path, target_root, created_at, updated_at)
+                VALUES
+                    ($bookId, $title, $author, $sourcePath, $targetPath, $manifestPath, $targetRoot, $createdAt, $updatedAt)
+                ON CONFLICT(book_id) DO UPDATE SET
+                    title = excluded.title,
+                    author = excluded.author,
+                    source_path = excluded.source_path,
+                    target_path = excluded.target_path,
+                    manifest_path = excluded.manifest_path,
+                    target_root = excluded.target_root,
+                    updated_at = excluded.updated_at;
+                """;
+
+            foreach (var record in records)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$bookId", record.BookId);
+                command.Parameters.AddWithValue("$title", record.Title);
+                command.Parameters.AddWithValue("$author", record.Author);
+                command.Parameters.AddWithValue("$sourcePath", record.SourcePath);
+                command.Parameters.AddWithValue("$targetPath", record.TargetPath);
+                command.Parameters.AddWithValue("$manifestPath", record.ManifestPath);
+                command.Parameters.AddWithValue("$targetRoot", record.TargetRoot);
+                command.Parameters.AddWithValue("$createdAt", string.IsNullOrWhiteSpace(record.CreatedAt) ? DateTimeOffset.Now.ToString("O") : record.CreatedAt);
+                command.Parameters.AddWithValue("$updatedAt", string.IsNullOrWhiteSpace(record.UpdatedAt) ? DateTimeOffset.Now.ToString("O") : record.UpdatedAt);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public void RemovePendingReverseOrganizeRedirects(IReadOnlyCollection<string> bookIds)
+    {
+        if (bookIds.Count == 0)
+        {
+            return;
+        }
+
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "DELETE FROM reverse_organize_pending_redirects WHERE book_id = $bookId;";
+            foreach (var bookId in bookIds)
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$bookId", bookId);
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public Dictionary<string, string> LoadShortcuts()

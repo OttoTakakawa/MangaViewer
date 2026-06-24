@@ -23,6 +23,7 @@ public enum ReverseOrganizeItemStatus
 {
     Pending,
     Copied,
+    Redirected,
     Skipped,
     Failed,
     Canceled
@@ -72,6 +73,7 @@ public sealed class ReverseOrganizeItem
     public string StatusText => Status switch
     {
         ReverseOrganizeItemStatus.Copied => "已复制",
+        ReverseOrganizeItemStatus.Redirected => "已重定向",
         ReverseOrganizeItemStatus.Skipped => "跳过",
         ReverseOrganizeItemStatus.Failed => "失败",
         ReverseOrganizeItemStatus.Canceled => "取消",
@@ -130,4 +132,17 @@ public sealed class ReverseOrganizeResult
     public int SkippedCount { get; init; }
     public int FailedCount { get; init; }
     public IReadOnlyList<ReverseOrganizeItem> Items { get; init; } = [];
+}
+
+public sealed class ReverseOrganizePendingRedirectRecord
+{
+    public string BookId { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Author { get; init; } = "";
+    public string SourcePath { get; init; } = "";
+    public string TargetPath { get; init; } = "";
+    public string ManifestPath { get; init; } = "";
+    public string TargetRoot { get; init; } = "";
+    public string CreatedAt { get; init; } = "";
+    public string UpdatedAt { get; init; } = "";
 }

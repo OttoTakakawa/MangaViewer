@@ -522,21 +522,25 @@
                                                   Stroke="{DynamicResource Brush.Reader.BookmarkStroke}"
                                                   StrokeThickness="1"/>
                                         </Grid>
-                                        <TextBlock Grid.Row="1"
-                                                   Text="{Binding PageText}"
-                                                   Margin="0,8,0,0"
-                                                   HorizontalAlignment="Center"
-                                                   Foreground="{DynamicResource Brush.Reader.Decoration}"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"/>
-                                        <TextBlock Grid.Row="1"
-                                                   Text="{Binding BookmarkLabel}"
-                                                   Margin="0,2,0,0"
-                                                   HorizontalAlignment="Center"
-                                                   Foreground="{DynamicResource Brush.Reader.SubtleText}"
-                                                   FontSize="10"
-                                                   FontWeight="Normal"
-                                                   Visibility="{Binding HasBookmarkLabel, Converter={StaticResource BoolToVisibility}}"/>
+                                        <StackPanel Grid.Row="1"
+                                                    Margin="0,8,0,0"
+                                                    HorizontalAlignment="Stretch">
+                                            <TextBlock Text="{Binding PageText}"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{DynamicResource Brush.Reader.Decoration}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding BookmarkLabel}"
+                                                       Margin="0,3,0,0"
+                                                       HorizontalAlignment="Stretch"
+                                                       Foreground="{DynamicResource Brush.Reader.SubtleText}"
+                                                       FontSize="10"
+                                                       FontWeight="Normal"
+                                                       TextAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding BookmarkLabel}"
+                                                       Visibility="{Binding HasBookmarkLabel, Converter={StaticResource BoolToVisibility}}"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

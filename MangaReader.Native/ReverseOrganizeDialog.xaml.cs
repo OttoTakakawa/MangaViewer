@@ -15,6 +15,7 @@ public partial class ReverseOrganizeDialog : Window
     private readonly IReadOnlyList<MangaBook> _visibleBooks;
     private readonly IReadOnlyList<MangaBook> _selectedBooks;
     private readonly IReadOnlyList<string> _forbiddenRoots;
+    private readonly LibraryDatabase _database;
     private readonly LibraryReverseOrganizer _organizer = new();
     private readonly ObservableCollection<ReverseOrganizeValidationIssue> _issues = [];
     private readonly ObservableCollection<ReverseOrganizeItem> _items = [];
@@ -22,10 +23,13 @@ public partial class ReverseOrganizeDialog : Window
     private CancellationTokenSource? _runCancellation;
     private bool _isRunning;
     private bool _isInitializing;
+    private int _pendingRedirectCount;
 
     public ReverseOrganizeResult? CompletedResult { get; private set; }
+    public int RedirectedCount { get; private set; }
 
     public ReverseOrganizeDialog(
+        LibraryDatabase database,
         IReadOnlyList<MangaBook> allBooks,
         IReadOnlyList<MangaBook> visibleBooks,
         IReadOnlyList<MangaBook> selectedBooks,
@@ -33,6 +37,7 @@ public partial class ReverseOrganizeDialog : Window
     {
         _isInitializing = true;
         InitializeComponent();
+        _database = database;
         _allBooks = SanitizeBooks(allBooks);
         _visibleBooks = SanitizeBooks(visibleBooks);
         _selectedBooks = SanitizeBooks(selectedBooks);
@@ -47,6 +52,7 @@ public partial class ReverseOrganizeDialog : Window
         TemplateBox.SelectedIndex = 0;
         ConflictBox.SelectedIndex = 0;
         LoadAuthors();
+        RefreshPendingRedirectState();
         _isInitializing = false;
         RefreshPlanSummary();
     }
@@ -81,13 +87,15 @@ public partial class ReverseOrganizeDialog : Window
             || ProgressBar is null
             || ProgressText is null
             || PlanSummaryText is null
+            || PendingRedirectText is null
             || EmptyAuthorBox is null
             || ExcludeHiddenBox is null
             || ExcludeMissingBox is null
             || ExcludeEmptyAuthorBox is null
             || TargetRootBox is null
             || TemplateBox is null
-            || ConflictBox is null)
+            || ConflictBox is null
+            || RedirectButton is null)
         {
             return;
         }
@@ -99,6 +107,7 @@ public partial class ReverseOrganizeDialog : Window
         StartButton.IsEnabled = false;
         OpenManifestButton.IsEnabled = false;
         OpenTargetButton.IsEnabled = false;
+        RedirectButton.IsEnabled = _pendingRedirectCount > 0;
         ProgressBar.Value = 0;
         ProgressText.Text = "";
         RefreshPlanSummary();
@@ -169,11 +178,33 @@ public partial class ReverseOrganizeDialog : Window
         try
         {
             CompletedResult = await _organizer.ExecuteCopyAsync(_plan, progress, _runCancellation.Token);
+            var pendingRecords = CompletedResult.Items
+                .Where(item => item.Status == ReverseOrganizeItemStatus.Copied)
+                .Select(item => new ReverseOrganizePendingRedirectRecord
+                {
+                    BookId = item.BookId,
+                    Title = item.Title,
+                    Author = item.Author,
+                    SourcePath = item.SourcePath,
+                    TargetPath = item.TargetPath,
+                    ManifestPath = CompletedResult.ManifestPath,
+                    TargetRoot = CompletedResult.TargetRoot,
+                    CreatedAt = DateTimeOffset.Now.ToString("O"),
+                    UpdatedAt = DateTimeOffset.Now.ToString("O")
+                })
+                .ToList();
+
+            if (pendingRecords.Count > 0)
+            {
+                await Task.Run(() => _database.SavePendingReverseOrganizeRedirects(pendingRecords));
+            }
+
             ReplaceItems(CompletedResult.Items);
             ProgressBar.Value = 1;
             ProgressText.Text = $"安全导出完成：成功 {CompletedResult.CopiedCount}，跳过 {CompletedResult.SkippedCount}，失败 {CompletedResult.FailedCount}。";
             OpenManifestButton.IsEnabled = File.Exists(CompletedResult.ManifestPath);
             OpenTargetButton.IsEnabled = Directory.Exists(CompletedResult.TargetRoot);
+            RefreshPendingRedirectState();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
@@ -185,6 +216,103 @@ public partial class ReverseOrganizeDialog : Window
             _isRunning = false;
             CancelRunButton.IsEnabled = false;
             BuildPlanButton.IsEnabled = true;
+        }
+    }
+
+    private async void Redirect_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isRunning)
+        {
+            return;
+        }
+
+        var pendingRecords = await Task.Run(() => _database.LoadPendingReverseOrganizeRedirects());
+        if (pendingRecords.Count == 0)
+        {
+            RefreshPendingRedirectState();
+            ProgressText.Text = "当前没有待重定向的漫画。";
+            return;
+        }
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"将把 {pendingRecords.Count} 本已复制漫画的数据库目录切换到新路径。\n\n本操作不复制文件、不删除源目录，只修改数据库中的 folder_path。\n是否继续？",
+            "确认目录重定向",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        _isRunning = true;
+        RedirectButton.IsEnabled = false;
+        BuildPlanButton.IsEnabled = false;
+        StartButton.IsEnabled = false;
+        CancelRunButton.IsEnabled = false;
+        ProgressBar.Maximum = Math.Max(1, pendingRecords.Count);
+        ProgressBar.Value = 0;
+
+        try
+        {
+            var booksById = _allBooks.ToDictionary(book => book.Id, StringComparer.OrdinalIgnoreCase);
+            var updatedBooks = new List<MangaBook>();
+            var completedBookIds = new List<string>();
+            var failedCount = 0;
+            var skippedCount = 0;
+            var completed = 0;
+
+            foreach (var record in pendingRecords)
+            {
+                ProgressBar.Value = completed;
+                ProgressText.Text = $"目录重定向：{completed}/{pendingRecords.Count} · 成功 {updatedBooks.Count} · 跳过 {skippedCount} · 失败 {failedCount}{Environment.NewLine}{BuildDisplayTitle(record.Author, record.Title)}";
+
+                if (!booksById.TryGetValue(record.BookId, out var book))
+                {
+                    skippedCount++;
+                    completed++;
+                    continue;
+                }
+
+                if (!Directory.Exists(record.TargetPath))
+                {
+                    failedCount++;
+                    UpdateDisplayedItem(record.BookId, ReverseOrganizeItemStatus.Failed, "目标目录不存在，未执行重定向。");
+                    completed++;
+                    continue;
+                }
+
+                book.FolderPath = record.TargetPath;
+                book.IsMissing = false;
+                updatedBooks.Add(book);
+                completedBookIds.Add(record.BookId);
+                UpdateDisplayedItem(record.BookId, ReverseOrganizeItemStatus.Redirected, "已更新数据库路径。");
+                completed++;
+            }
+
+            await Task.Run(() =>
+            {
+                _database.UpdateFolderPathBatch(updatedBooks, "before-reverse-organize-redirect");
+                _database.RemovePendingReverseOrganizeRedirects(completedBookIds);
+            });
+
+            RedirectedCount += updatedBooks.Count;
+            ProgressBar.Value = Math.Max(1, pendingRecords.Count);
+            ProgressText.Text = $"目录重定向完成：成功 {updatedBooks.Count}，跳过 {skippedCount}，失败 {failedCount}。";
+            RefreshPendingRedirectState();
+            ItemsList.Items.Refresh();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException || ex is InvalidOperationException)
+        {
+            ProgressText.Text = $"目录重定向失败：{ex.Message}";
+            System.Windows.MessageBox.Show(ProgressText.Text, "反向规整目录", MessageBoxButton.OK, MessageBoxImage.Warning);
+            RefreshPendingRedirectState();
+        }
+        finally
+        {
+            _isRunning = false;
+            BuildPlanButton.IsEnabled = true;
+            StartButton.IsEnabled = _plan is not null && !_plan.HasErrors && _plan.ExecutableCount > 0;
         }
     }
 
@@ -306,6 +434,23 @@ public partial class ReverseOrganizeDialog : Window
         PlanSummaryText.Text = $"计划 {_plan.Items.Count} 本，可执行 {_plan.ExecutableCount} 本，总大小 {FormatSize(_plan.TotalBytes)}。错误 {errors}，警告 {warnings}。";
     }
 
+    private void RefreshPendingRedirectState()
+    {
+        var pendingCount = _database.LoadPendingReverseOrganizeRedirects().Count;
+        _pendingRedirectCount = pendingCount;
+        if (PendingRedirectText is not null)
+        {
+            PendingRedirectText.Text = pendingCount > 0
+                ? $"待重定向 {pendingCount} 本。复制完成后可单独执行数据库路径切换。"
+                : "当前没有待重定向记录。";
+        }
+
+        if (RedirectButton is not null)
+        {
+            RedirectButton.IsEnabled = !_isRunning && pendingCount > 0;
+        }
+    }
+
     private void ReplaceIssues(IEnumerable<ReverseOrganizeValidationIssue> issues)
     {
         _issues.Clear();
@@ -329,6 +474,23 @@ public partial class ReverseOrganizeDialog : Window
         const double gb = 1024d * 1024d * 1024d;
         const double mb = 1024d * 1024d;
         return bytes >= gb ? $"{bytes / gb:0.##}GB" : $"{Math.Max(1, bytes / mb):0.#}MB";
+    }
+
+    private void UpdateDisplayedItem(string bookId, ReverseOrganizeItemStatus status, string message)
+    {
+        var item = _items.FirstOrDefault(current => string.Equals(current.BookId, bookId, StringComparison.OrdinalIgnoreCase));
+        if (item is null)
+        {
+            return;
+        }
+
+        item.Status = status;
+        item.Message = message;
+    }
+
+    private static string BuildDisplayTitle(string author, string title)
+    {
+        return string.IsNullOrWhiteSpace(author) ? title : $"{author} / {title}";
     }
 
     private static IReadOnlyList<MangaBook> SanitizeBooks(IEnumerable<MangaBook>? books)

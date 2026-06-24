@@ -89,7 +89,7 @@
                             </ComboBox>
                         </StackPanel>
                         <StackPanel Grid.Column="4">
-                            <TextBlock Text="未指定作者目录名" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                            <TextBlock Text="作者为空时目录名" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
                             <TextBox x:Name="EmptyAuthorBox" Text="未指定作者" Style="{StaticResource AppDialogTextBox}" TextChanged="Input_Changed"/>
                         </StackPanel>
                     </Grid>
@@ -100,6 +100,11 @@
                     <TextBlock x:Name="PlanSummaryText"
                                Margin="0,10,0,0"
                                Foreground="{DynamicResource Brush.TextMuted}"
+                               TextWrapping="Wrap"
+                               FontSize="12"/>
+                    <TextBlock x:Name="PendingRedirectText"
+                               Margin="0,8,0,0"
+                               Foreground="{DynamicResource Brush.Accent}"
                                TextWrapping="Wrap"
                                FontSize="12"/>
                 </StackPanel>
@@ -179,6 +184,7 @@
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button x:Name="OpenManifestButton" Content="打开 manifest" Click="OpenManifest_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="OpenTargetButton" Content="打开目标目录" Click="OpenTarget_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0" IsEnabled="False"/>
+            <Button x:Name="RedirectButton" Content="执行目录重定向" Click="Redirect_Click" Style="{StaticResource AppDialogGhostButton}" Width="126" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="StartButton" Content="开始安全导出" Click="Start_Click" Style="{StaticResource AppDialogButton}" Width="130" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="CancelRunButton" Content="取消执行" Click="CancelRun_Click" Style="{StaticResource AppDialogGhostButton}" Width="100" Margin="0,0,8,0" IsEnabled="False"/>
             <Button Content="关闭" Click="Close_Click" Style="{StaticResource AppDialogGhostButton}" Width="88"/>
