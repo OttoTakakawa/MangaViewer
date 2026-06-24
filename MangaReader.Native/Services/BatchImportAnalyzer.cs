@@ -26,6 +26,17 @@ public sealed class BatchImportAnalyzer
             .ToList();
     }
 
+    public BatchImportCandidate? AnalyzeBookFolder(string bookFolder)
+    {
+        if (!Directory.Exists(bookFolder) || !HasDirectImages(bookFolder))
+        {
+            return null;
+        }
+
+        var candidate = CreateCandidate(bookFolder);
+        return candidate.PageCount > 0 ? candidate : null;
+    }
+
     private static IEnumerable<string> FindBookFolders(string authorFolder)
     {
         var imageFolders = Directory.EnumerateDirectories(authorFolder, "*", SearchOption.AllDirectories)

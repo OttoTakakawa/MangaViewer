@@ -1412,6 +1412,8 @@
                                 <ComboBoxItem Content="排序：出品时间"/>
                             </ComboBox>
                             <Button x:Name="SortDirectionButton" Content="升序" Click="ToggleSortDirection_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
+                            <Button Content="健康检查" Click="RunLibraryHealthCheck_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
+                            <Button Content="查重复" Click="RunDuplicateCheck_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
                             <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
                             <Button x:Name="ClearFiltersButton" Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6"/>
                         </WrapPanel>
@@ -1668,7 +1670,7 @@
                 <Border x:Name="LibraryLoadProgressPanel"
                         Grid.RowSpan="4"
                         Visibility="Collapsed"
-                        IsHitTestVisible="False"
+                        IsHitTestVisible="True"
                         Margin="8,0,22,12"
                         CornerRadius="{StaticResource RadiusPanel}"
                         Background="{DynamicResource Brush.SurfaceMuted}"
@@ -1707,6 +1709,12 @@
                                        Foreground="{DynamicResource Brush.TextMuted}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"/>
+                            <Button Content="取消扫描"
+                                    Width="112"
+                                    Margin="0,18,0,0"
+                                    HorizontalAlignment="Center"
+                                    Click="CancelLibraryScan_Click"
+                                    Style="{StaticResource AppDialogGhostButton}"/>
                         </StackPanel>
                     </Border>
                 </Border>
@@ -1714,7 +1722,7 @@
                 <Border x:Name="ImportProgressPanel"
                         Grid.RowSpan="4"
                         Visibility="Collapsed"
-                        IsHitTestVisible="False"
+                        IsHitTestVisible="True"
                         Margin="8,0,22,12"
                         CornerRadius="{StaticResource RadiusPanel}"
                         Background="{DynamicResource Brush.SurfaceMuted}"
@@ -1750,6 +1758,12 @@
                                        Foreground="{DynamicResource Brush.TextMuted}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"/>
+                            <Button Content="取消导入"
+                                    Width="112"
+                                    Margin="0,18,0,0"
+                                    HorizontalAlignment="Center"
+                                    Click="CancelImport_Click"
+                                    Style="{StaticResource AppDialogGhostButton}"/>
                         </StackPanel>
                     </Border>
                 </Border>

@@ -78,6 +78,9 @@ public partial class MainWindow : Window
     private readonly AppStorage _storage = new();
     private readonly LibraryScanner _scanner = new();
     private readonly BatchImportAnalyzer _batchImportAnalyzer = new();
+    private readonly ImportFolderClassifier _importFolderClassifier = new();
+    private readonly UserActivityLog _activityLog = new();
+    private readonly LibraryDataInspector _libraryDataInspector = new();
     private readonly LibraryDatabase _database;
     private readonly CoverCache _coverCache;
     private readonly CoverThumbnailPipeline _coverPipeline;
@@ -235,8 +238,7 @@ public partial class MainWindow : Window
             var result = dialog.ShowDialog();
             if (dialog.ViewLogRequested)
             {
-                _isLogPanelVisible = true;
-                UpdateLogPanelVisibility();
+                ShowActivityHistoryDialog();
                 return;
             }
             if (result == true && dialog.Confirmed)
@@ -261,6 +263,7 @@ public partial class MainWindow : Window
         try
         {
             await Task.Run(() => _database.Initialize());
+            _activityLog.Initialize(_storage);
 
             // 应用保存的主题
             var savedTheme = _database.LoadSetting("app.theme", "Warm");
@@ -328,6 +331,12 @@ public partial class MainWindow : Window
         {
             await ImportSelectedFoldersAsync(folderPaths);
         }
+        catch (OperationCanceledException)
+        {
+            HideImportProgress();
+            HideImportDropFeedback();
+            StatusText.Text = "导入已取消。";
+        }
         catch (Exception ex)
         {
             AppLogger.Error(scope, ex, "Folder import failed.");
@@ -362,11 +371,56 @@ public partial class MainWindow : Window
 
     private async Task ImportSelectedFolderAsync(string folderPath)
     {
+        ShowImportProgress("导入预检", 0, 1, $"正在判断：{Path.GetFileName(folderPath)}");
+        await System.Windows.Threading.Dispatcher.Yield();
+        var classification = await Task.Run(() => _importFolderClassifier.Classify(folderPath));
+        HideImportProgress();
+        switch (classification.Kind)
+        {
+            case ImportFolderKind.SingleBook:
+                await ImportSingleBookAsync(folderPath);
+                break;
+            case ImportFolderKind.AuthorFolder:
+                await ConfirmAndImportAuthorFolderAsync(folderPath);
+                break;
+            case ImportFolderKind.Mixed:
+                await HandleMixedImportFolderAsync(classification);
+                break;
+            default:
+                StatusText.Text = $"未识别到可导入的漫画目录：{folderPath}";
+                break;
+        }
+    }
+
+    private async Task HandleMixedImportFolderAsync(ImportFolderClassification classification)
+    {
+        var dialog = new ImportFolderPreflightDialog(classification) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            StatusText.Text = "已取消导入预检。";
+            return;
+        }
+
+        switch (dialog.SelectedAction)
+        {
+            case ImportPreflightAction.ImportSingleBook:
+                await ImportSingleBookAsync(classification.RootPath);
+                break;
+            case ImportPreflightAction.ImportAuthorFolder:
+                await ConfirmAndImportAuthorFolderAsync(classification.RootPath);
+                break;
+            default:
+                StatusText.Text = "已取消导入。";
+                break;
+        }
+    }
+
+    private async Task ConfirmAndImportAuthorFolderAsync(string folderPath)
+    {
         var candidates = await Task.Run(() => _batchImportAnalyzer.AnalyzeAuthorFolder(folderPath));
         if (candidates.Count == 0)
         {
-            _database.SaveLibraryRoot(folderPath);
-            await ScanRootsAsync([folderPath]);
+            StatusText.Text = $"未识别到作者文件夹下的漫画目录：{folderPath}";
             return;
         }
 
@@ -380,10 +434,106 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task ImportSingleBookAsync(string folderPath)
+    {
+        var candidate = await Task.Run(() => _batchImportAnalyzer.AnalyzeBookFolder(folderPath));
+        if (candidate is null)
+        {
+            StatusText.Text = $"未识别到可导入的单本漫画：{folderPath}";
+            return;
+        }
+
+        _importCancellation?.Cancel();
+        _importCancellation = new CancellationTokenSource();
+        await ImportSingleBookAsync(candidate, _importCancellation.Token);
+    }
+
+    private async Task ImportSingleBookAsync(BatchImportCandidate candidate, CancellationToken token)
+    {
+        StatusText.Text = $"正在导入单本漫画：{candidate.Title}...";
+        ShowImportProgress("单本漫画", 0, 1, $"准备导入：{candidate.Title}");
+        _database.SaveLibraryRoot(candidate.FolderPath);
+        await System.Windows.Threading.Dispatcher.Yield();
+
+        try
+        {
+            token.ThrowIfCancellationRequested();
+            var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
+            var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
+            var pages = candidate.Pages.Count > 0
+                ? candidate.Pages
+                : Directory.EnumerateFiles(candidate.FolderPath)
+                    .Where(ImageLoader.IsSupportedImage)
+                    .OrderBy(path => path, new NaturalPathComparer())
+                    .ToList();
+
+            if (pages.Count == 0)
+            {
+                HideImportProgress();
+                StatusText.Text = $"未识别到可导入的单本漫画：{candidate.FolderPath}";
+                return;
+            }
+
+            savedBooks.TryGetValue(candidate.FolderPath, out var saved);
+            var isAlreadyVisible = booksByPath.TryGetValue(candidate.FolderPath, out var visibleBook);
+            var book = visibleBook ?? saved ?? new MangaBook
+            {
+                Id = BookId.FromFolderPath(candidate.FolderPath),
+                ImportedAt = DateTimeOffset.Now.ToString("yyyy-MM-dd")
+            };
+
+            book.Id = BookId.FromFolderPath(candidate.FolderPath);
+            book.Title = string.IsNullOrWhiteSpace(book.Title) ? candidate.Title.Trim() : book.Title;
+            book.Author = book.Author.Trim();
+            book.FolderPath = candidate.FolderPath;
+            book.PageCount = pages.Count;
+            book.TotalBytes = ImageLoader.SumFileBytes(pages);
+            book.CoverPageIndex = Math.Clamp(book.CoverPageIndex, 0, pages.Count - 1);
+            book.LastReadPageIndex = Math.Clamp(book.LastReadPageIndex, 0, pages.Count - 1);
+            book.IsMissing = false;
+            if (saved is null && string.IsNullOrWhiteSpace(book.Tags))
+            {
+                book.Tags = candidate.Tags;
+                MarkTagIndexDirty();
+            }
+            book.Pages.Clear();
+            foreach (var page in pages)
+            {
+                book.Pages.Add(page);
+            }
+
+            ShowImportProgress("单本漫画", 1, 1, $"正在写入：{book.Title}");
+            await Task.Run(() => _database.UpsertBooksBatch([book]), token);
+            book.NotifyAll();
+            if (!isAlreadyVisible)
+            {
+                _allBooks.Add(book);
+            }
+            MarkTagIndexDirty();
+
+            HideImportProgress();
+            RefreshLibraryViews(sort: true, ensureLibraryView: true);
+            RefreshHomeShelves();
+            StatusText.Text = $"单本导入完成：{book.Title}，当前书库 {_allBooks.Count} 本漫画。";
+            _activityLog.Record(
+                "import-single",
+                $"导入单本漫画：{book.Title}",
+                affectedCount: 1,
+                succeededCount: 1,
+                detail: $"路径：{book.FolderPath}{Environment.NewLine}页数：{book.PageCount}{Environment.NewLine}Tag：{book.Tags}");
+        }
+        catch (OperationCanceledException)
+        {
+            HideImportProgress();
+            StatusText.Text = "已取消单本导入。";
+        }
+    }
+
     private async Task ImportAuthorBatchAsync(string rootPath, string authorName, IReadOnlyList<BatchImportCandidate> candidates, CancellationToken token)
     {
         StatusText.Text = $"正在批量导入：{authorName}...";
         ShowImportProgress(authorName, 0, candidates.Count, "准备导入...");
+        await System.Windows.Threading.Dispatcher.Yield();
         _database.SaveLibraryRoot(rootPath);
         var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
         var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
@@ -472,6 +622,14 @@ public partial class MainWindow : Window
         StatusText.Text = failures.Count == 0
             ? $"批量导入完成：{authorName} · 新增/更新 {importedCount} 本，当前书库 {_allBooks.Count} 本漫画。"
             : $"批量导入完成：{authorName} · 成功 {importedCount} 本，失败 {failures.Count} 本。";
+        _activityLog.Record(
+            "import-author",
+            $"按作者文件夹导入：{authorName}",
+            affectedCount: candidates.Count,
+            succeededCount: importedCount,
+            failedCount: failures.Count,
+            detail: string.Join(Environment.NewLine, booksToSave.Select(item => item.Book.Title).Take(80))
+                + (failures.Count > 0 ? $"{Environment.NewLine}{Environment.NewLine}失败：{Environment.NewLine}{string.Join(Environment.NewLine, failures.Take(20))}" : ""));
 
         if (failures.Count > 0)
         {
@@ -504,6 +662,18 @@ public partial class MainWindow : Window
         StatusText.Text = ImportProgressText.Text;
     }
 
+    private void CancelImport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_importCancellation is null || _importCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _importCancellation.Cancel();
+        ImportProgressText.Text = "正在取消导入...";
+        StatusText.Text = "正在取消导入...";
+    }
+
     private void HideImportProgress()
     {
         if (ImportProgressPanel is not null)
@@ -532,6 +702,18 @@ public partial class MainWindow : Window
         LibraryLoadProgressBar.Value = safeCompleted;
         LibraryLoadProgressText.Text = $"{safeCompleted} / {safeTotal} · 已发现 {booksFound} 本 · {TruncateProgressDetail(detail)}";
         StatusText.Text = LibraryLoadProgressText.Text;
+    }
+
+    private void CancelLibraryScan_Click(object sender, RoutedEventArgs e)
+    {
+        if (_scanCancellation is null || _scanCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _scanCancellation.Cancel();
+        LibraryLoadProgressText.Text = "正在取消扫描...";
+        StatusText.Text = "正在取消扫描...";
     }
 
     private static string TruncateProgressDetail(string detail, int maxLen = 25)
@@ -2583,6 +2765,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!ConfirmBatchPreview(
+                "批量去前缀预览",
+                BuildBatchPreview(
+                    $"将从标题开头移除前缀：{prefix}",
+                    selectedBooks.Count,
+                    updates.Count,
+                    selectedBooks.Count - updates.Count,
+                    updates.Select(item => $"{item.Book.Title} -> {item.Title}"))))
+        {
+            StatusText.Text = "已取消批量去前缀。";
+            return;
+        }
+
         var batchData = updates.Select(item => (item.Book.Id, item.Title)).ToList();
         await Task.Run(() => _database.SaveBookTitlesBatch(batchData, "before-batch-title-prefix"));
         foreach (var (book, title) in updates)
@@ -2595,6 +2790,13 @@ public partial class MainWindow : Window
         RefreshHomeShelves();
         FillCurrentBookIfAffected(selectedBooks);
         StatusText.Text = $"已批量移除前缀：{updates.Count} 本。";
+        _activityLog.Record(
+            "batch-title-prefix",
+            $"批量移除标题前缀：{prefix}",
+            affectedCount: selectedBooks.Count,
+            succeededCount: updates.Count,
+            skippedCount: selectedBooks.Count - updates.Count,
+            detail: string.Join(Environment.NewLine, updates.Take(80).Select(item => $"{item.Book.Title}")));
     }
 
     private async void BatchApplyStyle_Click(object sender, RoutedEventArgs e)
@@ -2607,6 +2809,19 @@ public partial class MainWindow : Window
         }
 
         var targetStyle = Math.Clamp(BatchStyleBox?.SelectedIndex ?? 0, 0, 2);
+        if (!ConfirmBatchPreview(
+                "批量卡片样式预览",
+                BuildBatchPreview(
+                    $"将应用卡片样式：{MangaBook.StyleNames[targetStyle]}",
+                    selectedBooks.Count,
+                    selectedBooks.Count,
+                    0,
+                    selectedBooks.Select(book => book.Title))))
+        {
+            StatusText.Text = "已取消批量应用卡片样式。";
+            return;
+        }
+
         foreach (var book in selectedBooks)
         {
             book.BookStyle = targetStyle;
@@ -2622,6 +2837,12 @@ public partial class MainWindow : Window
         ScheduleBookViewRefresh(refreshShelfOverview: false);
         FillCurrentBookIfAffected(selectedBooks);
         StatusText.Text = $"已批量应用卡片样式 {MangaBook.StyleNames[targetStyle]}：{selectedBooks.Count} 本。";
+        _activityLog.Record(
+            "batch-style",
+            $"批量应用卡片样式：{MangaBook.StyleNames[targetStyle]}",
+            affectedCount: selectedBooks.Count,
+            succeededCount: selectedBooks.Count,
+            detail: string.Join(Environment.NewLine, selectedBooks.Take(80).Select(book => book.Title)));
     }
 
     private async void BatchAddTag_Click(object sender, RoutedEventArgs e)
@@ -2638,13 +2859,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        await UpsertManagedTagAsync(tag, category, isExclusive, color);
         var previousTagsByBook = selectedBooks.ToDictionary(book => book.Id, book => book.Tags);
         var updates = new List<(string BookId, string Tags)>();
         foreach (var book in selectedBooks)
         {
             var before = book.Tags;
-            AddTagToBookRespectingRules(book, tag);
+            AddTagToBookRespectingRules(book, tag, category, isExclusive);
             if (!string.Equals(before, book.Tags, StringComparison.Ordinal))
             {
                 updates.Add((book.Id, book.Tags));
@@ -2657,8 +2877,32 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!ConfirmBatchPreview(
+                "批量添加 Tag 预览",
+                BuildBatchPreview(
+                    $"将添加 Tag：{tag}",
+                    selectedBooks.Count,
+                    updates.Count,
+                    selectedBooks.Count - updates.Count,
+                    selectedBooks
+                        .Where(book => updates.Any(update => update.BookId == book.Id))
+                        .Select(book => book.Title))))
+        {
+            foreach (var book in selectedBooks)
+            {
+                if (previousTagsByBook.TryGetValue(book.Id, out var previousTags))
+                {
+                    book.Tags = previousTags;
+                    book.NotifyAll();
+                }
+            }
+            StatusText.Text = "已取消批量添加 Tag。";
+            return;
+        }
+
         try
         {
+            await UpsertManagedTagAsync(tag, category, isExclusive, color);
             await Task.Run(() => _database.SaveBookTagsBatch(updates, "before-batch-add-tag"));
         }
         catch (Exception ex)
@@ -2686,6 +2930,16 @@ public partial class MainWindow : Window
         RefreshLibraryViews(authors: false, sort: false);
         FillCurrentBookIfAffected(selectedBooks);
         StatusText.Text = $"已批量添加 Tag：{tag}，影响 {updates.Count} 本。";
+        _activityLog.Record(
+            "batch-add-tag",
+            $"批量添加 Tag：{tag}",
+            affectedCount: selectedBooks.Count,
+            succeededCount: updates.Count,
+            skippedCount: selectedBooks.Count - updates.Count,
+            detail: string.Join(Environment.NewLine, selectedBooks
+                .Where(book => updates.Any(update => update.BookId == book.Id))
+                .Take(80)
+                .Select(book => book.Title)));
     }
 
     private async void BatchRemoveTag_Click(object sender, RoutedEventArgs e)
@@ -2726,6 +2980,7 @@ public partial class MainWindow : Window
         }
 
         var tag = dialog.NewName.Trim();
+        var previousTagsByBook = selectedBooks.ToDictionary(book => book.Id, book => book.Tags);
         var updates = new List<(string BookId, string Tags)>();
         foreach (var book in selectedBooks)
         {
@@ -2747,6 +3002,29 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!ConfirmBatchPreview(
+                "批量移除 Tag 预览",
+                BuildBatchPreview(
+                    $"将移除 Tag：{tag}",
+                    selectedBooks.Count,
+                    updates.Count,
+                    selectedBooks.Count - updates.Count,
+                    selectedBooks
+                        .Where(book => updates.Any(update => update.BookId == book.Id))
+                        .Select(book => book.Title))))
+        {
+            foreach (var book in selectedBooks)
+            {
+                if (previousTagsByBook.TryGetValue(book.Id, out var previousTags))
+                {
+                    book.Tags = previousTags;
+                    book.NotifyAll();
+                }
+            }
+            StatusText.Text = "已取消批量移除 Tag。";
+            return;
+        }
+
         await Task.Run(() => _database.SaveBookTagsBatch(updates, "before-batch-remove-tag"));
         foreach (var book in selectedBooks)
         {
@@ -2756,6 +3034,16 @@ public partial class MainWindow : Window
         RefreshLibraryViews(authors: false, sort: false);
         FillCurrentBookIfAffected(selectedBooks);
         StatusText.Text = $"已批量移除 Tag：{tag}，影响 {updates.Count} 本。";
+        _activityLog.Record(
+            "batch-remove-tag",
+            $"批量移除 Tag：{tag}",
+            affectedCount: selectedBooks.Count,
+            succeededCount: updates.Count,
+            skippedCount: selectedBooks.Count - updates.Count,
+            detail: string.Join(Environment.NewLine, selectedBooks
+                .Where(book => updates.Any(update => update.BookId == book.Id))
+                .Take(80)
+                .Select(book => book.Title)));
     }
 
     private async void BatchDeleteRecords_Click(object sender, RoutedEventArgs e)
@@ -2813,6 +3101,12 @@ public partial class MainWindow : Window
             UpdateBatchSelectionState();
             StatusText.Text = $"已批量删除 {selectedBooks.Count} 本库记录，源文件未删除。";
             AppLogger.Info("batch-delete-records", $"Batch deleted {selectedBooks.Count} library records.");
+            _activityLog.Record(
+                "batch-delete-records",
+                "批量删除库记录",
+                affectedCount: selectedBooks.Count,
+                succeededCount: selectedBooks.Count,
+                detail: string.Join(Environment.NewLine, selectedBooks.Take(80).Select(book => $"{book.Title} | {book.FolderPath}")));
         }
         catch (Exception ex)
         {
@@ -2893,6 +3187,13 @@ public partial class MainWindow : Window
             UpdateBatchSelectionState();
             StatusText.Text = $"已批量删除 {safeBooks.Count} 本的源文件夹及库记录。";
             AppLogger.Info("batch-delete-source", $"Batch deleted {safeBooks.Count} source files and records.");
+            _activityLog.Record(
+                "batch-delete-source",
+                "批量删除源文件",
+                affectedCount: selectedBooks.Count,
+                succeededCount: safeBooks.Count,
+                skippedCount: skipped,
+                detail: string.Join(Environment.NewLine, safeBooks.Take(80).Select(book => $"{book.Title} | {book.FolderPath}")));
         }
         catch (Exception ex)
         {
@@ -3289,8 +3590,8 @@ public partial class MainWindow : Window
             ? "松开以导入这个文件夹"
             : $"松开以导入 {folderCount} 个文件夹";
         ImportDropHint.Text = folderCount == 1
-            ? "会先识别该作者文件夹下的漫画目录，并弹出确认列表。"
-            : "会逐个弹出作者导入确认，不会覆盖已经导入的漫画。";
+            ? "会先判断单本、作者文件夹或混合结构，再进入对应导入流程。"
+            : "会逐个判断导入结构，不会覆盖已经导入的漫画。";
         StatusText.Text = folderCount == 1
             ? "检测到文件夹：松开鼠标开始导入。"
             : $"检测到 {folderCount} 个文件夹：松开鼠标依次导入。";
@@ -4640,6 +4941,28 @@ public partial class MainWindow : Window
         StatusText.Text = "已清空书架筛选。";
     }
 
+    private async void RunLibraryHealthCheck_Click(object sender, RoutedEventArgs e)
+    {
+        StatusText.Text = "正在执行书库健康检查...";
+        await System.Windows.Threading.Dispatcher.Yield();
+        var snapshot = _allBooks.ToList();
+        var report = await Task.Run(() => _libraryDataInspector.BuildHealthReport(snapshot));
+        new LibraryReportDialog("书库健康检查", report) { Owner = this }.ShowDialog();
+        _activityLog.Record("library-health", "执行书库健康检查", affectedCount: snapshot.Count, succeededCount: snapshot.Count);
+        StatusText.Text = "书库健康检查完成。";
+    }
+
+    private async void RunDuplicateCheck_Click(object sender, RoutedEventArgs e)
+    {
+        StatusText.Text = "正在检测疑似重复作品...";
+        await System.Windows.Threading.Dispatcher.Yield();
+        var snapshot = _allBooks.ToList();
+        var report = await Task.Run(() => _libraryDataInspector.BuildDuplicateReport(snapshot));
+        new LibraryReportDialog("疑似重复作品检测", report) { Owner = this }.ShowDialog();
+        _activityLog.Record("duplicate-check", "执行疑似重复作品检测", affectedCount: snapshot.Count, succeededCount: snapshot.Count);
+        StatusText.Text = "疑似重复作品检测完成。";
+    }
+
     private void SortBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         _sortDescending = (SortBox?.SelectedIndex ?? 0) != 0;
@@ -4911,6 +5234,41 @@ public partial class MainWindow : Window
         return _allBooks
             .Where(book => book.IsSelectedForBatch)
             .ToList();
+    }
+
+    private bool ConfirmBatchPreview(string title, string preview)
+    {
+        var dialog = new BatchPreviewDialog(title, preview) { Owner = this };
+        return dialog.ShowDialog() == true && dialog.Confirmed;
+    }
+
+    private static string BuildBatchPreview(string action, int selectedCount, int changeCount, int skippedCount, IEnumerable<string> examples)
+    {
+        var lines = new List<string>
+        {
+            action,
+            "",
+            $"选中：{selectedCount} 本",
+            $"将修改：{changeCount} 本",
+            $"将跳过：{skippedCount} 本",
+            "",
+            "预览："
+        };
+
+        var exampleList = examples
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Take(80)
+            .ToList();
+        if (exampleList.Count == 0)
+        {
+            lines.Add("无可显示条目。");
+        }
+        else
+        {
+            lines.AddRange(exampleList.Select(item => $"- {item}"));
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private void UpdateBatchSelectionState()
@@ -5400,14 +5758,19 @@ public partial class MainWindow : Window
         var result = dialog.ShowDialog();
         if (dialog.ViewLogRequested)
         {
-            _isLogPanelVisible = true;
-            UpdateLogPanelVisibility();
+            ShowActivityHistoryDialog();
         }
         return result == true && dialog.Confirmed;
     }
 
+    private void ShowActivityHistoryDialog()
+    {
+        new LibraryReportDialog("用户操作历史", _activityLog.BuildHistoryReport()) { Owner = this }.ShowDialog();
+    }
+
     private string BuildSessionSummary()
     {
+        var activitySummary = _activityLog.BuildExitSummary();
         var lines = new List<string>();
         if (_sessionBooksRead > 0)
         {
@@ -5421,11 +5784,12 @@ public partial class MainWindow : Window
         {
             lines.Add($"新增 Tag：{string.Join("、", _sessionNewTags)}");
         }
-        if (lines.Count == 0)
+        if (lines.Count > 0)
         {
-            lines.Add("本次未做任何操作");
+            return string.Join("\n", lines) + "\n\n" + activitySummary;
         }
-        return string.Join("\n", lines);
+
+        return activitySummary;
     }
 
     private void NavLibrary_Click(object sender, RoutedEventArgs e)
@@ -6183,15 +6547,19 @@ public partial class MainWindow : Window
 
     private void AddTagToBookRespectingRules(MangaBook book, string tag)
     {
+        AddTagToBookRespectingRules(book, tag, TagCategory(tag), IsExclusiveTag(tag));
+    }
+
+    private void AddTagToBookRespectingRules(MangaBook book, string tag, string category, bool isExclusive)
+    {
         var names = TagService.ParseTags(book.Tags).ToList();
         if (names.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
         {
             return;
         }
 
-        if (IsExclusiveTag(tag))
+        if (isExclusive)
         {
-            var category = TagCategory(tag);
             names = names
                 .Where(name => !IsExclusiveTag(name) || !string.Equals(TagCategory(name), category, StringComparison.OrdinalIgnoreCase))
                 .ToList();

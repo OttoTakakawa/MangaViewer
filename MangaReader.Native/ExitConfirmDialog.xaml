@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="退出资料库"
-        Width="420"
-        Height="220"
+        Width="560"
+        Height="420"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{DynamicResource Brush.Surface}">
@@ -14,9 +14,23 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0" Text="是否要退出资料库？" FontSize="18" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,12"/>
-        <TextBlock Grid.Row="1" x:Name="SessionSummaryText" FontSize="13" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap" VerticalAlignment="Top"/>
+        <Border Grid.Row="1"
+                CornerRadius="{StaticResource RadiusControl}"
+                Background="{DynamicResource Brush.SurfaceMuted}"
+                BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                BorderThickness="1"
+                Padding="14">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <TextBlock x:Name="SessionSummaryText"
+                           FontSize="13"
+                           Foreground="{DynamicResource Brush.TextMuted}"
+                           TextWrapping="Wrap"
+                           LineHeight="20"
+                           VerticalAlignment="Top"/>
+            </ScrollViewer>
+        </Border>
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="查看日志" Click="ViewLog_Click" Style="{DynamicResource AppGhostButton}" Height="36" Padding="16,0" Margin="0,0,8,0"/>
+            <Button Content="操作历史" Click="ViewLog_Click" Style="{DynamicResource AppGhostButton}" Height="36" Padding="16,0" Margin="0,0,8,0"/>
             <Button Content="否" Click="No_Click" Style="{DynamicResource AppGhostButton}" Height="36" Padding="20,0" Margin="0,0,8,0"/>
             <Button Content="是" Click="Yes_Click" Style="{DynamicResource AppButton}" Height="36" Padding="20,0"/>
         </StackPanel>

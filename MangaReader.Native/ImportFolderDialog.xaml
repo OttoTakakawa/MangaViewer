@@ -1,4 +1,4 @@
-﻿<Window x:Class="MangaReader.Native.ImportFolderDialog"
+<Window x:Class="MangaReader.Native.ImportFolderDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="添加漫画"
@@ -35,7 +35,7 @@
                     <Button DockPanel.Dock="Right" Content="×" Click="Cancel_Click" Style="{StaticResource AppDialogCloseButton}"/>
                     <StackPanel Margin="0,0,16,0">
                         <TextBlock Text="添加漫画" Style="{StaticResource AppDialogTitleText}"/>
-                        <TextBlock Text="拖入作者文件夹或漫画文件夹；也可以粘贴本地路径。" Style="{StaticResource AppDialogSubtitleText}"/>
+                        <TextBlock Text="拖入作者文件夹或单本漫画文件夹；也可以粘贴本地路径。" Style="{StaticResource AppDialogSubtitleText}"/>
                     </StackPanel>
                 </DockPanel>
 
@@ -47,7 +47,7 @@
                         </Grid.RowDefinitions>
                         <TextBlock Text="把文件夹拖到这里" FontSize="22" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}" HorizontalAlignment="Center"/>
                         <TextBlock Grid.Row="1"
-                                   Text="支持多文件夹；会继续进入作者批量导入确认窗口。"
+                                   Text="支持多文件夹；会先判断单本、作者文件夹或混合结构。"
                                    Margin="0,8,0,0"
                                    Foreground="{DynamicResource Brush.TextMuted}"
                                    HorizontalAlignment="Center"/>
