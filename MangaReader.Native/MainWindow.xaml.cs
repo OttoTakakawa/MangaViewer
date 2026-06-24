@@ -418,14 +418,17 @@ public partial class MainWindow : Window
 
     private async Task ConfirmAndImportAuthorFolderAsync(string folderPath)
     {
+        var authorName = Path.GetFileName(folderPath);
+        ShowImportProgress(authorName, 0, 1, "正在分析作者文件夹...");
+        await System.Windows.Threading.Dispatcher.Yield();
         var candidates = await Task.Run(() => _batchImportAnalyzer.AnalyzeAuthorFolder(folderPath));
+        HideImportProgress();
         if (candidates.Count == 0)
         {
             StatusText.Text = $"未识别到作者文件夹下的漫画目录：{folderPath}";
             return;
         }
 
-        var authorName = Path.GetFileName(folderPath);
         var dialog = new AuthorBatchImportDialog(folderPath, authorName, candidates) { Owner = this };
         if (dialog.ShowDialog() == true)
         {
@@ -655,6 +658,11 @@ public partial class MainWindow : Window
         {
             MotionService.ShowWithFade(ImportProgressPanel);
         }
+        else
+        {
+            ImportProgressPanel.BeginAnimation(UIElement.OpacityProperty, null);
+            ImportProgressPanel.Opacity = 1;
+        }
         ImportProgressTitle.Text = $"正在导入：{authorName}";
         ImportProgressBar.Minimum = 0;
         ImportProgressBar.Maximum = safeTotal;
@@ -695,6 +703,11 @@ public partial class MainWindow : Window
         if (LibraryLoadProgressPanel.Visibility != Visibility.Visible)
         {
             MotionService.ShowWithFade(LibraryLoadProgressPanel);
+        }
+        else
+        {
+            LibraryLoadProgressPanel.BeginAnimation(UIElement.OpacityProperty, null);
+            LibraryLoadProgressPanel.Opacity = 1;
         }
 
         LibraryLoadProgressTitle.Text = title;
