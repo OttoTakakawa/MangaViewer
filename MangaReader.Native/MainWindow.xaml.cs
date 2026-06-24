@@ -463,6 +463,15 @@ public partial class MainWindow : Window
         {
             token.ThrowIfCancellationRequested();
             var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
+            if (!ConfirmImportTitleConflicts(
+                    new[] { (candidate.Title, candidate.FolderPath) },
+                    BuildExistingBooksForImport(savedBooks.Values)))
+            {
+                HideImportProgress();
+                StatusText.Text = "已取消导入：发现同名作品。";
+                return;
+            }
+
             var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
             var pages = candidate.Pages.Count > 0
                 ? candidate.Pages
@@ -540,6 +549,15 @@ public partial class MainWindow : Window
         await System.Windows.Threading.Dispatcher.Yield();
         _database.SaveLibraryRoot(rootPath);
         var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
+        if (!ConfirmImportTitleConflicts(
+                candidates.Select(candidate => (candidate.Title, candidate.FolderPath)),
+                BuildExistingBooksForImport(savedBooks.Values)))
+        {
+            HideImportProgress();
+            StatusText.Text = "已取消批量导入：发现同名作品。";
+            return;
+        }
+
         var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
         var importedCount = 0;
         var failures = new List<string>();
@@ -644,6 +662,98 @@ public partial class MainWindow : Window
             }
             System.Windows.MessageBox.Show(this, detail, "部分漫画导入失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private IReadOnlyList<MangaBook> BuildExistingBooksForImport(IEnumerable<MangaBook> savedBooks)
+    {
+        var byPath = new Dictionary<string, MangaBook>(StringComparer.OrdinalIgnoreCase);
+        foreach (var book in _allBooks.Concat(savedBooks))
+        {
+            if (string.IsNullOrWhiteSpace(book.FolderPath))
+            {
+                continue;
+            }
+
+            byPath[book.FolderPath] = book;
+        }
+
+        return byPath.Values.ToList();
+    }
+
+    private bool ConfirmImportTitleConflicts(
+        IEnumerable<(string Title, string FolderPath)> incoming,
+        IReadOnlyList<MangaBook> existingBooks)
+    {
+        var incomingItems = incoming
+            .Where(item => !string.IsNullOrWhiteSpace(item.Title) && !string.IsNullOrWhiteSpace(item.FolderPath))
+            .Select(item => new
+            {
+                Title = item.Title.Trim(),
+                item.FolderPath,
+                Key = NormalizeImportTitleKey(item.Title)
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Key))
+            .ToList();
+
+        if (incomingItems.Count == 0)
+        {
+            return true;
+        }
+
+        var conflictLines = new List<string>();
+        foreach (var item in incomingItems)
+        {
+            foreach (var existing in existingBooks)
+            {
+                if (string.Equals(item.FolderPath, existing.FolderPath, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(item.Key, NormalizeImportTitleKey(existing.Title), StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                conflictLines.Add($"- {item.Title}{Environment.NewLine}  新路径：{item.FolderPath}{Environment.NewLine}  已存在：{existing.FolderPath}");
+            }
+        }
+
+        foreach (var group in incomingItems
+                     .GroupBy(item => item.Key, StringComparer.Ordinal)
+                     .Where(group => group.Select(item => item.FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1))
+        {
+            var paths = group
+                .Select(item => $"{item.Title} | {item.FolderPath}")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(4);
+            conflictLines.Add($"- 本次导入内同名：{group.First().Title}{Environment.NewLine}  {string.Join(Environment.NewLine + "  ", paths)}");
+        }
+
+        conflictLines = conflictLines
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (conflictLines.Count == 0)
+        {
+            return true;
+        }
+
+        var preview = string.Join(Environment.NewLine, conflictLines.Take(8));
+        if (conflictLines.Count > 8)
+        {
+            preview += $"{Environment.NewLine}……另有 {conflictLines.Count - 8} 项同名冲突。";
+        }
+
+        var result = System.Windows.MessageBox.Show(
+            this,
+            $"发现同名漫画。默认建议先取消，检查标题或使用批量重命名后再导入。{Environment.NewLine}{Environment.NewLine}{preview}{Environment.NewLine}{Environment.NewLine}仍要继续导入吗？",
+            "导入同名作品确认",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+        return result == MessageBoxResult.Yes;
+    }
+
+    private static string NormalizeImportTitleKey(string title)
+    {
+        return title.Trim().ToLowerInvariant();
     }
 
     private void ShowImportProgress(string authorName, int completed, int total, string detail)
