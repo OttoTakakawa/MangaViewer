@@ -32,41 +32,56 @@
                 Background="{DynamicResource Brush.SurfaceMuted}"
                 BorderBrush="{DynamicResource Brush.BorderSubtle}"
                 BorderThickness="1"
-                Padding="14"
+                Padding="16"
                 Margin="0,18,0,14">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="330"/>
+                    <ColumnDefinition Width="16"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="208"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Width="310" Margin="0,0,16,0">
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="36"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <TextBlock Text="导出范围" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                    <ComboBox x:Name="ScopeBox" Style="{StaticResource AppDialogComboBox}" Height="36" SelectionChanged="Input_Changed">
+                    <ComboBox x:Name="ScopeBox" Grid.Row="1" Style="{StaticResource AppDialogComboBox}" Height="36" SelectionChanged="Input_Changed">
                         <ComboBoxItem Content="全部漫画"/>
                         <ComboBoxItem Content="当前筛选结果"/>
                         <ComboBoxItem Content="当前选中漫画"/>
                         <ComboBoxItem Content="指定作者"/>
                     </ComboBox>
-                    <ComboBox x:Name="AuthorBox" Style="{StaticResource AppDialogComboBox}" Height="36" Margin="0,8,0,0" Visibility="Collapsed" SelectionChanged="Input_Changed"/>
-                    <WrapPanel Margin="0,12,0,0">
+                    <ComboBox x:Name="AuthorBox" Grid.Row="2" Style="{StaticResource AppDialogComboBox}" Height="36" Margin="0,8,0,0" Visibility="Collapsed" SelectionChanged="Input_Changed"/>
+                    <WrapPanel Grid.Row="3" Margin="0,12,0,0">
                         <CheckBox x:Name="ExcludeHiddenBox" Content="排除隐藏" FontSize="12" Margin="0,0,12,6" Checked="Input_Changed" Unchecked="Input_Changed"/>
                         <CheckBox x:Name="ExcludeMissingBox" Content="排除缺失源目录" FontSize="12" IsChecked="True" Margin="0,0,12,6" Checked="Input_Changed" Unchecked="Input_Changed"/>
                         <CheckBox x:Name="ExcludeEmptyAuthorBox" Content="排除未指定作者" FontSize="12" Margin="0,0,12,6" Checked="Input_Changed" Unchecked="Input_Changed"/>
                     </WrapPanel>
-                </StackPanel>
+                </Grid>
 
-                <StackPanel Grid.Column="1" Margin="0,0,16,0">
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="36"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="36"/>
+                    </Grid.RowDefinitions>
                     <TextBlock Text="目标根目录" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                    <Grid>
+                    <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="TargetRootBox" Style="{StaticResource AppDialogTextBox}" TextChanged="Input_Changed"/>
-                        <Button Grid.Column="1" Content="选择" Width="82" Margin="8,0,0,0" Style="{StaticResource AppDialogGhostButton}" Click="BrowseTarget_Click"/>
+                        <TextBox x:Name="TargetRootBox" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
+                        <Button Grid.Column="1" Content="选择" Width="104" Height="36" Margin="8,0,0,0" Style="{StaticResource AppDialogGhostButton}" Click="BrowseTarget_Click"/>
                     </Grid>
-                    <Grid Margin="0,10,0,0">
+                    <Grid Grid.Row="3">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="12"/>
@@ -74,40 +89,59 @@
                             <ColumnDefinition Width="12"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="目录模板" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                        <TextBlock Text="目录模板" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Column="2" Text="冲突策略" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Column="4" Text="作者为空时目录名" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                    </Grid>
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid>
                             <ComboBox x:Name="TemplateBox" Style="{StaticResource AppDialogComboBox}" Height="36" SelectionChanged="Input_Changed">
                                 <ComboBoxItem Content="{}{作者}/{标题}"/>
                                 <ComboBoxItem Content="{}{作者}/{年份} - {标题}"/>
                             </ComboBox>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="冲突策略" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                        </Grid>
+                        <Grid Grid.Column="2">
                             <ComboBox x:Name="ConflictBox" Style="{StaticResource AppDialogComboBox}" Height="36" SelectionChanged="Input_Changed">
                                 <ComboBoxItem Content="自动追加序号"/>
                                 <ComboBoxItem Content="跳过冲突项"/>
                             </ComboBox>
-                        </StackPanel>
-                        <StackPanel Grid.Column="4">
-                            <TextBlock Text="作者为空时目录名" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                            <TextBox x:Name="EmptyAuthorBox" Text="未指定作者" Style="{StaticResource AppDialogTextBox}" TextChanged="Input_Changed"/>
+                        </Grid>
+                        <Grid Grid.Column="4">
+                            <TextBox x:Name="EmptyAuthorBox" Text="未指定作者" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                <Border Grid.Column="4"
+                        Padding="0"
+                        Background="Transparent"
+                        VerticalAlignment="Stretch">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="36"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Button x:Name="BuildPlanButton" Content="生成预检" Height="36" Style="{StaticResource AppDialogButton}" Click="BuildPlan_Click"/>
+                        <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                            <TextBlock x:Name="PlanSummaryText"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"/>
+                            <TextBlock x:Name="PendingRedirectText"
+                                       Margin="0,8,0,0"
+                                       Foreground="{DynamicResource Brush.Accent}"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"/>
                         </StackPanel>
                     </Grid>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2" Width="190">
-                    <Button x:Name="BuildPlanButton" Content="生成预检" Height="36" Style="{StaticResource AppDialogButton}" Click="BuildPlan_Click"/>
-                    <TextBlock x:Name="PlanSummaryText"
-                               Margin="0,10,0,0"
-                               Foreground="{DynamicResource Brush.TextMuted}"
-                               TextWrapping="Wrap"
-                               FontSize="12"/>
-                    <TextBlock x:Name="PendingRedirectText"
-                               Margin="0,8,0,0"
-                               Foreground="{DynamicResource Brush.Accent}"
-                               TextWrapping="Wrap"
-                               FontSize="12"/>
-                </StackPanel>
+                </Border>
             </Grid>
         </Border>
 
@@ -129,7 +163,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <Grid Margin="0,0,0,8">
+                    <Grid Height="32" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -141,7 +175,7 @@
                         <ComboBox x:Name="IssueFilterBox"
                                   Grid.Column="1"
                                   Width="112"
-                                  Height="28"
+                                  Height="32"
                                   SelectionChanged="IssueFilterBox_SelectionChanged">
                             <ComboBoxItem Content="全部"/>
                             <ComboBoxItem Content="只看错误"/>
@@ -152,9 +186,9 @@
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="级别" Width="58" DisplayMemberBinding="{Binding SeverityText}"/>
-                                <GridViewColumn Header="类型" Width="110" DisplayMemberBinding="{Binding Type}"/>
-                                <GridViewColumn Header="说明" Width="330" DisplayMemberBinding="{Binding Message}"/>
-                                <GridViewColumn Header="作品" Width="210" DisplayMemberBinding="{Binding BookTitle}"/>
+                                <GridViewColumn Header="类型" Width="82" DisplayMemberBinding="{Binding Type}"/>
+                                <GridViewColumn Header="说明" Width="220" DisplayMemberBinding="{Binding Message}"/>
+                                <GridViewColumn Header="作品" Width="118" DisplayMemberBinding="{Binding BookTitle}"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -173,10 +207,12 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="计划与执行结果"
-                               Foreground="{DynamicResource Brush.TextPrimary}"
-                               FontWeight="Bold"
-                               Margin="0,0,0,8"/>
+                    <Grid Height="32" Margin="0,0,0,8">
+                        <TextBlock Text="计划与执行结果"
+                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
                     <StackPanel Grid.Row="1" Margin="0,0,0,10">
                         <ProgressBar x:Name="ProgressBar" Height="8" Minimum="0" Maximum="1" Value="0"/>
                         <TextBlock x:Name="ProgressText" Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" TextWrapping="Wrap"/>
@@ -184,11 +220,11 @@
                     <ListView x:Name="ItemsList" Grid.Row="2" Background="Transparent" BorderThickness="0" MouseDoubleClick="ItemsList_MouseDoubleClick">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="状态" Width="70" DisplayMemberBinding="{Binding StatusText}"/>
-                                <GridViewColumn Header="作品" Width="230" DisplayMemberBinding="{Binding DisplayTitle}"/>
-                                <GridViewColumn Header="文件" Width="70" DisplayMemberBinding="{Binding SourceFileCount}"/>
-                                <GridViewColumn Header="大小" Width="80" DisplayMemberBinding="{Binding SizeText}"/>
-                                <GridViewColumn Header="说明" Width="220" DisplayMemberBinding="{Binding Message}"/>
+                                <GridViewColumn Header="状态" Width="66" DisplayMemberBinding="{Binding StatusText}"/>
+                                <GridViewColumn Header="作品" Width="220" DisplayMemberBinding="{Binding DisplayTitle}"/>
+                                <GridViewColumn Header="文件" Width="58" DisplayMemberBinding="{Binding SourceFileCount}"/>
+                                <GridViewColumn Header="大小" Width="76" DisplayMemberBinding="{Binding SizeText}"/>
+                                <GridViewColumn Header="说明" Width="140" DisplayMemberBinding="{Binding Message}"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
