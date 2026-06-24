@@ -211,7 +211,8 @@
                                 <WrapPanel>
                                     <Button Content="操作历史" Click="ViewActivityHistory_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0" Margin="0,0,8,0"/>
                                     <Button Content="健康检查" Click="RunLibraryHealthCheck_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0" Margin="0,0,8,0"/>
-                                    <Button Content="查重复" Click="RunDuplicateCheck_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0"/>
+                                    <Button Content="查重复" Click="RunDuplicateCheck_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0" Margin="0,0,8,0"/>
+                                    <Button Content="反向规整目录" Click="OpenReverseOrganize_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0"/>
                                 </WrapPanel>
                             </StackPanel>
 

@@ -411,6 +411,14 @@ public partial class SettingsDialog : Window
         Close();
     }
 
+    private void OpenReverseOrganize_Click(object sender, RoutedEventArgs e)
+    {
+        RequestedAction = SettingsAction.OpenReverseOrganize;
+        _forceClose = true;
+        DialogResult = true;
+        Close();
+    }
+
     // --- 危险分区 ---
 
     private void ResetSettings_Click(object sender, RoutedEventArgs e)
@@ -575,5 +583,6 @@ public enum SettingsAction
     OpenDataSafety,
     ViewActivityHistory,
     RunLibraryHealthCheck,
-    RunDuplicateCheck
+    RunDuplicateCheck,
+    OpenReverseOrganize
 }

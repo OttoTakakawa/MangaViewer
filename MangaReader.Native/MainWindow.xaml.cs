@@ -2593,6 +2593,9 @@ public partial class MainWindow : Window
             case SettingsAction.RunDuplicateCheck:
                 RunDuplicateCheck_Click(sender, e);
                 break;
+            case SettingsAction.OpenReverseOrganize:
+                ShowReverseOrganizeDialog();
+                break;
         }
 
         if (dialog.NeedsRestart)
@@ -5778,6 +5781,54 @@ public partial class MainWindow : Window
         ShowGovernanceDialog(BuildActivityGovernanceReport());
     }
 
+    private void ShowReverseOrganizeDialog()
+    {
+        if (_allBooks.Count == 0)
+        {
+            StatusText.Text = "当前书库没有可导出的漫画。";
+            return;
+        }
+
+        var forbiddenRoots = new List<string>
+        {
+            _storage.Root,
+            AppContext.BaseDirectory
+        };
+        var libraryRoots = _allBooks
+            .Select(book => Directory.Exists(book.FolderPath) ? Directory.GetParent(book.FolderPath)?.FullName : null)
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(80)
+            .Cast<string>()
+            .ToList();
+        forbiddenRoots.AddRange(libraryRoots);
+
+        var dialog = new ReverseOrganizeDialog(
+            _allBooks.ToList(),
+            _pagedSourceBooks.Count > 0 ? _pagedSourceBooks.ToList() : Books.ToList(),
+            GetSelectedBatchBooks(),
+            forbiddenRoots)
+        {
+            Owner = this
+        };
+
+        dialog.ShowDialog();
+        if (dialog.CompletedResult is not { } result)
+        {
+            return;
+        }
+
+        _activityLog.Record(
+            "reverse-organize-copy",
+            $"反向规整目录安全导出：成功 {result.CopiedCount} 本",
+            affectedCount: result.TotalCount,
+            succeededCount: result.CopiedCount,
+            skippedCount: result.SkippedCount,
+            failedCount: result.FailedCount,
+            detail: $"路径：{result.TargetRoot}{Environment.NewLine}manifest：{result.ManifestPath}{Environment.NewLine}取消：{(result.Canceled ? "是" : "否")}");
+        StatusText.Text = $"反向规整目录完成：成功 {result.CopiedCount}，跳过 {result.SkippedCount}，失败 {result.FailedCount}。";
+    }
+
     private void ShowGovernanceDialog(GovernanceReport report)
     {
         var dialog = new LibraryGovernanceDialog(report) { Owner = this };
@@ -5893,6 +5944,7 @@ public partial class MainWindow : Window
             "batch-delete-source" => "批量删源文件",
             "library-health" => "健康检查",
             "duplicate-check" => "重复检测",
+            "reverse-organize-copy" => "反向规整目录",
             _ => string.IsNullOrWhiteSpace(type) ? "其他操作" : type
         };
     }

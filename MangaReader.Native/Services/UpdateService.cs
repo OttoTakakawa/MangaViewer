@@ -269,7 +269,7 @@ public sealed class UpdateService
 
     private static LocalUpdatePackage? FindBestLocalPackage(CurrentBuildInfo currentBuild, string? storageRoot, CancellationToken cancellationToken)
     {
-        return EnumerateLocalPackages(storageRoot, cancellationToken)
+        return EnumerateLocalPackages(storageRoot, currentBuild.Version, cancellationToken)
             .Where(package => IsCandidateLocalPackage(package, currentBuild))
             .OrderByDescending(package => package.Version)
             .ThenByDescending(package => package.ModifiedUtc)
@@ -306,18 +306,22 @@ public sealed class UpdateService
             return true;
         }
 
-        if (!string.IsNullOrWhiteSpace(package.BuildSignature) &&
-            !string.IsNullOrWhiteSpace(currentBuild.BuildSignature) &&
-            !string.Equals(package.BuildSignature, currentBuild.BuildSignature, StringComparison.OrdinalIgnoreCase))
+        var packageBuildSignature = TryGetBuildSignature(package.ExecutablePath);
+        var currentBuildSignature = TryGetBuildSignature(currentBuild.ExecutablePath);
+        if (!string.IsNullOrWhiteSpace(packageBuildSignature) &&
+            !string.IsNullOrWhiteSpace(currentBuildSignature) &&
+            !string.Equals(packageBuildSignature, currentBuildSignature, StringComparison.OrdinalIgnoreCase))
         {
-            AppLogger.Info("update", $"检测到同版本但构建标识不同，允许更新：candidateSignature={package.BuildSignature}, currentSignature={currentBuild.BuildSignature}");
+            AppLogger.Info("update", $"检测到同版本但构建标识不同，允许更新：candidateSignature={packageBuildSignature}, currentSignature={currentBuildSignature}");
             return true;
         }
 
-        if (!string.IsNullOrWhiteSpace(package.ContentSignature) &&
-            !string.IsNullOrWhiteSpace(currentBuild.ContentSignature))
+        var packageContentSignature = TryGetContentSignature(package.ExecutablePath);
+        var currentContentSignature = TryGetContentSignature(currentBuild.ExecutablePath);
+        if (!string.IsNullOrWhiteSpace(packageContentSignature) &&
+            !string.IsNullOrWhiteSpace(currentContentSignature))
         {
-            var sameContent = string.Equals(package.ContentSignature, currentBuild.ContentSignature, StringComparison.OrdinalIgnoreCase);
+            var sameContent = string.Equals(packageContentSignature, currentContentSignature, StringComparison.OrdinalIgnoreCase);
             AppLogger.Info("update", sameContent
                 ? $"检测到包体一致，跳过更新：candidatePath={package.Path}"
                 : $"检测到同版本但包体不同，允许更新：candidatePath={package.Path}");
@@ -329,7 +333,7 @@ public sealed class UpdateService
         return acceptedByModifiedTime;
     }
 
-    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages(string? storageRoot, CancellationToken cancellationToken)
+    private static IEnumerable<LocalUpdatePackage> EnumerateLocalPackages(string? storageRoot, Version minimumVersion, CancellationToken cancellationToken)
     {
         var scannedUpdateDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in EnumerateSearchRoots())
@@ -342,16 +346,20 @@ public sealed class UpdateService
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var version = ParseVersion(Path.GetFileName(directory));
+                    if (version is null || version < minimumVersion)
+                    {
+                        continue;
+                    }
+
                     var executablePath = Path.Combine(directory, "MangaReader.Native.exe");
-                    if (version is not null && File.Exists(executablePath))
+                    if (File.Exists(executablePath))
                     {
                         yield return new LocalUpdatePackage(
                             version,
                             directory,
                             $"本地发布目录 {Path.GetFileName(directory)}",
                             File.GetLastWriteTimeUtc(executablePath),
-                            TryGetBuildSignature(executablePath),
-                            TryGetContentSignature(executablePath),
+                            executablePath,
                             true);
                     }
                 }
@@ -360,14 +368,13 @@ public sealed class UpdateService
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
-                    if (version is not null)
+                    if (version is not null && version >= minimumVersion)
                     {
                         yield return new LocalUpdatePackage(
                             version,
                             zip,
                             Path.GetFileName(zip),
                             File.GetLastWriteTimeUtc(zip),
-                            null,
                             null,
                             false);
                     }
@@ -387,14 +394,13 @@ public sealed class UpdateService
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var version = ParseVersionFromFileName(Path.GetFileNameWithoutExtension(zip));
-                    if (version is not null)
+                    if (version is not null && version >= minimumVersion)
                     {
                         yield return new LocalUpdatePackage(
                             version,
                             zip,
                             Path.GetFileName(zip),
                             File.GetLastWriteTimeUtc(zip),
-                            null,
                             null,
                             false);
                     }
@@ -478,8 +484,7 @@ public sealed class UpdateService
             currentVersion,
             NormalizePath(AppContext.BaseDirectory),
             modifiedUtc,
-            TryGetBuildSignature(executablePath),
-            TryGetContentSignature(executablePath));
+            executablePath);
     }
 
     private static Version? ParseVersion(string text)
@@ -563,15 +568,14 @@ public sealed class UpdateService
         [property: System.Text.Json.Serialization.JsonPropertyName("name")] string Name,
         [property: System.Text.Json.Serialization.JsonPropertyName("browser_download_url")] string DownloadUrl);
 
-    private sealed record CurrentBuildInfo(Version Version, string BaseDirectory, DateTime ModifiedUtc, string? BuildSignature, string? ContentSignature);
+    private sealed record CurrentBuildInfo(Version Version, string BaseDirectory, DateTime ModifiedUtc, string? ExecutablePath);
 
     private sealed record LocalUpdatePackage(
         Version Version,
         string Path,
         string DisplayName,
         DateTime ModifiedUtc,
-        string? BuildSignature,
-        string? ContentSignature,
+        string? ExecutablePath,
         bool IsDirectory);
 }
 
