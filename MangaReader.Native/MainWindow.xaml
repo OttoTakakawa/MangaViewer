@@ -1412,8 +1412,6 @@
                                 <ComboBoxItem Content="排序：出品时间"/>
                             </ComboBox>
                             <Button x:Name="SortDirectionButton" Content="升序" Click="ToggleSortDirection_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
-                            <Button Content="健康检查" Click="RunLibraryHealthCheck_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
-                            <Button Content="查重复" Click="RunDuplicateCheck_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
                             <Button x:Name="BatchModeToggleButton" Content="多选管理" Click="ToggleBatchSelectionMode_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="0,0,10,0"/>
                             <Button x:Name="ClearFiltersButton" Content="清空筛选" Click="ClearFilters_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6"/>
                         </WrapPanel>

@@ -387,6 +387,30 @@ public partial class SettingsDialog : Window
         Close();
     }
 
+    private void ViewActivityHistory_Click(object sender, RoutedEventArgs e)
+    {
+        RequestedAction = SettingsAction.ViewActivityHistory;
+        _forceClose = true;
+        DialogResult = true;
+        Close();
+    }
+
+    private void RunLibraryHealthCheck_Click(object sender, RoutedEventArgs e)
+    {
+        RequestedAction = SettingsAction.RunLibraryHealthCheck;
+        _forceClose = true;
+        DialogResult = true;
+        Close();
+    }
+
+    private void RunDuplicateCheck_Click(object sender, RoutedEventArgs e)
+    {
+        RequestedAction = SettingsAction.RunDuplicateCheck;
+        _forceClose = true;
+        DialogResult = true;
+        Close();
+    }
+
     // --- 危险分区 ---
 
     private void ResetSettings_Click(object sender, RoutedEventArgs e)
@@ -548,5 +572,8 @@ public enum SettingsAction
     OpenBackupFolder,
     OpenDataFolder,
     CreateBackup,
-    OpenDataSafety
+    OpenDataSafety,
+    ViewActivityHistory,
+    RunLibraryHealthCheck,
+    RunDuplicateCheck
 }

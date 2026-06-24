@@ -207,6 +207,12 @@
                                     <Button Content="手动备份" Click="CreateBackup_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0" Margin="0,0,8,0"/>
                                     <Button Content="恢复备份" Click="OpenDataSafety_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0"/>
                                 </WrapPanel>
+                                <TextBlock Text="书库治理工具" Style="{StaticResource SectionHeader}" Margin="0,18,0,12"/>
+                                <WrapPanel>
+                                    <Button Content="操作历史" Click="ViewActivityHistory_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0" Margin="0,0,8,0"/>
+                                    <Button Content="健康检查" Click="RunLibraryHealthCheck_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0" Margin="0,0,8,0"/>
+                                    <Button Content="查重复" Click="RunDuplicateCheck_Click" Style="{StaticResource AppDialogGhostButton}" MinWidth="0"/>
+                                </WrapPanel>
                             </StackPanel>
 
                             <!-- 标记分区 -->

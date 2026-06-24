@@ -2583,6 +2583,15 @@ public partial class MainWindow : Window
             case SettingsAction.OpenDataSafety:
                 DataSafety_Click(sender, e);
                 break;
+            case SettingsAction.ViewActivityHistory:
+                ShowActivityHistoryDialog();
+                break;
+            case SettingsAction.RunLibraryHealthCheck:
+                RunLibraryHealthCheck_Click(sender, e);
+                break;
+            case SettingsAction.RunDuplicateCheck:
+                RunDuplicateCheck_Click(sender, e);
+                break;
         }
 
         if (dialog.NeedsRestart)

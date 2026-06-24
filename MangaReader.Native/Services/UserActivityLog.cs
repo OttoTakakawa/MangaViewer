@@ -17,7 +17,8 @@ public sealed class UserActivityLog
 {
     private const int MaxMemoryEntries = 80;
     private readonly object _syncRoot = new();
-    private readonly Queue<UserActivityEntry> _entries = new();
+    private readonly Queue<UserActivityEntry> _historyEntries = new();
+    private readonly Queue<UserActivityEntry> _sessionEntries = new();
     private string _activityPath = "";
 
     public void Initialize(AppStorage storage)
@@ -48,7 +49,8 @@ public sealed class UserActivityLog
 
         lock (_syncRoot)
         {
-            Enqueue(entry);
+            Enqueue(_historyEntries, entry);
+            Enqueue(_sessionEntries, entry);
             try
             {
                 File.AppendAllText(_activityPath, JsonSerializer.Serialize(entry) + Environment.NewLine, Encoding.UTF8);
@@ -64,7 +66,18 @@ public sealed class UserActivityLog
     {
         lock (_syncRoot)
         {
-            return _entries
+            return _historyEntries
+                .Reverse()
+                .Take(Math.Max(1, count))
+                .ToList();
+        }
+    }
+
+    public IReadOnlyList<UserActivityEntry> GetRecentSession(int count = 10)
+    {
+        lock (_syncRoot)
+        {
+            return _sessionEntries
                 .Reverse()
                 .Take(Math.Max(1, count))
                 .ToList();
@@ -73,7 +86,7 @@ public sealed class UserActivityLog
 
     public string BuildExitSummary(int count = 6)
     {
-        var recent = GetRecent(count);
+        var recent = GetRecentSession(count);
         if (recent.Count == 0)
         {
             return "本次未记录到书库数据变更。";
@@ -136,7 +149,8 @@ public sealed class UserActivityLog
     {
         lock (_syncRoot)
         {
-            _entries.Clear();
+            _historyEntries.Clear();
+            _sessionEntries.Clear();
             if (!File.Exists(_activityPath))
             {
                 return;
@@ -149,7 +163,7 @@ public sealed class UserActivityLog
                     var entry = JsonSerializer.Deserialize<UserActivityEntry>(line);
                     if (entry is not null)
                     {
-                        Enqueue(entry);
+                        Enqueue(_historyEntries, entry);
                     }
                 }
             }
@@ -160,12 +174,12 @@ public sealed class UserActivityLog
         }
     }
 
-    private void Enqueue(UserActivityEntry entry)
+    private static void Enqueue(Queue<UserActivityEntry> queue, UserActivityEntry entry)
     {
-        _entries.Enqueue(entry);
-        while (_entries.Count > MaxMemoryEntries)
+        queue.Enqueue(entry);
+        while (queue.Count > MaxMemoryEntries)
         {
-            _entries.Dequeue();
+            queue.Dequeue();
         }
     }
 }
