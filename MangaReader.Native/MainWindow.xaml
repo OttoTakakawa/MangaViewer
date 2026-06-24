@@ -1420,9 +1420,10 @@
                                 <Border Padding="10,5" CornerRadius="{StaticResource RadiusControl}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1" Margin="0,0,6,0">
                                     <TextBlock x:Name="BatchSelectionText" Text="0 本" Foreground="{DynamicResource Brush.TextPrimary}" FontSize="12" FontWeight="Black" VerticalAlignment="Center"/>
                                 </Border>
-                                <Button Content="全选" Click="SelectVisibleBooks_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
+                                <Button Content="选中当前页" Click="SelectVisibleBooks_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <Button Content="清空" Click="ClearBatchSelection_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
-                                <Button Content="去前缀" Click="BatchRemoveTitlePrefix_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
+                                <TextBlock Text="框选追加，Ctrl 框选减选" Foreground="{DynamicResource Brush.TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <Button Content="重命名" Click="BatchRemoveTitlePrefix_Click" Style="{StaticResource BatchActionButton}" Margin="0,0,6,0"/>
                                 <ComboBox x:Name="BatchStyleBox" Width="140" Height="32" MinHeight="32" Padding="10,4" SelectedIndex="0" Style="{StaticResource FilterComboBox}" Margin="0,0,6,0">
                                     <ComboBoxItem Content="漫画卡片"/>
                                     <ComboBoxItem Content="纯图卡片"/>

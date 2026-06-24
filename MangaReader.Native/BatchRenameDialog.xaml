@@ -1,0 +1,105 @@
+<Window x:Class="MangaReader.Native.BatchRenameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="批量重命名"
+        Width="720"
+        Height="620"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="{DynamicResource Brush.Surface}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="批量重命名"
+                       FontSize="22"
+                       FontWeight="Black"
+                       Foreground="{DynamicResource Brush.TextPrimary}"/>
+            <TextBlock x:Name="ScopeText"
+                       Margin="0,8,0,0"
+                       Foreground="{DynamicResource Brush.TextMuted}"
+                       FontSize="13"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Margin="0,18,0,14"
+                Padding="16"
+                CornerRadius="{StaticResource RadiusPanel}"
+                Background="{DynamicResource Brush.SurfaceMuted}"
+                BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="210"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="重命名规则" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                    <ComboBox x:Name="ModeBox"
+                              Style="{StaticResource AppDialogComboBox}"
+                              Height="36"
+                              SelectionChanged="Input_Changed">
+                        <ComboBoxItem Content="移除开头前缀"/>
+                        <ComboBoxItem Content="添加开头前缀"/>
+                        <ComboBoxItem Content="添加结尾后缀"/>
+                        <ComboBoxItem Content="替换文本"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock x:Name="FindLabelText" Text="前缀 / 文本" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                    <TextBox x:Name="FindBox" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="4">
+                    <TextBlock x:Name="ReplaceLabelText" Text="替换为" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                    <TextBox x:Name="ReplaceBox" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Padding="14"
+                CornerRadius="{StaticResource RadiusPanel}"
+                Background="{DynamicResource Brush.SurfaceMuted}"
+                BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock x:Name="PreviewSummaryText"
+                           Foreground="{DynamicResource Brush.TextMuted}"
+                           FontSize="13"
+                           Margin="0,0,0,10"/>
+                <TextBox x:Name="PreviewTextBox"
+                         Grid.Row="1"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         TextWrapping="NoWrap"
+                         HorizontalScrollBarVisibility="Auto"
+                         VerticalScrollBarVisibility="Auto"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Foreground="{DynamicResource Brush.TextPrimary}"
+                         FontFamily="Consolas"
+                         FontSize="12"/>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="取消" Click="Cancel_Click" Style="{StaticResource AppDialogGhostButton}" Width="96" Margin="0,0,10,0"/>
+            <Button x:Name="ConfirmButton" Content="执行重命名" Click="Confirm_Click" Style="{StaticResource AppDialogButton}" Width="118" IsEnabled="False"/>
+        </StackPanel>
+    </Grid>
+</Window>

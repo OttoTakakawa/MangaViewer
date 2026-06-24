@@ -1179,11 +1179,6 @@ public partial class MainWindow : Window
         _rubberSubtract = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
         Mouse.Capture(BooksList);
 
-        if (!_rubberSubtract && (Keyboard.Modifiers & ModifierKeys.Shift) != ModifierKeys.Shift)
-        {
-            foreach (var b in Books) b.IsSelectedForBatch = false;
-        }
-
         System.Windows.Controls.Canvas.SetLeft(RubberBandRect, _rubberStart.X);
         System.Windows.Controls.Canvas.SetTop(RubberBandRect, _rubberStart.Y);
         RubberBandRect.Width = 0;
@@ -2799,13 +2794,7 @@ public partial class MainWindow : Window
         }
 
         var commonPrefix = GuessCommonTitlePrefix(selectedBooks.Select(book => book.Title));
-        var dialog = new RenameDialog(
-            "批量去前缀",
-            "输入要从书名开头移除的前缀。只会修改确实以该前缀开头的作品。",
-            "处理范围",
-            $"已选 {selectedBooks.Count} 本",
-            "要移除的前缀",
-            commonPrefix)
+        var dialog = new BatchRenameDialog(selectedBooks, commonPrefix)
         {
             Owner = this
         };
@@ -2815,51 +2804,37 @@ public partial class MainWindow : Window
             return;
         }
 
-        var prefix = dialog.NewName.Trim();
-        var updates = selectedBooks
-            .Where(book => book.Title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            .Select(book => (Book: book, Title: book.Title[prefix.Length..].TrimStart(' ', '-', '_', '—', '－', '·')))
-            .Where(item => !string.IsNullOrWhiteSpace(item.Title) && !string.Equals(item.Book.Title, item.Title, StringComparison.Ordinal))
+        var updates = dialog.Updates.ToList();
+        var renameLogLines = updates
+            .Take(80)
+            .Select(item => $"{item.Book.Title} -> {item.NewTitle}")
             .ToList();
 
         if (updates.Count == 0)
         {
-            StatusText.Text = "没有书名匹配这个前缀。";
+            StatusText.Text = "没有可重命名的漫画。";
             return;
         }
 
-        if (!ConfirmBatchPreview(
-                "批量去前缀预览",
-                BuildBatchPreview(
-                    $"将从标题开头移除前缀：{prefix}",
-                    selectedBooks.Count,
-                    updates.Count,
-                    selectedBooks.Count - updates.Count,
-                    updates.Select(item => $"{item.Book.Title} -> {item.Title}"))))
-        {
-            StatusText.Text = "已取消批量去前缀。";
-            return;
-        }
-
-        var batchData = updates.Select(item => (item.Book.Id, item.Title)).ToList();
+        var batchData = updates.Select(item => (item.Book.Id, item.NewTitle)).ToList();
         await Task.Run(() => _database.SaveBookTitlesBatch(batchData, "before-batch-title-prefix"));
-        foreach (var (book, title) in updates)
+        foreach (var update in updates)
         {
-            book.Title = title;
-            book.NotifyAll();
+            update.Book.Title = update.NewTitle;
+            update.Book.NotifyAll();
         }
 
         RefreshLibraryViews(tagManager: false, authors: false, sort: true);
         RefreshHomeShelves();
         FillCurrentBookIfAffected(selectedBooks);
-        StatusText.Text = $"已批量移除前缀：{updates.Count} 本。";
+        StatusText.Text = $"已批量重命名：{updates.Count} 本。";
         _activityLog.Record(
             "batch-title-prefix",
-            $"批量移除标题前缀：{prefix}",
+            "批量重命名漫画标题",
             affectedCount: selectedBooks.Count,
             succeededCount: updates.Count,
             skippedCount: selectedBooks.Count - updates.Count,
-            detail: string.Join(Environment.NewLine, updates.Take(80).Select(item => $"{item.Book.Title}")));
+            detail: string.Join(Environment.NewLine, renameLogLines));
     }
 
     private async void BatchApplyStyle_Click(object sender, RoutedEventArgs e)
@@ -2922,15 +2897,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        var previousTagsByBook = selectedBooks.ToDictionary(book => book.Id, book => book.Tags);
+        var booksById = selectedBooks.ToDictionary(book => book.Id, StringComparer.OrdinalIgnoreCase);
         var updates = new List<(string BookId, string Tags)>();
         foreach (var book in selectedBooks)
         {
-            var before = book.Tags;
-            AddTagToBookRespectingRules(book, tag, category, isExclusive);
-            if (!string.Equals(before, book.Tags, StringComparison.Ordinal))
+            var nextTags = BuildTagsWithAddedTagRespectingRules(book.Tags, tag, category, isExclusive);
+            if (!string.Equals(book.Tags, nextTags, StringComparison.Ordinal))
             {
-                updates.Add((book.Id, book.Tags));
+                updates.Add((book.Id, nextTags));
             }
         }
 
@@ -2951,14 +2925,6 @@ public partial class MainWindow : Window
                         .Where(book => updates.Any(update => update.BookId == book.Id))
                         .Select(book => book.Title))))
         {
-            foreach (var book in selectedBooks)
-            {
-                if (previousTagsByBook.TryGetValue(book.Id, out var previousTags))
-                {
-                    book.Tags = previousTags;
-                    book.NotifyAll();
-                }
-            }
             StatusText.Text = "已取消批量添加 Tag。";
             return;
         }
@@ -2970,14 +2936,6 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            foreach (var book in selectedBooks)
-            {
-                if (previousTagsByBook.TryGetValue(book.Id, out var previousTags))
-                {
-                    book.Tags = previousTags;
-                    book.NotifyAll();
-                }
-            }
             AppLogger.Error("tag-save", ex, $"批量添加 Tag 保存失败：tag={tag}");
             RefreshLibraryViews(authors: false, sort: false);
             FillCurrentBookIfAffected(selectedBooks);
@@ -2985,10 +2943,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        foreach (var book in selectedBooks)
+        foreach (var (bookId, tags) in updates)
         {
-            book.NotifyAll();
+            if (booksById.TryGetValue(bookId, out var book))
+            {
+                book.Tags = tags;
+                book.NotifyAll();
+            }
         }
+        MarkTagIndexDirty();
 
         RefreshLibraryViews(authors: false, sort: false);
         FillCurrentBookIfAffected(selectedBooks);
@@ -7001,10 +6964,22 @@ public partial class MainWindow : Window
 
     private void AddTagToBookRespectingRules(MangaBook book, string tag, string category, bool isExclusive)
     {
-        var names = TagService.ParseTags(book.Tags).ToList();
-        if (names.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
+        var nextTags = BuildTagsWithAddedTagRespectingRules(book.Tags, tag, category, isExclusive);
+        if (string.Equals(book.Tags, nextTags, StringComparison.Ordinal))
         {
             return;
+        }
+
+        book.Tags = nextTags;
+        MarkTagIndexDirty();
+    }
+
+    private string BuildTagsWithAddedTagRespectingRules(string tags, string tag, string category, bool isExclusive)
+    {
+        var names = TagService.ParseTags(tags).ToList();
+        if (names.Any(name => string.Equals(name, tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            return TagService.FormatTags(names);
         }
 
         if (isExclusive)
@@ -7015,8 +6990,7 @@ public partial class MainWindow : Window
         }
 
         names.Add(tag);
-        book.Tags = TagService.FormatTags(names);
-        MarkTagIndexDirty();
+        return TagService.FormatTags(names);
     }
 
     private string NormalizeTagsRespectingRules(IEnumerable<string> tags)
