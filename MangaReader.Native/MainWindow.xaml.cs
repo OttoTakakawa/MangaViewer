@@ -463,8 +463,8 @@ public partial class MainWindow : Window
         {
             token.ThrowIfCancellationRequested();
             var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
-            if (!ConfirmImportTitleConflicts(
-                    new[] { (candidate.Title, candidate.FolderPath) },
+            if (!ConfirmImportConflicts(
+                    new[] { candidate },
                     BuildExistingBooksForImport(savedBooks.Values)))
             {
                 HideImportProgress();
@@ -549,8 +549,8 @@ public partial class MainWindow : Window
         await System.Windows.Threading.Dispatcher.Yield();
         _database.SaveLibraryRoot(rootPath);
         var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
-        if (!ConfirmImportTitleConflicts(
-                candidates.Select(candidate => (candidate.Title, candidate.FolderPath)),
+        if (!ConfirmImportConflicts(
+                candidates,
                 BuildExistingBooksForImport(savedBooks.Values)))
         {
             HideImportProgress();
@@ -680,8 +680,8 @@ public partial class MainWindow : Window
         return byPath.Values.ToList();
     }
 
-    private bool ConfirmImportTitleConflicts(
-        IEnumerable<(string Title, string FolderPath)> incoming,
+    private bool ConfirmImportConflicts(
+        IEnumerable<BatchImportCandidate> incoming,
         IReadOnlyList<MangaBook> existingBooks)
     {
         var incomingItems = incoming
@@ -690,7 +690,9 @@ public partial class MainWindow : Window
             {
                 Title = item.Title.Trim(),
                 item.FolderPath,
-                Key = NormalizeImportTitleKey(item.Title)
+                Key = NormalizeImportTitleKey(item.Title),
+                item.PageCount,
+                TotalBytes = item.Pages.Count > 0 ? ImageLoader.SumFileBytes(item.Pages) : 0
             })
             .Where(item => !string.IsNullOrWhiteSpace(item.Key))
             .ToList();
@@ -705,13 +707,21 @@ public partial class MainWindow : Window
         {
             foreach (var existing in existingBooks)
             {
-                if (string.Equals(item.FolderPath, existing.FolderPath, StringComparison.OrdinalIgnoreCase)
-                    || !string.Equals(item.Key, NormalizeImportTitleKey(existing.Title), StringComparison.Ordinal))
+                if (string.Equals(item.FolderPath, existing.FolderPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    conflictLines.Add($"- {item.Title}（同一路径已在书库）{Environment.NewLine}  导入路径：{item.FolderPath}");
+                    continue;
+                }
+
+                var sameTitle = string.Equals(item.Key, NormalizeImportTitleKey(existing.Title), StringComparison.Ordinal);
+                var sameContentShape = IsSameImportContentShape(item.PageCount, item.TotalBytes, existing);
+                if (!sameTitle && !sameContentShape)
                 {
                     continue;
                 }
 
-                conflictLines.Add($"- {item.Title}{Environment.NewLine}  新路径：{item.FolderPath}{Environment.NewLine}  已存在：{existing.FolderPath}");
+                var reason = sameTitle ? "同名" : "页数与容量一致，疑似同一本";
+                conflictLines.Add($"- {item.Title}（{reason}）{Environment.NewLine}  新路径：{item.FolderPath}{Environment.NewLine}  已存在：{existing.FolderPath}");
             }
         }
 
@@ -724,6 +734,18 @@ public partial class MainWindow : Window
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Take(4);
             conflictLines.Add($"- 本次导入内同名：{group.First().Title}{Environment.NewLine}  {string.Join(Environment.NewLine + "  ", paths)}");
+        }
+
+        foreach (var group in incomingItems
+                     .Where(item => item.PageCount > 0 && item.TotalBytes > 0)
+                     .GroupBy(item => (item.PageCount, item.TotalBytes))
+                     .Where(group => group.Select(item => item.FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1))
+        {
+            var paths = group
+                .Select(item => $"{item.Title} | {item.FolderPath}")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(4);
+            conflictLines.Add($"- 本次导入内疑似同一本：{group.First().Title}{Environment.NewLine}  {string.Join(Environment.NewLine + "  ", paths)}");
         }
 
         conflictLines = conflictLines
@@ -749,6 +771,16 @@ public partial class MainWindow : Window
             MessageBoxImage.Warning,
             MessageBoxResult.No);
         return result == MessageBoxResult.Yes;
+    }
+
+    private static bool IsSameImportContentShape(int incomingPageCount, long incomingTotalBytes, MangaBook existing)
+    {
+        if (incomingPageCount <= 0 || incomingTotalBytes <= 0 || existing.PageCount <= 0 || existing.TotalBytes <= 0)
+        {
+            return false;
+        }
+
+        return incomingPageCount == existing.PageCount && incomingTotalBytes == existing.TotalBytes;
     }
 
     private static string NormalizeImportTitleKey(string title)
