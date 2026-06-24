@@ -1,6 +1,7 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using Microsoft.VisualBasic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -4955,8 +4956,8 @@ public partial class MainWindow : Window
         StatusText.Text = "正在执行书库健康检查...";
         await System.Windows.Threading.Dispatcher.Yield();
         var snapshot = _allBooks.ToList();
-        var report = await Task.Run(() => _libraryDataInspector.BuildHealthReport(snapshot));
-        new LibraryReportDialog("书库健康检查", report) { Owner = this }.ShowDialog();
+        var report = await Task.Run(() => _libraryDataInspector.BuildHealthGovernanceReport(snapshot));
+        ShowGovernanceDialog(report);
         _activityLog.Record("library-health", "执行书库健康检查", affectedCount: snapshot.Count, succeededCount: snapshot.Count);
         StatusText.Text = "书库健康检查完成。";
     }
@@ -4966,8 +4967,8 @@ public partial class MainWindow : Window
         StatusText.Text = "正在检测疑似重复作品...";
         await System.Windows.Threading.Dispatcher.Yield();
         var snapshot = _allBooks.ToList();
-        var report = await Task.Run(() => _libraryDataInspector.BuildDuplicateReport(snapshot));
-        new LibraryReportDialog("疑似重复作品检测", report) { Owner = this }.ShowDialog();
+        var report = await Task.Run(() => _libraryDataInspector.BuildDuplicateGovernanceReport(snapshot));
+        ShowGovernanceDialog(report);
         _activityLog.Record("duplicate-check", "执行疑似重复作品检测", affectedCount: snapshot.Count, succeededCount: snapshot.Count);
         StatusText.Text = "疑似重复作品检测完成。";
     }
@@ -5774,7 +5775,272 @@ public partial class MainWindow : Window
 
     private void ShowActivityHistoryDialog()
     {
-        new LibraryReportDialog("用户操作历史", _activityLog.BuildHistoryReport()) { Owner = this }.ShowDialog();
+        ShowGovernanceDialog(BuildActivityGovernanceReport());
+    }
+
+    private void ShowGovernanceDialog(GovernanceReport report)
+    {
+        var dialog = new LibraryGovernanceDialog(report) { Owner = this };
+        dialog.SearchRequested = SearchLibraryByGovernanceItem;
+        dialog.FilterByAuthorRequested = FilterLibraryByGovernanceItemAuthor;
+        dialog.OpenDetailRequested = OpenGovernanceBookDetail;
+        dialog.OpenFolderRequested = OpenGovernanceFolder;
+        dialog.ShowDialog();
+    }
+
+    private GovernanceReport BuildActivityGovernanceReport()
+    {
+        var entries = _activityLog.GetRecent(200).ToList();
+        var groups = entries
+            .GroupBy(entry => GetActivityGroupTitle(entry.Type))
+            .OrderBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase)
+            .Select(group => new GovernanceGroup
+            {
+                Key = group.Key,
+                Title = group.Key,
+                Description = "可按类型查看近期治理动作；能定位到作品或路径的记录会启用对应操作。",
+                Items = new ObservableCollection<GovernanceItem>(group
+                    .OrderByDescending(entry => entry.Time)
+                    .Select(BuildActivityGovernanceItem))
+            })
+            .ToList();
+
+        var summary = entries.Count == 0
+            ? "暂无用户操作记录。"
+            : $"最近 {entries.Count} 条用户操作记录{Environment.NewLine}可按类型筛选，并对已解析到作品或路径的记录执行定位。";
+
+        return new GovernanceReport
+        {
+            Title = "用户操作历史",
+            Summary = summary,
+            Groups = new ObservableCollection<GovernanceGroup>(groups)
+        };
+    }
+
+    private GovernanceItem BuildActivityGovernanceItem(UserActivityEntry entry)
+    {
+        var folderPath = ExtractActivityFolderPath(entry.Detail);
+        var matchedBook = ResolveBookByPath(folderPath);
+        var searchText = matchedBook?.Title ?? ExtractActivitySearchText(entry);
+        matchedBook ??= ResolveBookByTitle(searchText);
+        folderPath = matchedBook?.FolderPath ?? folderPath;
+
+        var subtitleParts = new List<string> { entry.Time.ToString("MM-dd HH:mm") };
+        if (entry.AffectedCount > 0)
+        {
+            subtitleParts.Add($"影响 {entry.AffectedCount} 本");
+        }
+        if (entry.SucceededCount > 0 || entry.SkippedCount > 0 || entry.FailedCount > 0)
+        {
+            subtitleParts.Add($"成功 {entry.SucceededCount} / 跳过 {entry.SkippedCount} / 失败 {entry.FailedCount}");
+        }
+        if (matchedBook is not null)
+        {
+            subtitleParts.Add($"{matchedBook.Title} · {matchedBook.Author}");
+        }
+
+        var detail = new List<string>
+        {
+            $"时间：{entry.Time:yyyy-MM-dd HH:mm:ss}",
+            $"类型：{entry.Type}",
+            $"摘要：{entry.Summary}",
+            $"影响：{entry.AffectedCount}　本　成功：{entry.SucceededCount}　跳过：{entry.SkippedCount}　失败：{entry.FailedCount}"
+        };
+        if (matchedBook is not null)
+        {
+            detail.Add($"定位作品：{matchedBook.Title}");
+            detail.Add($"作者：{matchedBook.Author}");
+            detail.Add($"路径：{matchedBook.FolderPath}");
+        }
+        else if (!string.IsNullOrWhiteSpace(folderPath))
+        {
+            detail.Add($"路径：{folderPath}");
+        }
+        if (!string.IsNullOrWhiteSpace(entry.Detail))
+        {
+            detail.Add("");
+            detail.Add("详情：");
+            detail.Add(entry.Detail);
+        }
+
+        return new GovernanceItem
+        {
+            GroupKey = entry.Type,
+            Title = entry.Summary,
+            Subtitle = string.Join(" · ", subtitleParts),
+            SearchText = matchedBook?.Title ?? searchText,
+            FolderPath = folderPath,
+            Author = matchedBook?.Author ?? "",
+            Tags = matchedBook?.Tags ?? "",
+            BookId = matchedBook?.Id ?? "",
+            PageCount = matchedBook?.PageCount ?? 0,
+            TotalBytes = matchedBook?.TotalBytes ?? 0,
+            Detail = string.Join(Environment.NewLine, detail)
+        };
+    }
+
+    private static string GetActivityGroupTitle(string type)
+    {
+        return type switch
+        {
+            "import-single" => "导入单本",
+            "import-author" => "按作者导入",
+            "batch-title-prefix" => "批量标题整理",
+            "batch-style" => "批量样式",
+            "batch-add-tag" => "批量加 Tag",
+            "batch-remove-tag" => "批量减 Tag",
+            "batch-delete-records" => "批量删库记录",
+            "batch-delete-source" => "批量删源文件",
+            "library-health" => "健康检查",
+            "duplicate-check" => "重复检测",
+            _ => string.IsNullOrWhiteSpace(type) ? "其他操作" : type
+        };
+    }
+
+    private void SearchLibraryByGovernanceItem(GovernanceItem item)
+    {
+        var query = item.SearchText.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            StatusText.Text = "这条记录没有可用于搜索的标题。";
+            return;
+        }
+
+        ShowLibraryView("library");
+        ResetLibraryFilters();
+        BookSearchBox.Text = query;
+        RefreshBookFilter(ensureLibraryView: true);
+        SetDetailVisible(false);
+        StatusText.Text = $"已在书库搜索：{query}";
+    }
+
+    private void FilterLibraryByGovernanceItemAuthor(GovernanceItem item)
+    {
+        if (string.IsNullOrWhiteSpace(item.Author))
+        {
+            StatusText.Text = "这条记录没有可用于筛选的作者。";
+            return;
+        }
+
+        ShowLibraryView("author");
+        ResetLibraryFilters();
+        SetAuthorFilter(item.Author);
+        SetDetailVisible(false);
+        StatusText.Text = $@"已在书库按作者查看：{item.Author}";
+    }
+
+    private void OpenGovernanceBookDetail(GovernanceItem item)
+    {
+        var book = ResolveBookByGovernanceItem(item);
+        if (book is null)
+        {
+            StatusText.Text = "未能定位到对应作品，可能已经被删除或尚未载入当前书库。";
+            return;
+        }
+
+        OpenBookDetailFromHome(book);
+    }
+
+    private void OpenGovernanceFolder(GovernanceItem item)
+    {
+        var path = item.FolderPath.Trim();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText.Text = "这条记录没有可打开的路径。";
+            return;
+        }
+
+        if (Directory.Exists(path))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{path}\"",
+                UseShellExecute = true
+            });
+            return;
+        }
+
+        var parent = Directory.GetParent(path)?.FullName;
+        if (!string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{parent}\"",
+                UseShellExecute = true
+            });
+            StatusText.Text = "原路径不存在，已打开上级目录。";
+            return;
+        }
+
+        StatusText.Text = "路径不存在，无法打开目录。";
+    }
+
+    private MangaBook? ResolveBookByGovernanceItem(GovernanceItem item)
+    {
+        return _allBooks.FirstOrDefault(book => string.Equals(book.Id, item.BookId, StringComparison.Ordinal))
+            ?? ResolveBookByPath(item.FolderPath)
+            ?? ResolveBookByTitle(item.SearchText);
+    }
+
+    private MangaBook? ResolveBookByPath(string? folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return null;
+        }
+
+        return _allBooks.FirstOrDefault(book => string.Equals(book.FolderPath, folderPath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private MangaBook? ResolveBookByTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        return _allBooks.FirstOrDefault(book => string.Equals(book.Title, title, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string ExtractActivityFolderPath(string detail)
+    {
+        foreach (var rawLine in detail.Split([Environment.NewLine], StringSplitOptions.None))
+        {
+            var line = rawLine.Trim();
+            if (line.StartsWith("路径：", StringComparison.Ordinal))
+            {
+                return line["路径：".Length..].Trim();
+            }
+
+            var separatorIndex = line.LastIndexOf(" | ", StringComparison.Ordinal);
+            if (separatorIndex > 0)
+            {
+                var candidate = line[(separatorIndex + 3)..].Trim();
+                if (candidate.Contains('\\') || candidate.Contains('/'))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        return "";
+    }
+
+    private static string ExtractActivitySearchText(UserActivityEntry entry)
+    {
+        var summary = entry.Summary.Trim();
+        var index = summary.LastIndexOf('：');
+        if (index >= 0 && index < summary.Length - 1)
+        {
+            return summary[(index + 1)..].Trim();
+        }
+
+        index = summary.LastIndexOf(':');
+        return index >= 0 && index < summary.Length - 1
+            ? summary[(index + 1)..].Trim()
+            : "";
     }
 
     private string BuildSessionSummary()
