@@ -5783,50 +5783,88 @@ public partial class MainWindow : Window
 
     private void ShowReverseOrganizeDialog()
     {
-        if (_allBooks.Count == 0)
+        try
         {
-            StatusText.Text = "当前书库没有可导出的漫画。";
-            return;
-        }
+            if (_allBooks.Count == 0)
+            {
+                StatusText.Text = "当前书库没有可导出的漫画。";
+                return;
+            }
 
-        var forbiddenRoots = new List<string>
+            var forbiddenRoots = BuildReverseOrganizeForbiddenRoots();
+            var dialog = new ReverseOrganizeDialog(
+                _allBooks.ToList(),
+                _pagedSourceBooks.Count > 0 ? _pagedSourceBooks.ToList() : Books.ToList(),
+                GetSelectedBatchBooks(),
+                forbiddenRoots)
+            {
+                Owner = this
+            };
+
+            dialog.ShowDialog();
+            if (dialog.CompletedResult is not { } result)
+            {
+                return;
+            }
+
+            _activityLog.Record(
+                "reverse-organize-copy",
+                $"反向规整目录安全导出：成功 {result.CopiedCount} 本",
+                affectedCount: result.TotalCount,
+                succeededCount: result.CopiedCount,
+                skippedCount: result.SkippedCount,
+                failedCount: result.FailedCount,
+                detail: $"路径：{result.TargetRoot}{Environment.NewLine}manifest：{result.ManifestPath}{Environment.NewLine}取消：{(result.Canceled ? "是" : "否")}");
+            StatusText.Text = $"反向规整目录完成：成功 {result.CopiedCount}，跳过 {result.SkippedCount}，失败 {result.FailedCount}。";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("reverse-organize", ex, "打开反向规整目录窗口失败。");
+            StatusText.Text = $"打开反向规整目录失败：{ex.Message}";
+            System.Windows.MessageBox.Show(
+                $"打开反向规整目录失败：{ex.Message}",
+                "反向规整目录",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private List<string> BuildReverseOrganizeForbiddenRoots()
+    {
+        var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             _storage.Root,
             AppContext.BaseDirectory
         };
-        var libraryRoots = _allBooks
-            .Select(book => Directory.Exists(book.FolderPath) ? Directory.GetParent(book.FolderPath)?.FullName : null)
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(80)
-            .Cast<string>()
-            .ToList();
-        forbiddenRoots.AddRange(libraryRoots);
 
-        var dialog = new ReverseOrganizeDialog(
-            _allBooks.ToList(),
-            _pagedSourceBooks.Count > 0 ? _pagedSourceBooks.ToList() : Books.ToList(),
-            GetSelectedBatchBooks(),
-            forbiddenRoots)
+        foreach (var book in _allBooks)
         {
-            Owner = this
-        };
+            try
+            {
+                var folderPath = book.FolderPath?.Trim();
+                if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+                {
+                    continue;
+                }
 
-        dialog.ShowDialog();
-        if (dialog.CompletedResult is not { } result)
-        {
-            return;
+                var parent = Directory.GetParent(folderPath)?.FullName;
+                if (!string.IsNullOrWhiteSpace(parent))
+                {
+                    roots.Add(parent);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                AppLogger.Warn("reverse-organize", $"跳过异常路径：{book.FolderPath} · {ex.Message}");
+            }
+
+            if (roots.Count >= 82)
+            {
+                break;
+            }
         }
 
-        _activityLog.Record(
-            "reverse-organize-copy",
-            $"反向规整目录安全导出：成功 {result.CopiedCount} 本",
-            affectedCount: result.TotalCount,
-            succeededCount: result.CopiedCount,
-            skippedCount: result.SkippedCount,
-            failedCount: result.FailedCount,
-            detail: $"路径：{result.TargetRoot}{Environment.NewLine}manifest：{result.ManifestPath}{Environment.NewLine}取消：{(result.Canceled ? "是" : "否")}");
-        StatusText.Text = $"反向规整目录完成：成功 {result.CopiedCount}，跳过 {result.SkippedCount}，失败 {result.FailedCount}。";
+        return roots.ToList();
     }
 
     private void ShowGovernanceDialog(GovernanceReport report)
