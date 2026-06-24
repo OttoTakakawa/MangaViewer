@@ -125,5 +125,15 @@ public sealed class CoverThumbnailPipeline
         }
     }
 
+    public void ClearMemoryCache()
+    {
+        lock (_syncRoot)
+        {
+            _memoryCache.Clear();
+            _lru.Clear();
+            _inFlight.Clear();
+        }
+    }
+
     private readonly record struct CacheEntry(string Key, BitmapSource Image);
 }

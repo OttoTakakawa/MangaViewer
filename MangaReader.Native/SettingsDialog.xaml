@@ -108,6 +108,22 @@
                                 <CheckBox x:Name="TagClickFilterCheckBox" Content="启用单击 Tag 筛选" FontSize="14" Margin="0,0,0,14" Checked="TagClickFilterCheckBox_Changed" Unchecked="TagClickFilterCheckBox_Changed"/>
                                 <CheckBox x:Name="TagDragAssignCheckBox" Content="启用拖动分配 Tag（长按后拖拽到漫画）" FontSize="14" Margin="0,0,0,14" Checked="TagDragAssignCheckBox_Changed" Unchecked="TagDragAssignCheckBox_Changed"/>
                                 <CheckBox x:Name="LibraryExitConfirmCheckBox" Content="关闭漫画库时弹出确认提示" FontSize="14" Margin="0,0,0,14" Checked="LibraryExitConfirmCheckBox_Changed" Unchecked="LibraryExitConfirmCheckBox_Changed"/>
+                                <TextBlock Text="封面质量" Style="{StaticResource AppDialogLabelText}" Margin="0,2,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <ComboBox x:Name="CoverQualityComboBox" Style="{StaticResource AppDialogComboBox}" Height="36" Width="180" SelectionChanged="CoverQualityComboBox_Changed">
+                                        <ComboBoxItem Content="低"/>
+                                        <ComboBoxItem Content="标准"/>
+                                        <ComboBoxItem Content="高"/>
+                                    </ComboBox>
+                                    <Button Content="清理封面缓存"
+                                            Click="ClearCoverCache_Click"
+                                            Style="{StaticResource AppDialogGhostButton}"
+                                            Margin="10,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock Text="低：更快；标准：推荐；高：更清晰但占用更高。切换后会自动刷新封面缓存。"
+                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                           FontSize="11"
+                                           Margin="0,0,0,14"/>
                                 <TextBlock Text="主题" Style="{StaticResource SectionHeader}"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                                     <RadioButton x:Name="ThemeWarmRadio" Content="暖纸" IsChecked="True" Style="{StaticResource AppRadioButton}" Margin="0,0,12,0" Checked="ThemeRadio_Checked" Tag="Warm"/>

@@ -129,11 +129,26 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="预检风险"
-                               Foreground="{DynamicResource Brush.TextPrimary}"
-                               FontWeight="Bold"
-                               Margin="0,0,0,8"/>
-                    <ListView x:Name="IssuesList" Grid.Row="1" Background="Transparent" BorderThickness="0">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="预检风险"
+                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox x:Name="IssueFilterBox"
+                                  Grid.Column="1"
+                                  Width="112"
+                                  Height="28"
+                                  SelectionChanged="IssueFilterBox_SelectionChanged">
+                            <ComboBoxItem Content="全部"/>
+                            <ComboBoxItem Content="只看错误"/>
+                            <ComboBoxItem Content="只看警告"/>
+                        </ComboBox>
+                    </Grid>
+                    <ListView x:Name="IssuesList" Grid.Row="1" Background="Transparent" BorderThickness="0" MouseDoubleClick="IssuesList_MouseDoubleClick">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="级别" Width="58" DisplayMemberBinding="{Binding SeverityText}"/>
@@ -184,6 +199,7 @@
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button x:Name="OpenManifestButton" Content="打开 manifest" Click="OpenManifest_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="OpenTargetButton" Content="打开目标目录" Click="OpenTarget_Click" Style="{StaticResource AppDialogGhostButton}" Margin="0,0,8,0" IsEnabled="False"/>
+            <Button x:Name="PendingDetailsButton" Content="待重定向明细" Click="PendingDetails_Click" Style="{StaticResource AppDialogGhostButton}" Width="118" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="RedirectButton" Content="执行目录重定向" Click="Redirect_Click" Style="{StaticResource AppDialogGhostButton}" Width="126" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="StartButton" Content="开始安全导出" Click="Start_Click" Style="{StaticResource AppDialogButton}" Width="130" Margin="0,0,8,0" IsEnabled="False"/>
             <Button x:Name="CancelRunButton" Content="取消执行" Click="CancelRun_Click" Style="{StaticResource AppDialogGhostButton}" Width="100" Margin="0,0,8,0" IsEnabled="False"/>

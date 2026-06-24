@@ -2588,7 +2588,9 @@ public partial class ReaderWindow : Window
         _book.CoverPageIndex = item.PageIndex;
         var book = _book;
         await Task.Run(() => _database.SaveMetadata(book));
-        _book.CoverImage = await Task.Run(() => ImageLoader.LoadBitmap(item.Path, 240));
+        _book.CoverImage = _coverPipeline is not null
+            ? await _coverPipeline.LoadAsync(book)
+            : await Task.Run(() => ImageLoader.LoadBitmap(item.Path, 240));
         _book.NotifyAll();
         StatusCatalogFeedback($"已将第 {item.PageIndex + 1} 页设为封面。");
     }

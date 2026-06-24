@@ -17,6 +17,7 @@ public partial class SettingsDialog : Window
     public bool WaterfallRightClickChanged { get; private set; }
     public bool LibraryExitConfirmChanged { get; private set; }
     public bool ThemeChanged { get; private set; }
+    public bool CoverQualityChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
 
     private string? _pendingDataRoot;
@@ -88,6 +89,12 @@ public partial class SettingsDialog : Window
         TagClickFilterCheckBox.IsChecked = _database.LoadSetting("app.tag_click_filter_enabled", "1") == "1";
         TagDragAssignCheckBox.IsChecked = _database.LoadSetting("app.tag_drag_assign_enabled", "1") == "1";
         LibraryExitConfirmCheckBox.IsChecked = _database.LoadSetting("app.library_exit_confirm", "1") == "1";
+        CoverQualityComboBox.SelectedIndex = _database.LoadSetting(CoverQualitySettings.SettingKey, CoverQualitySettings.DefaultValue) switch
+        {
+            "low" => 0,
+            "high" => 2,
+            _ => 1
+        };
 
         // 主题
         var theme = _database.LoadSetting("app.theme", "Warm");
@@ -322,6 +329,15 @@ public partial class SettingsDialog : Window
     private void TagClickFilterCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void TagDragAssignCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void LibraryExitConfirmCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void CoverQualityComboBox_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || UnsavedHint is null)
+        {
+            return;
+        }
+
+        MarkChanged();
+    }
 
     private void ChangePassword_Click(object sender, RoutedEventArgs e)
     {
@@ -419,6 +435,14 @@ public partial class SettingsDialog : Window
         Close();
     }
 
+    private void ClearCoverCache_Click(object sender, RoutedEventArgs e)
+    {
+        RequestedAction = SettingsAction.ClearCoverCache;
+        _forceClose = true;
+        DialogResult = true;
+        Close();
+    }
+
     // --- 危险分区 ---
 
     private void ResetSettings_Click(object sender, RoutedEventArgs e)
@@ -435,6 +459,7 @@ public partial class SettingsDialog : Window
         _database.SaveSetting("app.tag_click_filter_enabled", "1");
         _database.SaveSetting("app.tag_drag_assign_enabled", "1");
         _database.SaveSetting("app.library_exit_confirm", "1");
+        _database.SaveSetting(CoverQualitySettings.SettingKey, CoverQualitySettings.DefaultValue);
         _database.SaveSetting("mark.color_group", "A");
         for (var i = 0; i < 5; i++)
             _database.SaveSetting(KeySettingKeys[i], KeyDefaultValues[i]);
@@ -445,6 +470,7 @@ public partial class SettingsDialog : Window
         PrivacyModeChanged = true;
         ShortcutsChanged = true;
         WaterfallRightClickChanged = true;
+        CoverQualityChanged = true;
 
         System.Windows.MessageBox.Show("所有设置已重置为默认值。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         LoadCurrentSettings();
@@ -486,6 +512,20 @@ public partial class SettingsDialog : Window
         {
             _database.SaveSetting("app.library_exit_confirm", newExitConfirm ? "1" : "0");
             LibraryExitConfirmChanged = true;
+        }
+
+        // 封面质量
+        var newCoverQuality = CoverQualityComboBox.SelectedIndex switch
+        {
+            0 => "low",
+            2 => "high",
+            _ => "standard"
+        };
+        var oldCoverQuality = _database.LoadSetting(CoverQualitySettings.SettingKey, CoverQualitySettings.DefaultValue);
+        if (!string.Equals(newCoverQuality, oldCoverQuality, StringComparison.OrdinalIgnoreCase))
+        {
+            _database.SaveSetting(CoverQualitySettings.SettingKey, newCoverQuality);
+            CoverQualityChanged = true;
         }
 
         // 快捷键
@@ -584,5 +624,6 @@ public enum SettingsAction
     ViewActivityHistory,
     RunLibraryHealthCheck,
     RunDuplicateCheck,
-    OpenReverseOrganize
+    OpenReverseOrganize,
+    ClearCoverCache
 }

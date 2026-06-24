@@ -200,7 +200,7 @@ public partial class MainWindow : Window
         _storage.EnsureCreated();
         _database = new LibraryDatabase(_storage);
         _updateService = new UpdateService(_storage);
-        _coverCache = new CoverCache(_storage);
+        _coverCache = new CoverCache(_storage, _database);
         _coverPipeline = new CoverThumbnailPipeline(_coverCache);
         SetDetailVisible(false);
         ShowHomeView();
@@ -961,7 +961,7 @@ public partial class MainWindow : Window
 
             RefreshLibraryViews(sort: true, ensureLibraryView: true);
             RefreshHomeShelves();
-            _coverCache.SweepStaleCovers(_allBooks.Select(b => b.Id));
+            _coverCache.SweepStaleCovers(_allBooks);
             StatusText.Text = $"扫描完成：{_allBooks.Count} 本漫画。";
         }
         catch (OperationCanceledException)
@@ -1439,6 +1439,45 @@ public partial class MainWindow : Window
     {
         book.CoverImage = null;
         book.CoverImage = await Task.Run(() => _coverCache.LoadOrCreate(book));
+    }
+
+    private async Task RefreshCoverQualityAsync()
+    {
+        foreach (var cancellation in _coverLoadCancellations.Values)
+        {
+            cancellation.Cancel();
+            cancellation.Dispose();
+        }
+
+        _coverLoadCancellations.Clear();
+        _coverPipeline.ClearMemoryCache();
+        _coverCache.ClearAll();
+
+        foreach (var book in _allBooks)
+        {
+            book.CoverImage = null;
+        }
+
+        var visibleBooks = _allBooks
+            .Where(book => _visibleCoverReferences.ContainsKey(GetCoverReferenceKey(book)))
+            .ToList();
+
+        foreach (var book in visibleBooks)
+        {
+            try
+            {
+                book.CoverImage = await _coverPipeline.LoadAsync(book);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
+            {
+                AppLogger.Warn("cover-thumbnail", $"刷新封面质量失败：{book.Title} · {ex.Message}");
+            }
+        }
+
+        if (_currentBook is not null && _currentBook.CoverImage is null)
+        {
+            await ReloadCoverAsync(_currentBook);
+        }
     }
 
     private static void NormalizeReadingStatusForReadCount(MangaBook book)
@@ -2563,6 +2602,12 @@ public partial class MainWindow : Window
 
         RefreshTagInteractionSettings();
 
+        if (dialog.CoverQualityChanged)
+        {
+            await RefreshCoverQualityAsync();
+            StatusText.Text = "封面质量已更新，封面缓存已刷新。";
+        }
+
         if (dialog.ThemeChanged)
         {
             SetNavButtonState(HomeNavButton, _currentNavigationKey == "home");
@@ -2596,6 +2641,10 @@ public partial class MainWindow : Window
                 break;
             case SettingsAction.OpenReverseOrganize:
                 await ShowReverseOrganizeDialogAsync();
+                break;
+            case SettingsAction.ClearCoverCache:
+                await RefreshCoverQualityAsync();
+                StatusText.Text = "封面缓存已清理并刷新。";
                 break;
         }
 
