@@ -2382,6 +2382,7 @@ public partial class MainWindow : Window
             }
             AppLogger.Info("update", $"Launching updater for {update.LatestVersion}: {packagePath}");
             _updateService.LaunchUpdater(packagePath);
+            _pendingExitConfirmed = true;
             Close();
         }
         catch (OperationCanceledException)
@@ -4430,6 +4431,19 @@ public partial class MainWindow : Window
         {
             LogOutputText.Text = "";
         }
+    }
+
+    private void CopyLogOutput_Click(object sender, RoutedEventArgs e)
+    {
+        var text = LogOutputText?.Text ?? "";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            StatusText.Text = "当前没有可复制的日志。";
+            return;
+        }
+
+        SafeSetClipboard(text);
+        StatusText.Text = "已复制当前展开日志。";
     }
 
     private void OpenLogFolder_Click(object sender, RoutedEventArgs e)

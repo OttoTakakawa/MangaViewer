@@ -21,6 +21,7 @@ public partial class ReverseOrganizeDialog : Window
     private ReverseOrganizePlan? _plan;
     private CancellationTokenSource? _runCancellation;
     private bool _isRunning;
+    private bool _isInitializing;
 
     public ReverseOrganizeResult? CompletedResult { get; private set; }
 
@@ -30,11 +31,15 @@ public partial class ReverseOrganizeDialog : Window
         IReadOnlyList<MangaBook> selectedBooks,
         IReadOnlyList<string> forbiddenRoots)
     {
+        _isInitializing = true;
         InitializeComponent();
-        _allBooks = allBooks;
-        _visibleBooks = visibleBooks;
-        _selectedBooks = selectedBooks;
-        _forbiddenRoots = forbiddenRoots;
+        _allBooks = SanitizeBooks(allBooks);
+        _visibleBooks = SanitizeBooks(visibleBooks);
+        _selectedBooks = SanitizeBooks(selectedBooks);
+        _forbiddenRoots = (forbiddenRoots ?? [])
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         IssuesList.ItemsSource = _issues;
         ItemsList.ItemsSource = _items;
@@ -42,6 +47,7 @@ public partial class ReverseOrganizeDialog : Window
         TemplateBox.SelectedIndex = 0;
         ConflictBox.SelectedIndex = 0;
         LoadAuthors();
+        _isInitializing = false;
         RefreshPlanSummary();
     }
 
@@ -65,7 +71,23 @@ public partial class ReverseOrganizeDialog : Window
 
     private void Input_Changed(object sender, RoutedEventArgs e)
     {
-        if (ScopeBox is null)
+        if (_isInitializing
+            || ScopeBox is null
+            || AuthorBox is null
+            || StartButton is null
+            || OpenManifestButton is null
+            || OpenTargetButton is null
+            || BuildPlanButton is null
+            || ProgressBar is null
+            || ProgressText is null
+            || PlanSummaryText is null
+            || EmptyAuthorBox is null
+            || ExcludeHiddenBox is null
+            || ExcludeMissingBox is null
+            || ExcludeEmptyAuthorBox is null
+            || TargetRootBox is null
+            || TemplateBox is null
+            || ConflictBox is null)
         {
             return;
         }
@@ -76,6 +98,7 @@ public partial class ReverseOrganizeDialog : Window
         _items.Clear();
         StartButton.IsEnabled = false;
         OpenManifestButton.IsEnabled = false;
+        OpenTargetButton.IsEnabled = false;
         ProgressBar.Value = 0;
         ProgressText.Text = "";
         RefreshPlanSummary();
@@ -228,13 +251,15 @@ public partial class ReverseOrganizeDialog : Window
 
     private IEnumerable<MangaBook> ResolveSourceBooks()
     {
-        return ScopeBox.SelectedIndex switch
+        var books = ScopeBox.SelectedIndex switch
         {
             1 => _visibleBooks,
             2 => _selectedBooks,
             3 => _allBooks.Where(book => string.Equals(book.Author, AuthorBox.SelectedItem as string, StringComparison.CurrentCultureIgnoreCase)),
             _ => _allBooks
         };
+
+        return books.Where(book => book is not null);
     }
 
     private ReverseOrganizeOptions BuildOptions()
@@ -262,6 +287,11 @@ public partial class ReverseOrganizeDialog : Window
 
     private void RefreshPlanSummary()
     {
+        if (PlanSummaryText is null || ScopeBox is null)
+        {
+            return;
+        }
+
         var sourceCount = ResolveSourceBooks().Count();
         var selectedCount = _selectedBooks.Count;
         var visibleCount = _visibleBooks.Count;
@@ -299,5 +329,12 @@ public partial class ReverseOrganizeDialog : Window
         const double gb = 1024d * 1024d * 1024d;
         const double mb = 1024d * 1024d;
         return bytes >= gb ? $"{bytes / gb:0.##}GB" : $"{Math.Max(1, bytes / mb):0.#}MB";
+    }
+
+    private static IReadOnlyList<MangaBook> SanitizeBooks(IEnumerable<MangaBook>? books)
+    {
+        return (books ?? [])
+            .Where(book => book is not null)
+            .ToList();
     }
 }

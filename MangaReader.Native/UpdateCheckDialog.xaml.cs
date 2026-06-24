@@ -98,7 +98,7 @@ public partial class UpdateCheckDialog : Window
         UpdateProgressBar.IsIndeterminate = false;
         UpdateProgressBar.Value = normalized * 100;
         UpdatePercentText.Visibility = Visibility.Visible;
-        UpdatePercentText.Text = $"{normalized:P0}";
+        UpdatePercentText.Text = normalized >= 1 ? "100%" : $"约 {normalized:P0}";
     }
 
     protected override void OnClosed(EventArgs e)

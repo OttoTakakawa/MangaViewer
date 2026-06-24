@@ -231,7 +231,7 @@ public sealed class UpdateService
         }
         Directory.CreateDirectory(outputDirectory);
 
-        progress?.Report(0.05);
+        progress?.Report(0.08);
         var startInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
@@ -246,14 +246,65 @@ public sealed class UpdateService
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("无法启动 dotnet publish。本地源码更新需要安装 .NET 8 SDK。");
 
-        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        var stdoutLines = new List<string>();
+        var stderrLines = new List<string>();
+        var fakeProgress = 0.08d;
+        progress?.Report(fakeProgress);
+
+        var outputTask = Task.Run(async () =>
+        {
+            while (true)
+            {
+                var line = await process.StandardOutput.ReadLineAsync(cancellationToken);
+                if (line is null)
+                {
+                    break;
+                }
+
+                stdoutLines.Add(line);
+                fakeProgress = Math.Max(fakeProgress, EstimatePublishProgress(line, fakeProgress));
+                progress?.Report(fakeProgress);
+            }
+        }, cancellationToken);
+
+        var errorTask = Task.Run(async () =>
+        {
+            while (true)
+            {
+                var line = await process.StandardError.ReadLineAsync(cancellationToken);
+                if (line is null)
+                {
+                    break;
+                }
+
+                stderrLines.Add(line);
+            }
+        }, cancellationToken);
+
+        var heartbeatTask = Task.Run(async () =>
+        {
+            while (!process.HasExited)
+            {
+                await Task.Delay(700, cancellationToken);
+                fakeProgress = Math.Min(0.92, fakeProgress + 0.03);
+                progress?.Report(fakeProgress);
+            }
+        }, cancellationToken);
+
         await process.WaitForExitAsync(cancellationToken);
+        await Task.WhenAll(outputTask, errorTask);
+        try
+        {
+            await heartbeatTask;
+        }
+        catch (OperationCanceledException)
+        {
+        }
 
         if (process.ExitCode != 0)
         {
-            var output = await outputTask;
-            var error = await errorTask;
+            var output = string.Join(Environment.NewLine, stdoutLines);
+            var error = string.Join(Environment.NewLine, stderrLines);
             throw new InvalidOperationException($"本地发布更新包失败，请确认已安装 .NET 8 SDK。\n{output}\n{error}".Trim());
         }
 
@@ -265,6 +316,45 @@ public sealed class UpdateService
 
         progress?.Report(1);
         return outputDirectory;
+    }
+
+    private static double EstimatePublishProgress(string line, double currentProgress)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return currentProgress;
+        }
+
+        if (line.Contains("正在确定要还原的项目", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("Determining projects to restore", StringComparison.OrdinalIgnoreCase))
+        {
+            return Math.Max(currentProgress, 0.14);
+        }
+
+        if (line.Contains("已还原", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("Restored", StringComparison.OrdinalIgnoreCase))
+        {
+            return Math.Max(currentProgress, 0.28);
+        }
+
+        if (line.Contains("->", StringComparison.OrdinalIgnoreCase))
+        {
+            return Math.Max(currentProgress, 0.62);
+        }
+
+        if (line.Contains("已成功生成", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("Build succeeded", StringComparison.OrdinalIgnoreCase))
+        {
+            return Math.Max(currentProgress, 0.82);
+        }
+
+        if (line.Contains("Publish", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("publish", StringComparison.OrdinalIgnoreCase))
+        {
+            return Math.Max(currentProgress, 0.88);
+        }
+
+        return currentProgress;
     }
 
     private static LocalUpdatePackage? FindBestLocalPackage(CurrentBuildInfo currentBuild, string? storageRoot, CancellationToken cancellationToken)

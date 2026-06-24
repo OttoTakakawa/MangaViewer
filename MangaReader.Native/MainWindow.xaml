@@ -2099,6 +2099,7 @@
                                    FontSize="12"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button x:Name="LogPanelExpandButton" Content="扩大" Click="ToggleLogPanelSize_Click" Style="{StaticResource TinyButton}" Margin="0,0,10,0"/>
+                            <Button Content="复制全部" Click="CopyLogOutput_Click" Style="{StaticResource TinyButton}" Margin="0,0,10,0"/>
                             <Button Content="清空" Click="ClearLogOutput_Click" Style="{StaticResource TinyButton}" Margin="0,0,10,0"/>
                             <Button Content="打开日志目录" Click="OpenLogFolder_Click" Style="{StaticResource TinyButton}"/>
                         </StackPanel>
@@ -2108,11 +2109,18 @@
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Auto"
                                       Padding="14,12">
-                            <TextBlock x:Name="LogOutputText"
-                                       FontFamily="Consolas"
-                                       FontSize="12"
-                                       Foreground="{DynamicResource Brush.ScrollThumb}"
-                                       TextWrapping="NoWrap"/>
+                            <TextBox x:Name="LogOutputText"
+                                     IsReadOnly="True"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     CaretBrush="{DynamicResource Brush.ScrollThumb}"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource Brush.ScrollThumb}"
+                                     TextWrapping="NoWrap"
+                                     AcceptsReturn="True"
+                                     VerticalContentAlignment="Top"
+                                     HorizontalContentAlignment="Left"/>
                         </ScrollViewer>
                     </Border>
                     <TextBlock x:Name="StatusText"
