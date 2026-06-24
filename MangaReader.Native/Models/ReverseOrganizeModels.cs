@@ -35,6 +35,8 @@ public sealed class ReverseOrganizeOptions
     public ReverseOrganizeTemplate Template { get; init; } = ReverseOrganizeTemplate.AuthorTitle;
     public ReverseOrganizeConflictStrategy ConflictStrategy { get; init; } = ReverseOrganizeConflictStrategy.AppendNumber;
     public string EmptyAuthorName { get; init; } = "未指定作者";
+    public string SingleBookCollectionName { get; init; } = "单本合集";
+    public int SmallAuthorThreshold { get; init; } = 2;
     public bool ExcludeHidden { get; init; }
     public bool ExcludeMissingSource { get; init; } = true;
     public bool ExcludeEmptyAuthor { get; init; }

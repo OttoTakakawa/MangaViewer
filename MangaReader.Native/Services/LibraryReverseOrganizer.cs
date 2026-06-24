@@ -15,27 +15,22 @@ public sealed class LibraryReverseOrganizer
         var items = new List<ReverseOrganizeItem>();
         var targetPaths = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var targetRoot = NormalizePath(options.TargetRoot);
+        var books = sourceBooks.ToList();
+        var includedBooks = books
+            .Where(book => !(options.ExcludeHidden && book.IsHidden))
+            .Where(book => !(options.ExcludeEmptyAuthor && string.IsNullOrWhiteSpace(book.Author)))
+            .Where(book => !(options.ExcludeMissingSource && !Directory.Exists(NormalizePath(book.FolderPath))))
+            .ToList();
+        var authorCounts = includedBooks
+            .Where(book => !string.IsNullOrWhiteSpace(book.Author))
+            .GroupBy(book => NormalizeAuthorKey(book.Author), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 
-        foreach (var book in sourceBooks)
+        foreach (var book in includedBooks)
         {
-            if (options.ExcludeHidden && book.IsHidden)
-            {
-                continue;
-            }
-
-            if (options.ExcludeEmptyAuthor && string.IsNullOrWhiteSpace(book.Author))
-            {
-                continue;
-            }
-
             var sourcePath = NormalizePath(book.FolderPath);
             var sourceExists = Directory.Exists(sourcePath);
-            if (options.ExcludeMissingSource && !sourceExists)
-            {
-                continue;
-            }
-
-            var targetPath = BuildTargetPath(book, targetRoot, options);
+            var targetPath = BuildTargetPath(book, targetRoot, options, authorCounts);
             var item = new ReverseOrganizeItem
             {
                 BookId = book.Id,
@@ -368,11 +363,14 @@ public sealed class LibraryReverseOrganizer
         });
     }
 
-    private static string BuildTargetPath(MangaBook book, string targetRoot, ReverseOrganizeOptions options)
+    private static string BuildTargetPath(MangaBook book, string targetRoot, ReverseOrganizeOptions options, IReadOnlyDictionary<string, int> authorCounts)
     {
-        var author = string.IsNullOrWhiteSpace(book.Author) ? options.EmptyAuthorName : book.Author.Trim();
         var title = string.IsNullOrWhiteSpace(book.Title) ? book.Id : book.Title.Trim();
-        var authorFolder = SanitizePathPart(author);
+        var useSingleBookCollection = ShouldUseSingleBookCollection(book, options, authorCounts);
+        var author = useSingleBookCollection
+            ? options.SingleBookCollectionName
+            : book.Author.Trim();
+        var authorFolder = SanitizePathPart(string.IsNullOrWhiteSpace(author) ? "单本合集" : author);
         var titleFolder = SanitizePathPart(title);
         var workFolder = options.Template == ReverseOrganizeTemplate.AuthorYearTitle
             ? $"{SanitizePathPart(book.ProducedAt)} - {titleFolder}".Trim(' ', '-')
@@ -383,6 +381,28 @@ public sealed class LibraryReverseOrganizer
         }
 
         return NormalizePath(Path.Combine(targetRoot, authorFolder, workFolder));
+    }
+
+    private static bool ShouldUseSingleBookCollection(MangaBook book, ReverseOrganizeOptions options, IReadOnlyDictionary<string, int> authorCounts)
+    {
+        if (string.IsNullOrWhiteSpace(book.Author))
+        {
+            return true;
+        }
+
+        var threshold = Math.Max(0, options.SmallAuthorThreshold);
+        if (threshold <= 1)
+        {
+            return false;
+        }
+
+        var key = NormalizeAuthorKey(book.Author);
+        return authorCounts.TryGetValue(key, out var count) && count < threshold;
+    }
+
+    private static string NormalizeAuthorKey(string author)
+    {
+        return author.Trim();
     }
 
     private static void CopyDirectory(string sourcePath, string targetPath, CancellationToken cancellationToken)

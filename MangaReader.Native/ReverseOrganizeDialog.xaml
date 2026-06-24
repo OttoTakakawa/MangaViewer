@@ -88,10 +88,13 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="12"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="150"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="目录模板" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
                         <TextBlock Grid.Column="2" Text="冲突策略" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
-                        <TextBlock Grid.Column="4" Text="作者为空时目录名" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Column="4" Text="单本合集目录名" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Column="6" Text="少于几本归入合集" Style="{StaticResource AppDialogLabelText}" Margin="0,0,0,6"/>
                     </Grid>
                     <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions>
@@ -100,6 +103,8 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="12"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="150"/>
                         </Grid.ColumnDefinitions>
                         <Grid>
                             <ComboBox x:Name="TemplateBox" Style="{StaticResource AppDialogComboBox}" Height="36" SelectionChanged="Input_Changed">
@@ -114,7 +119,10 @@
                             </ComboBox>
                         </Grid>
                         <Grid Grid.Column="4">
-                            <TextBox x:Name="EmptyAuthorBox" Text="未指定作者" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
+                            <TextBox x:Name="EmptyAuthorBox" Text="单本合集" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
+                        </Grid>
+                        <Grid Grid.Column="6">
+                            <TextBox x:Name="SmallAuthorThresholdBox" Text="2" Style="{StaticResource AppDialogTextBox}" Height="36" TextChanged="Input_Changed"/>
                         </Grid>
                     </Grid>
                 </Grid>

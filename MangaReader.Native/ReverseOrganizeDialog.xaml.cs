@@ -102,6 +102,7 @@ public partial class ReverseOrganizeDialog : Window
             || PlanSummaryText is null
             || PendingRedirectText is null
             || EmptyAuthorBox is null
+            || SmallAuthorThresholdBox is null
             || ExcludeHiddenBox is null
             || ExcludeMissingBox is null
             || ExcludeEmptyAuthorBox is null
@@ -487,12 +488,25 @@ public partial class ReverseOrganizeDialog : Window
             TargetRoot = TargetRootBox.Text.Trim(),
             Template = TemplateBox.SelectedIndex == 1 ? ReverseOrganizeTemplate.AuthorYearTitle : ReverseOrganizeTemplate.AuthorTitle,
             ConflictStrategy = ConflictBox.SelectedIndex == 1 ? ReverseOrganizeConflictStrategy.Skip : ReverseOrganizeConflictStrategy.AppendNumber,
-            EmptyAuthorName = string.IsNullOrWhiteSpace(EmptyAuthorBox.Text) ? "未指定作者" : EmptyAuthorBox.Text.Trim(),
+            EmptyAuthorName = string.IsNullOrWhiteSpace(EmptyAuthorBox.Text) ? "单本合集" : EmptyAuthorBox.Text.Trim(),
+            SingleBookCollectionName = string.IsNullOrWhiteSpace(EmptyAuthorBox.Text) ? "单本合集" : EmptyAuthorBox.Text.Trim(),
+            SmallAuthorThreshold = TryParseSmallAuthorThreshold(),
             ExcludeHidden = ExcludeHiddenBox.IsChecked == true,
             ExcludeMissingSource = ExcludeMissingBox.IsChecked == true,
             ExcludeEmptyAuthor = ExcludeEmptyAuthorBox.IsChecked == true,
             ForbiddenRoots = _forbiddenRoots
         };
+    }
+
+    private int TryParseSmallAuthorThreshold()
+    {
+        if (SmallAuthorThresholdBox is null
+            || !int.TryParse(SmallAuthorThresholdBox.Text.Trim(), out var threshold))
+        {
+            return 2;
+        }
+
+        return Math.Clamp(threshold, 0, 999);
     }
 
     private void UpdateProgress(ReverseOrganizeProgress progress)
