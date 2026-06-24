@@ -1,4 +1,7 @@
 using MangaReader.Native.Models;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -11,6 +14,7 @@ public partial class BatchRenameDialog : Window
     private readonly IReadOnlyList<MangaBook> _books;
     private bool _isInitializing;
 
+    public ObservableCollection<BatchRenameRow> Rows { get; } = [];
     public IReadOnlyList<BatchRenameUpdate> Updates { get; private set; } = [];
 
     public BatchRenameDialog(IReadOnlyList<MangaBook> books, string initialPrefix)
@@ -18,13 +22,22 @@ public partial class BatchRenameDialog : Window
         _isInitializing = true;
         InitializeComponent();
         _books = books;
-        ScopeText.Text = $"已选 {books.Count} 本漫画。先选择规则，再确认旧标题到新标题的预览。";
+        DataContext = this;
+        foreach (var book in books)
+        {
+            var row = new BatchRenameRow(book);
+            row.PropertyChanged += Row_PropertyChanged;
+            Rows.Add(row);
+        }
+
+        ScopeText.Text = $"已选 {books.Count} 本漫画。规则只是生成草稿，下面每一行的新标题都可以手动编辑。";
         ModeBox.SelectedIndex = 0;
         FindBox.Text = initialPrefix;
         ReplaceBox.Text = "";
         _isInitializing = false;
         RefreshModeLabels();
-        RefreshPreview();
+        ApplyRuleToRows();
+        RefreshSummary();
     }
 
     private void Input_Changed(object sender, RoutedEventArgs e)
@@ -35,7 +48,6 @@ public partial class BatchRenameDialog : Window
         }
 
         RefreshModeLabels();
-        RefreshPreview();
     }
 
     private void RefreshModeLabels()
@@ -52,40 +64,25 @@ public partial class BatchRenameDialog : Window
         ReplaceLabelText.Text = mode == 3 ? "替换为" : "仅替换模式使用";
     }
 
-    private void RefreshPreview()
+    private void ApplyRule_Click(object sender, RoutedEventArgs e)
     {
-        var updates = BuildUpdates();
-        Updates = updates;
-        ConfirmButton.IsEnabled = updates.Count > 0;
-        PreviewSummaryText.Text = $"将修改 {updates.Count} / {_books.Count} 本。";
-        PreviewTextBox.Text = updates.Count == 0
-            ? "没有可修改的标题。"
-            : string.Join(Environment.NewLine, updates.Select(item => $"{item.Book.Title}  ->  {item.NewTitle}"));
+        ApplyRuleToRows();
+        RefreshSummary();
     }
 
-    private List<BatchRenameUpdate> BuildUpdates()
+    private void ApplyRuleToRows()
     {
         var input = FindBox.Text;
         var replacement = ReplaceBox.Text;
         if (string.IsNullOrWhiteSpace(input))
         {
-            return [];
+            return;
         }
 
-        var result = new List<BatchRenameUpdate>();
-        foreach (var book in _books)
+        foreach (var row in Rows)
         {
-            var newTitle = BuildNewTitle(book.Title, input, replacement);
-            if (string.IsNullOrWhiteSpace(newTitle)
-                || string.Equals(book.Title, newTitle, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            result.Add(new BatchRenameUpdate(book, newTitle));
+            row.NewTitle = BuildNewTitle(row.OriginalTitle, input, replacement);
         }
-
-        return result;
     }
 
     private string BuildNewTitle(string title, string input, string replacement)
@@ -106,7 +103,7 @@ public partial class BatchRenameDialog : Window
 
     private void Confirm_Click(object sender, RoutedEventArgs e)
     {
-        RefreshPreview();
+        RefreshUpdates();
         if (Updates.Count == 0)
         {
             return;
@@ -118,5 +115,96 @@ public partial class BatchRenameDialog : Window
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
+    }
+
+    private void ResetAll_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var row in Rows)
+        {
+            row.NewTitle = row.OriginalTitle;
+        }
+
+        RefreshSummary();
+    }
+
+    private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BatchRenameRow.NewTitle)
+            || e.PropertyName == nameof(BatchRenameRow.Status))
+        {
+            RefreshSummary();
+        }
+    }
+
+    private void RefreshSummary()
+    {
+        RefreshUpdates();
+        var emptyCount = Rows.Count(row => string.IsNullOrWhiteSpace(row.NewTitle));
+        PreviewSummaryText.Text = emptyCount > 0
+            ? $"将修改 {Updates.Count} / {_books.Count} 本。{emptyCount} 行新标题为空，会被跳过。"
+            : $"将修改 {Updates.Count} / {_books.Count} 本。";
+        ConfirmButton.IsEnabled = Updates.Count > 0;
+    }
+
+    private void RefreshUpdates()
+    {
+        Updates = Rows
+            .Where(row => row.IsChanged && !string.IsNullOrWhiteSpace(row.NewTitle))
+            .Select(row => new BatchRenameUpdate(row.Book, row.NewTitle))
+            .ToList();
+    }
+}
+
+public sealed class BatchRenameRow : INotifyPropertyChanged
+{
+    private string _newTitle;
+
+    public BatchRenameRow(MangaBook book)
+    {
+        Book = book;
+        OriginalTitle = book.Title;
+        _newTitle = book.Title;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public MangaBook Book { get; }
+    public string OriginalTitle { get; }
+
+    public string NewTitle
+    {
+        get => _newTitle;
+        set
+        {
+            if (string.Equals(_newTitle, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _newTitle = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsChanged));
+            OnPropertyChanged(nameof(Status));
+        }
+    }
+
+    public bool IsChanged => !string.Equals(OriginalTitle, NewTitle, StringComparison.Ordinal);
+
+    public string Status
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(NewTitle))
+            {
+                return "空标题";
+            }
+
+            return IsChanged ? "将修改" : "不变";
+        }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
