@@ -454,23 +454,28 @@ public partial class MainWindow : Window
 
     private async Task ImportSingleBookAsync(BatchImportCandidate candidate, CancellationToken token)
     {
-        StatusText.Text = $"正在导入单本漫画：{candidate.Title}...";
-        ShowImportProgress("单本漫画", 0, 1, $"准备导入：{candidate.Title}");
-        _database.SaveLibraryRoot(candidate.FolderPath);
-        await System.Windows.Threading.Dispatcher.Yield();
-
         try
         {
             token.ThrowIfCancellationRequested();
+            StatusText.Text = $"正在检查单本漫画：{candidate.Title}...";
             var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
-            if (!ConfirmImportConflicts(
+            var conflictLines = BuildImportConflictLines(
                     new[] { candidate },
-                    BuildExistingBooksForImport(savedBooks.Values)))
+                    BuildExistingBooksForImport(savedBooks.Values));
+            if (conflictLines.Count > 0)
             {
-                HideImportProgress();
-                StatusText.Text = "已取消导入：发现同名作品。";
-                return;
+                HideImportProgress(immediate: true);
+                if (!ConfirmImportConflicts(conflictLines))
+                {
+                    StatusText.Text = "已取消导入：发现同名作品。";
+                    return;
+                }
             }
+
+            StatusText.Text = $"正在导入单本漫画：{candidate.Title}...";
+            ShowImportProgress("单本漫画", 0, 1, $"准备导入：{candidate.Title}");
+            _database.SaveLibraryRoot(candidate.FolderPath);
+            await System.Windows.Threading.Dispatcher.Yield();
 
             var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
             var pages = candidate.Pages.Count > 0
@@ -544,19 +549,25 @@ public partial class MainWindow : Window
 
     private async Task ImportAuthorBatchAsync(string rootPath, string authorName, IReadOnlyList<BatchImportCandidate> candidates, CancellationToken token)
     {
+        StatusText.Text = $"正在检查批量导入：{authorName}...";
+        var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
+        var conflictLines = BuildImportConflictLines(
+                candidates,
+                BuildExistingBooksForImport(savedBooks.Values));
+        if (conflictLines.Count > 0)
+        {
+            HideImportProgress(immediate: true);
+            if (!ConfirmImportConflicts(conflictLines))
+            {
+                StatusText.Text = "已取消批量导入：发现同名作品。";
+                return;
+            }
+        }
+
         StatusText.Text = $"正在批量导入：{authorName}...";
         ShowImportProgress(authorName, 0, candidates.Count, "准备导入...");
         await System.Windows.Threading.Dispatcher.Yield();
         _database.SaveLibraryRoot(rootPath);
-        var savedBooks = await Task.Run(() => _database.LoadBooksByPath(), token);
-        if (!ConfirmImportConflicts(
-                candidates,
-                BuildExistingBooksForImport(savedBooks.Values)))
-        {
-            HideImportProgress();
-            StatusText.Text = "已取消批量导入：发现同名作品。";
-            return;
-        }
 
         var booksByPath = _allBooks.ToDictionary(book => book.FolderPath, StringComparer.OrdinalIgnoreCase);
         var importedCount = 0;
@@ -680,7 +691,7 @@ public partial class MainWindow : Window
         return byPath.Values.ToList();
     }
 
-    private bool ConfirmImportConflicts(
+    private List<string> BuildImportConflictLines(
         IEnumerable<BatchImportCandidate> incoming,
         IReadOnlyList<MangaBook> existingBooks)
     {
@@ -699,7 +710,7 @@ public partial class MainWindow : Window
 
         if (incomingItems.Count == 0)
         {
-            return true;
+            return [];
         }
 
         var conflictLines = new List<string>();
@@ -752,11 +763,11 @@ public partial class MainWindow : Window
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (conflictLines.Count == 0)
-        {
-            return true;
-        }
+        return conflictLines;
+    }
 
+    private bool ConfirmImportConflicts(IReadOnlyList<string> conflictLines)
+    {
         var preview = string.Join(Environment.NewLine, conflictLines.Take(8));
         if (conflictLines.Count > 8)
         {
@@ -825,10 +836,18 @@ public partial class MainWindow : Window
         StatusText.Text = "正在取消导入...";
     }
 
-    private void HideImportProgress()
+    private void HideImportProgress(bool immediate = false)
     {
         if (ImportProgressPanel is not null)
         {
+            if (immediate)
+            {
+                ImportProgressPanel.BeginAnimation(UIElement.OpacityProperty, null);
+                ImportProgressPanel.Opacity = 1;
+                ImportProgressPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
             MotionService.HideWithFade(ImportProgressPanel);
         }
     }
