@@ -6649,6 +6649,11 @@ public partial class MainWindow : Window
 
     private void FastVerticalScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (TryScrollNestedVerticalViewer(sender, e))
+        {
+            return;
+        }
+
         if (TryScrollNestedHorizontalShelf(sender, e))
         {
             return;
@@ -6661,6 +6666,41 @@ public partial class MainWindow : Window
 
         viewer.ScrollToVerticalOffset(ClampOffset(viewer.VerticalOffset - e.Delta * WheelScrollMultiplier, viewer.ScrollableHeight));
         e.Handled = true;
+    }
+
+    private static bool TryScrollNestedVerticalViewer(object sender, MouseWheelEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source
+            || sender is not System.Windows.Controls.ScrollViewer owner)
+        {
+            return false;
+        }
+
+        var current = source;
+        while (current is not null)
+        {
+            if (current is System.Windows.Controls.ScrollViewer viewer && !ReferenceEquals(viewer, owner))
+            {
+                if (viewer.ScrollableHeight <= 0)
+                {
+                    return false;
+                }
+
+                var nextOffset = ClampOffset(viewer.VerticalOffset - e.Delta * WheelScrollMultiplier, viewer.ScrollableHeight);
+                if (Math.Abs(nextOffset - viewer.VerticalOffset) < 0.1)
+                {
+                    return false;
+                }
+
+                viewer.ScrollToVerticalOffset(nextOffset);
+                e.Handled = true;
+                return true;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
     }
 
     private void TagGroupScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
