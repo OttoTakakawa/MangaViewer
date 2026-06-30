@@ -37,6 +37,20 @@ public partial class MainWindow : Window
             typeof(MainWindow),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty ShowLibraryCardFrameProperty =
+        DependencyProperty.Register(
+            nameof(ShowLibraryCardFrame),
+            typeof(bool),
+            typeof(MainWindow),
+            new PropertyMetadata(true));
+
+    public static readonly DependencyProperty ShowLibraryCardHoverProperty =
+        DependencyProperty.Register(
+            nameof(ShowLibraryCardHover),
+            typeof(bool),
+            typeof(MainWindow),
+            new PropertyMetadata(true));
+
     private const double WheelScrollMultiplier = 1.45;
     private const double NormalLogPanelHeight = 160;
     private const double ExpandedLogPanelHeight = 420;
@@ -53,6 +67,8 @@ public partial class MainWindow : Window
     private const string SidebarCollapsedSettingKey = "app.sidebar_collapsed";
     private const string TagClickFilterEnabledSettingKey = "app.tag_click_filter_enabled";
     private const string TagDragAssignEnabledSettingKey = "app.tag_drag_assign_enabled";
+    private const string ShowLibraryCardFrameSettingKey = "appearance.library_card_frame";
+    private const string ShowLibraryCardHoverSettingKey = "appearance.library_card_hover";
     private const int DefaultLibraryPageSize = 140;
     private const string TagDragDataFormat = "MangaReader.TagName";
     private const double ExpandedSidebarWidth = 228;
@@ -186,6 +202,18 @@ public partial class MainWindow : Window
         set => SetValue(IsPrivacyModeProperty, value);
     }
 
+    public bool ShowLibraryCardFrame
+    {
+        get => (bool)GetValue(ShowLibraryCardFrameProperty);
+        set => SetValue(ShowLibraryCardFrameProperty, value);
+    }
+
+    public bool ShowLibraryCardHover
+    {
+        get => (bool)GetValue(ShowLibraryCardHoverProperty);
+        set => SetValue(ShowLibraryCardHoverProperty, value);
+    }
+
     public RangeObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> RecentReadingBooks { get; } = [];
     public RangeObservableCollection<MangaBook> FavoriteShowcaseBooks { get; } = [];
@@ -280,8 +308,10 @@ public partial class MainWindow : Window
             var pageSizeTask = Task.Run(() => _database.LoadSetting(LibraryPageSizeSettingKey, DefaultLibraryPageSize.ToString()));
             var tagCollapseTask = Task.Run(() => _database.LoadSetting(TagCategoryCollapseStateKey));
             var sidebarCollapsedTask = Task.Run(() => _database.LoadSetting(SidebarCollapsedSettingKey));
+            var cardFrameTask = Task.Run(() => _database.LoadSetting(ShowLibraryCardFrameSettingKey, "1"));
+            var cardHoverTask = Task.Run(() => _database.LoadSetting(ShowLibraryCardHoverSettingKey, "1"));
 
-            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask, tagCollapseTask, sidebarCollapsedTask);
+            await Task.WhenAll(managedTagsTask, suppressedTagsTask, customTagColorsTask, managedAuthorsTask, shortcutsTask, privacyModeTask, pageSizeTask, tagCollapseTask, sidebarCollapsedTask, cardFrameTask, cardHoverTask);
 
             ApplyManagedTags(managedTagsTask.Result, suppressedTagsTask.Result);
             ApplyCustomTagColors(customTagColorsTask.Result);
@@ -291,6 +321,7 @@ public partial class MainWindow : Window
             ApplyLibraryPageSizeSetting(pageSizeTask.Result);
             ApplyTagCategoryCollapseState(tagCollapseTask.Result);
             ApplySidebarCollapsedSetting(sidebarCollapsedTask.Result);
+            ApplyAppearanceSettings(cardFrameTask.Result, cardHoverTask.Result);
             RefreshTagInteractionSettings();
 
             var roots = _database.LoadLibraryRoots().Where(Directory.Exists).ToList();
@@ -2809,6 +2840,12 @@ public partial class MainWindow : Window
             SetNavButtonState(AuthorsNavButton, _currentNavigationKey == "authors");
         }
 
+        if (dialog.AppearanceChanged)
+        {
+            ApplyAppearanceSettings();
+            StatusText.Text = "外观设置已更新。";
+        }
+
         switch (dialog.RequestedAction)
         {
             case SettingsAction.OpenBackupFolder:
@@ -5146,6 +5183,19 @@ public partial class MainWindow : Window
         {
             _tagDragTriggered = false;
         }
+    }
+
+    private void ApplyAppearanceSettings()
+    {
+        ApplyAppearanceSettings(
+            _database.LoadSetting(ShowLibraryCardFrameSettingKey, "1"),
+            _database.LoadSetting(ShowLibraryCardHoverSettingKey, "1"));
+    }
+
+    private void ApplyAppearanceSettings(string cardFrame, string cardHover)
+    {
+        ShowLibraryCardFrame = string.Equals(cardFrame, "1", StringComparison.Ordinal);
+        ShowLibraryCardHover = string.Equals(cardHover, "1", StringComparison.Ordinal);
     }
 
     private void ResetTagInteractionState()

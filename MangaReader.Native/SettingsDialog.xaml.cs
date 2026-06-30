@@ -18,12 +18,15 @@ public partial class SettingsDialog : Window
     public bool LibraryExitConfirmChanged { get; private set; }
     public bool ThemeChanged { get; private set; }
     public bool CoverQualityChanged { get; private set; }
+    public bool AppearanceChanged { get; private set; }
     public SettingsAction RequestedAction { get; private set; } = SettingsAction.None;
 
     private string? _pendingDataRoot;
     private bool _hasChanges;
     private bool _forceClose;
     private bool _loading;
+    private const string ShowLibraryCardFrameSettingKey = "appearance.library_card_frame";
+    private const string ShowLibraryCardHoverSettingKey = "appearance.library_card_hover";
 
     // 快捷键：5个功能 × 3个槽位
     private readonly System.Windows.Input.Key[,] _keySlots = new System.Windows.Input.Key[5, 3];
@@ -89,6 +92,8 @@ public partial class SettingsDialog : Window
         TagClickFilterCheckBox.IsChecked = _database.LoadSetting("app.tag_click_filter_enabled", "1") == "1";
         TagDragAssignCheckBox.IsChecked = _database.LoadSetting("app.tag_drag_assign_enabled", "1") == "1";
         LibraryExitConfirmCheckBox.IsChecked = _database.LoadSetting("app.library_exit_confirm", "1") == "1";
+        ShowLibraryCardFrameCheckBox.IsChecked = _database.LoadSetting(ShowLibraryCardFrameSettingKey, "1") == "1";
+        ShowLibraryCardHoverCheckBox.IsChecked = _database.LoadSetting(ShowLibraryCardHoverSettingKey, "1") == "1";
         CoverQualityComboBox.SelectedIndex = _database.LoadSetting(CoverQualitySettings.SettingKey, CoverQualitySettings.DefaultValue) switch
         {
             "low" => 0,
@@ -329,6 +334,7 @@ public partial class SettingsDialog : Window
     private void TagClickFilterCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void TagDragAssignCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void LibraryExitConfirmCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
+    private void AppearanceCheckBox_Changed(object sender, RoutedEventArgs e) { if (UnsavedHint is not null) MarkChanged(); }
     private void CoverQualityComboBox_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || UnsavedHint is null)
@@ -459,6 +465,8 @@ public partial class SettingsDialog : Window
         _database.SaveSetting("app.tag_click_filter_enabled", "1");
         _database.SaveSetting("app.tag_drag_assign_enabled", "1");
         _database.SaveSetting("app.library_exit_confirm", "1");
+        _database.SaveSetting(ShowLibraryCardFrameSettingKey, "1");
+        _database.SaveSetting(ShowLibraryCardHoverSettingKey, "1");
         _database.SaveSetting(CoverQualitySettings.SettingKey, CoverQualitySettings.DefaultValue);
         _database.SaveSetting("mark.color_group", "A");
         for (var i = 0; i < 5; i++)
@@ -471,6 +479,7 @@ public partial class SettingsDialog : Window
         ShortcutsChanged = true;
         WaterfallRightClickChanged = true;
         CoverQualityChanged = true;
+        AppearanceChanged = true;
 
         System.Windows.MessageBox.Show("所有设置已重置为默认值。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         LoadCurrentSettings();
@@ -504,6 +513,18 @@ public partial class SettingsDialog : Window
         // Tag 交互
         _database.SaveSetting("app.tag_click_filter_enabled", TagClickFilterCheckBox.IsChecked == true ? "1" : "0");
         _database.SaveSetting("app.tag_drag_assign_enabled", TagDragAssignCheckBox.IsChecked == true ? "1" : "0");
+
+        // 外观
+        var newCardFrame = ShowLibraryCardFrameCheckBox.IsChecked == true;
+        var oldCardFrame = _database.LoadSetting(ShowLibraryCardFrameSettingKey, "1") == "1";
+        var newCardHover = ShowLibraryCardHoverCheckBox.IsChecked == true;
+        var oldCardHover = _database.LoadSetting(ShowLibraryCardHoverSettingKey, "1") == "1";
+        if (newCardFrame != oldCardFrame || newCardHover != oldCardHover)
+        {
+            _database.SaveSetting(ShowLibraryCardFrameSettingKey, newCardFrame ? "1" : "0");
+            _database.SaveSetting(ShowLibraryCardHoverSettingKey, newCardHover ? "1" : "0");
+            AppearanceChanged = true;
+        }
 
         // 关闭漫画库确认提示
         var newExitConfirm = LibraryExitConfirmCheckBox.IsChecked == true;

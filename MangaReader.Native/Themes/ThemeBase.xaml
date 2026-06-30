@@ -117,8 +117,9 @@
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Grid Background="Transparent">
                         <Border x:Name="ThumbRoot"
+                                MinHeight="72"
                                 Width="8"
-                                HorizontalAlignment="Right"
+                                HorizontalAlignment="Center"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="{StaticResource RadiusScrollThumb}"/>
                     </Grid>
@@ -143,8 +144,9 @@
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Grid Background="Transparent">
                         <Border x:Name="ThumbRoot"
+                                MinWidth="72"
                                 Height="8"
-                                VerticalAlignment="Bottom"
+                                VerticalAlignment="Center"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="{StaticResource RadiusScrollThumb}"/>
                     </Grid>
@@ -164,7 +166,7 @@
     <ControlTemplate x:Key="VerticalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
         <Grid Width="{TemplateBinding Width}" Background="{TemplateBinding Background}">
             <Border Width="8"
-                    HorizontalAlignment="Right"
+                    HorizontalAlignment="Center"
                     Background="{DynamicResource Brush.ScrollTrack}"
                     CornerRadius="{StaticResource RadiusScrollTrack}"/>
             <Track x:Name="PART_Track" IsDirectionReversed="True">
@@ -184,7 +186,7 @@
     <ControlTemplate x:Key="HorizontalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
         <Grid Height="{TemplateBinding Height}" Background="{TemplateBinding Background}">
             <Border Height="8"
-                    VerticalAlignment="Bottom"
+                    VerticalAlignment="Center"
                     Background="{DynamicResource Brush.ScrollTrack}"
                     CornerRadius="{StaticResource RadiusScrollTrack}"/>
             <Track x:Name="PART_Track">
