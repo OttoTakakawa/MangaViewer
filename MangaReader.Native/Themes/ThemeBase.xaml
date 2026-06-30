@@ -12,8 +12,8 @@
     <CornerRadius x:Key="RadiusComboPopup">18</CornerRadius>
     <CornerRadius x:Key="RadiusDialog">32</CornerRadius>
     <CornerRadius x:Key="RadiusDialogShadow">36</CornerRadius>
-    <CornerRadius x:Key="RadiusScrollTrack">999</CornerRadius>
-    <CornerRadius x:Key="RadiusScrollThumb">999</CornerRadius>
+    <CornerRadius x:Key="RadiusScrollTrack">7</CornerRadius>
+    <CornerRadius x:Key="RadiusScrollThumb">7</CornerRadius>
 
     <Thickness x:Key="SpacePanel">16</Thickness>
     <Thickness x:Key="SpaceDialog">24</Thickness>
@@ -110,15 +110,15 @@
     </Style>
 
     <Style x:Key="MinimalVerticalScrollThumb" TargetType="{x:Type Thumb}">
-        <Setter Property="MinHeight" Value="72"/>
+        <Setter Property="MinHeight" Value="96"/>
         <Setter Property="Background" Value="{DynamicResource Brush.ScrollThumb}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Grid Background="Transparent">
                         <Border x:Name="ThumbRoot"
-                                MinHeight="72"
-                                Width="8"
+                                MinHeight="96"
+                                Width="14"
                                 HorizontalAlignment="Center"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="{StaticResource RadiusScrollThumb}"/>
@@ -137,15 +137,15 @@
     </Style>
 
     <Style x:Key="MinimalHorizontalScrollThumb" TargetType="{x:Type Thumb}">
-        <Setter Property="MinWidth" Value="72"/>
+        <Setter Property="MinWidth" Value="96"/>
         <Setter Property="Background" Value="{DynamicResource Brush.ScrollThumb}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Grid Background="Transparent">
                         <Border x:Name="ThumbRoot"
-                                MinWidth="72"
-                                Height="8"
+                                MinWidth="96"
+                                Height="14"
                                 VerticalAlignment="Center"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="{StaticResource RadiusScrollThumb}"/>
@@ -165,11 +165,16 @@
 
     <ControlTemplate x:Key="VerticalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
         <Grid Width="{TemplateBinding Width}" Background="{TemplateBinding Background}">
-            <Border Width="8"
+            <Border Width="14"
                     HorizontalAlignment="Center"
                     Background="{DynamicResource Brush.ScrollTrack}"
                     CornerRadius="{StaticResource RadiusScrollTrack}"/>
-            <Track x:Name="PART_Track" IsDirectionReversed="True">
+            <Track x:Name="PART_Track"
+                   IsDirectionReversed="True"
+                   Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value}"
+                   ViewportSize="{x:Static sys:Double.NaN}">
                 <Track.DecreaseRepeatButton>
                     <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}" Style="{StaticResource InvisibleScrollRepeatButton}"/>
                 </Track.DecreaseRepeatButton>
@@ -185,11 +190,15 @@
 
     <ControlTemplate x:Key="HorizontalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
         <Grid Height="{TemplateBinding Height}" Background="{TemplateBinding Background}">
-            <Border Height="8"
+            <Border Height="14"
                     VerticalAlignment="Center"
                     Background="{DynamicResource Brush.ScrollTrack}"
                     CornerRadius="{StaticResource RadiusScrollTrack}"/>
-            <Track x:Name="PART_Track">
+            <Track x:Name="PART_Track"
+                   Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value}"
+                   ViewportSize="{x:Static sys:Double.NaN}">
                 <Track.DecreaseRepeatButton>
                     <RepeatButton Command="{x:Static ScrollBar.PageLeftCommand}" Style="{StaticResource InvisibleScrollRepeatButton}"/>
                 </Track.DecreaseRepeatButton>
@@ -204,15 +213,15 @@
     </ControlTemplate>
 
     <Style TargetType="{x:Type ScrollBar}">
-        <Setter Property="Width" Value="18"/>
-        <Setter Property="MinWidth" Value="18"/>
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="MinWidth" Value="28"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Template" Value="{StaticResource VerticalScrollBarTemplate}"/>
         <Style.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto"/>
-                <Setter Property="Height" Value="18"/>
-                <Setter Property="MinHeight" Value="18"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="MinHeight" Value="28"/>
                 <Setter Property="Template" Value="{StaticResource HorizontalScrollBarTemplate}"/>
             </Trigger>
         </Style.Triggers>
