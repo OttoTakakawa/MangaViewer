@@ -447,6 +447,17 @@ public partial class MainWindow : Window
             return;
         }
 
+        var confirmDialog = new ImportSingleBookConfirmDialog(candidate) { Owner = this };
+        if (confirmDialog.ShowDialog() != true)
+        {
+            StatusText.Text = "已取消导入。";
+            return;
+        }
+        if (!string.IsNullOrWhiteSpace(confirmDialog.EditedTitle))
+        {
+            candidate.Title = confirmDialog.EditedTitle;
+        }
+
         _importCancellation?.Cancel();
         _importCancellation = new CancellationTokenSource();
         await ImportSingleBookAsync(candidate, _importCancellation.Token);
@@ -3683,6 +3694,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        var files = GetDroppedFiles(e.Data);
+        if (files.Count > 0)
+        {
+            e.Handled = true;
+            ShowUnsupportedFileImportMessage(files.Count);
+            return;
+        }
+
         if (!e.Data.GetDataPresent(TagDragDataFormat) && !e.Data.GetDataPresent(typeof(string)))
         {
             return;
@@ -3732,6 +3751,14 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             await TryImportSelectedFoldersAsync(folders, "library-drop-import");
+            return;
+        }
+
+        var files = GetDroppedFiles(e.Data);
+        if (files.Count > 0)
+        {
+            e.Handled = true;
+            ShowUnsupportedFileImportMessage(files.Count);
         }
     }
 
@@ -3772,6 +3799,15 @@ public partial class MainWindow : Window
         var folders = GetDroppedFolders(e.Data);
         if (folders.Count == 0)
         {
+            var files = GetDroppedFiles(e.Data);
+            if (files.Count > 0)
+            {
+                e.Effects = System.Windows.DragDropEffects.None;
+                ShowUnsupportedImportDropFeedback(files.Count);
+                e.Handled = true;
+                return;
+            }
+
             e.Effects = System.Windows.DragDropEffects.None;
             HideImportDropFeedback();
             e.Handled = true;
@@ -3797,6 +3833,23 @@ public partial class MainWindow : Window
             : $"检测到 {folderCount} 个文件夹：松开鼠标依次导入。";
     }
 
+    private void ShowUnsupportedImportDropFeedback(int fileCount)
+    {
+        ImportDropOverlay.Visibility = Visibility.Visible;
+        ImportDropTitle.Text = fileCount == 1
+            ? "不支持导入单个文件"
+            : $"不支持导入 {fileCount} 个单文件";
+        ImportDropHint.Text = "漫画导入只支持包含图片页的文件夹；不支持单张图片、PDF、压缩包或视频文件。";
+        StatusText.Text = "请拖入漫画文件夹，而不是单个文件。";
+    }
+
+    private void ShowUnsupportedFileImportMessage(int fileCount)
+    {
+        StatusText.Text = fileCount == 1
+            ? "不支持导入单个文件。请拖入包含图片页的漫画文件夹；不支持 PDF。"
+            : $"不支持导入 {fileCount} 个单文件。请拖入漫画文件夹；不支持 PDF。";
+    }
+
     private void HideImportDropFeedback()
     {
         if (ImportDropOverlay is not null)
@@ -3815,6 +3868,20 @@ public partial class MainWindow : Window
 
         return paths
             .Where(Directory.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<string> GetDroppedFiles(System.Windows.IDataObject data)
+    {
+        if (!data.GetDataPresent(System.Windows.DataFormats.FileDrop)
+            || data.GetData(System.Windows.DataFormats.FileDrop) is not string[] paths)
+        {
+            return [];
+        }
+
+        return paths
+            .Where(File.Exists)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
