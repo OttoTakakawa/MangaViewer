@@ -508,7 +508,7 @@ public partial class MainWindow : Window
             var book = visibleBook ?? saved ?? new MangaBook
             {
                 Id = BookId.FromFolderPath(candidate.FolderPath),
-                ImportedAt = DateTimeOffset.Now.ToString("yyyy-MM-dd")
+                ImportedAt = CreateImportedAtValue()
             };
 
             book.Id = BookId.FromFolderPath(candidate.FolderPath);
@@ -610,7 +610,7 @@ public partial class MainWindow : Window
                 var book = visibleBook ?? saved ?? new MangaBook
                 {
                     Id = BookId.FromFolderPath(candidate.FolderPath),
-                    ImportedAt = DateTimeOffset.Now.ToString("yyyy-MM-dd")
+                    ImportedAt = CreateImportedAtValue()
                 };
                 book.Id = BookId.FromFolderPath(candidate.FolderPath);
                 book.Title = candidate.Title.Trim();
@@ -1467,29 +1467,40 @@ public partial class MainWindow : Window
 
         _currentBook.Title = title;
         var nextAuthor = AuthorBox.Text.Trim();
-        if (!string.IsNullOrWhiteSpace(nextAuthor)
-            && !EnumerateKnownAuthors().Any(author => string.Equals(author, nextAuthor, StringComparison.OrdinalIgnoreCase)))
+        var existingAuthor = string.IsNullOrWhiteSpace(nextAuthor)
+            ? null
+            : EnumerateKnownAuthors().FirstOrDefault(author => string.Equals(author, nextAuthor, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(existingAuthor))
         {
-            StatusText.Text = $"作者只能从作者管理中选择：{nextAuthor}";
-            RefreshEditAuthorOptions(nextAuthor);
-            return;
+            nextAuthor = existingAuthor;
         }
 
-        _currentBook.Author = nextAuthor;
         _currentBook.ForeignName = ForeignNameBox.Text.Trim();
         if (!TryNormalizeDate(ProducedAtBox.Text, out var producedAt))
         {
             StatusText.Text = "出品时间格式不正确，请使用类似 2002-03-09 的标准格式。";
             return;
         }
-        if (!TryNormalizeDate(ImportedAtBox.Text, out var importedAt))
+        if (!TryNormalizeImportedAt(ImportedAtBox.Text, out var importedAt))
         {
-            StatusText.Text = "录入时间格式不正确，请使用类似 2002-03-09 的标准格式。";
+            StatusText.Text = "录入时间格式不正确，请使用类似 2002-03-09 或 2002-03-09 14:30:00 的标准格式。";
             return;
         }
 
+        var createdAuthor = false;
+        if (!string.IsNullOrWhiteSpace(nextAuthor) && existingAuthor is null)
+        {
+            _managedAuthors.Add(nextAuthor);
+            await Task.Run(() => _database.SaveManagedAuthor(nextAuthor));
+            RefreshAuthorFilters();
+            RefreshAuthorManagementItems();
+            RefreshEditAuthorOptions(nextAuthor);
+            createdAuthor = true;
+        }
+
+        _currentBook.Author = nextAuthor;
         _currentBook.ProducedAt = producedAt;
-        _currentBook.ImportedAt = string.IsNullOrWhiteSpace(importedAt) ? DateTime.Today.ToString("yyyy-MM-dd") : importedAt;
+        _currentBook.ImportedAt = string.IsNullOrWhiteSpace(importedAt) ? CreateImportedAtValue() : importedAt;
         _currentBook.Summary = SummaryBox.Text.Trim();
         _currentBook.Tags = NormalizeTagsRespectingRules(TagService.ParseTags(TagsBox.Text.Trim()));
         MarkTagIndexDirty();
@@ -1509,13 +1520,15 @@ public partial class MainWindow : Window
         RefreshHomeShelves();
         FillMetadataEditors(book);
         SetEditMode(false);
-        StatusText.Text = "书籍信息已保存。";
+        StatusText.Text = createdAuthor
+            ? $"书籍信息已保存，已新增作者：{nextAuthor}"
+            : "书籍信息已保存。";
     }
 
     private void ImportedToday_Click(object sender, RoutedEventArgs e)
     {
         if (!_isEditMode) return;
-        ImportedAtBox.Text = DateTime.Today.ToString("yyyy-MM-dd");
+        ImportedAtBox.Text = FormatImportedAtForDisplay(CreateImportedAtValue());
     }
 
     private async void SetCover_Click(object sender, RoutedEventArgs e)
@@ -3970,7 +3983,7 @@ public partial class MainWindow : Window
         RefreshEditAuthorOptions(book.Author);
         ForeignNameBox.Text = book.ForeignName;
         ProducedAtBox.Text = book.ProducedAt;
-        ImportedAtBox.Text = book.ImportedAt;
+        ImportedAtBox.Text = FormatImportedAtForDisplay(book.ImportedAt);
         TagsBox.Text = book.Tags;
         RefreshEditTagEditor(book.Tags);
         CoverPageBox.Text = (book.CoverPageIndex + 1).ToString();
@@ -3982,7 +3995,7 @@ public partial class MainWindow : Window
         ReadOnlyStatusText.Text = book.ReadingStatusText;
         ReadOnlyPageCountText.Text = book.PageCount.ToString();
         ReadOnlyProducedAtText.Text = EmptyAsPlaceholder(book.ProducedAt);
-        ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(book.ImportedAt);
+        ReadOnlyImportedAtText.Text = EmptyAsPlaceholder(FormatImportedAtForDisplay(book.ImportedAt));
         ReadOnlyTagsText.Text = EmptyAsPlaceholder(book.Tags);
         ReadOnlyCoverPageText.Text = (book.CoverPageIndex + 1).ToString();
         DetailCoverPageText.Text = $"第 {book.CoverPageIndex + 1} 页 · {book.StyleName}";
@@ -4023,7 +4036,7 @@ public partial class MainWindow : Window
         ApplyMetaValue(MetaPageCountValueText, book.PageCount.ToString(), forceFilled: true);
         ApplyMetaValue(MetaCoverPageValueText, (book.CoverPageIndex + 1).ToString(), forceFilled: true);
         ApplyMetaValue(MetaProducedAtValueText, book.ProducedAt);
-        ApplyMetaValue(MetaImportedAtValueText, book.ImportedAt);
+        ApplyMetaValue(MetaImportedAtValueText, FormatImportedAtForDisplay(book.ImportedAt));
 
         BuildRatingStars(book);
     }
@@ -5392,8 +5405,8 @@ public partial class MainWindow : Window
                 ? filtered.OrderByDescending(book => book.ReadCount).ThenBy(book => book.Title)
                 : filtered.OrderBy(book => book.ReadCount).ThenBy(book => book.Title),
             5 => sortDescending
-                ? filtered.OrderByDescending(book => book.ImportedAt).ThenBy(book => book.Title)
-                : filtered.OrderBy(book => book.ImportedAt).ThenBy(book => book.Title),
+                ? filtered.OrderByDescending(GetImportedAtSortKey).ThenBy(book => book.Title)
+                : filtered.OrderBy(GetImportedAtSortKey).ThenBy(book => book.Title),
             6 => sortDescending
                 ? filtered.OrderByDescending(book => book.ProducedAt).ThenBy(book => book.Title)
                 : filtered.OrderBy(book => book.ProducedAt).ThenBy(book => book.Title),
@@ -5754,7 +5767,7 @@ public partial class MainWindow : Window
             .Take(8));
 
         ReplaceBooks(RecentlyAddedBooks, homeBooks
-            .OrderByDescending(book => book.ImportedAt)
+            .OrderByDescending(GetImportedAtSortKey)
             .ThenByDescending(book => book.ProducedAt)
             .Take(4));
 
@@ -6711,6 +6724,49 @@ public partial class MainWindow : Window
 
         normalized = "";
         return false;
+    }
+
+    private static string CreateImportedAtValue()
+    {
+        return DateTimeOffset.Now.ToString("O");
+    }
+
+    private static bool TryNormalizeImportedAt(string input, out string normalized)
+    {
+        var text = input.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            normalized = "";
+            return true;
+        }
+
+        if (DateTimeOffset.TryParse(text, out var timestamp))
+        {
+            normalized = timestamp.ToString("O");
+            return true;
+        }
+
+        normalized = "";
+        return false;
+    }
+
+    private static DateTimeOffset GetImportedAtSortKey(MangaBook book)
+    {
+        return DateTimeOffset.TryParse(book.ImportedAt, out var timestamp)
+            ? timestamp
+            : DateTimeOffset.MinValue;
+    }
+
+    private static string FormatImportedAtForDisplay(string value)
+    {
+        if (!DateTimeOffset.TryParse(value, out var timestamp))
+        {
+            return value;
+        }
+
+        return timestamp.TimeOfDay == TimeSpan.Zero
+            ? timestamp.ToString("yyyy-MM-dd")
+            : timestamp.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
     private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject

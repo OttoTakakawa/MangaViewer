@@ -1286,7 +1286,7 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.Parameters.AddWithValue("$foreignName", book.ForeignName);
         command.Parameters.AddWithValue("$tags", book.Tags);
         command.Parameters.AddWithValue("$producedAt", book.ProducedAt);
-        command.Parameters.AddWithValue("$importedAt", string.IsNullOrWhiteSpace(book.ImportedAt) ? DateTimeOffset.Now.ToString("yyyy-MM-dd") : book.ImportedAt);
+        command.Parameters.AddWithValue("$importedAt", string.IsNullOrWhiteSpace(book.ImportedAt) ? DateTimeOffset.Now.ToString("O") : book.ImportedAt);
         command.Parameters.AddWithValue("$summary", book.Summary);
         command.Parameters.AddWithValue("$folderPath", book.FolderPath);
         command.Parameters.AddWithValue("$pageCount", book.PageCount);

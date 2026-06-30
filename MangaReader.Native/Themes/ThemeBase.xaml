@@ -12,8 +12,8 @@
     <CornerRadius x:Key="RadiusComboPopup">18</CornerRadius>
     <CornerRadius x:Key="RadiusDialog">32</CornerRadius>
     <CornerRadius x:Key="RadiusDialogShadow">36</CornerRadius>
-    <CornerRadius x:Key="RadiusScrollTrack">2</CornerRadius>
-    <CornerRadius x:Key="RadiusScrollThumb">3</CornerRadius>
+    <CornerRadius x:Key="RadiusScrollTrack">999</CornerRadius>
+    <CornerRadius x:Key="RadiusScrollThumb">999</CornerRadius>
 
     <Thickness x:Key="SpacePanel">16</Thickness>
     <Thickness x:Key="SpaceDialog">24</Thickness>
@@ -110,14 +110,14 @@
     </Style>
 
     <Style x:Key="MinimalVerticalScrollThumb" TargetType="{x:Type Thumb}">
-        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="MinHeight" Value="72"/>
         <Setter Property="Background" Value="{DynamicResource Brush.ScrollThumb}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Grid Background="Transparent">
                         <Border x:Name="ThumbRoot"
-                                Width="6"
+                                Width="8"
                                 HorizontalAlignment="Right"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="{StaticResource RadiusScrollThumb}"/>
@@ -136,14 +136,14 @@
     </Style>
 
     <Style x:Key="MinimalHorizontalScrollThumb" TargetType="{x:Type Thumb}">
-        <Setter Property="MinWidth" Value="24"/>
+        <Setter Property="MinWidth" Value="72"/>
         <Setter Property="Background" Value="{DynamicResource Brush.ScrollThumb}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Grid Background="Transparent">
                         <Border x:Name="ThumbRoot"
-                                Height="6"
+                                Height="8"
                                 VerticalAlignment="Bottom"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="{StaticResource RadiusScrollThumb}"/>
@@ -163,7 +163,7 @@
 
     <ControlTemplate x:Key="VerticalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
         <Grid Width="{TemplateBinding Width}" Background="{TemplateBinding Background}">
-            <Border Width="6"
+            <Border Width="8"
                     HorizontalAlignment="Right"
                     Background="{DynamicResource Brush.ScrollTrack}"
                     CornerRadius="{StaticResource RadiusScrollTrack}"/>
@@ -183,7 +183,7 @@
 
     <ControlTemplate x:Key="HorizontalScrollBarTemplate" TargetType="{x:Type ScrollBar}">
         <Grid Height="{TemplateBinding Height}" Background="{TemplateBinding Background}">
-            <Border Height="6"
+            <Border Height="8"
                     VerticalAlignment="Bottom"
                     Background="{DynamicResource Brush.ScrollTrack}"
                     CornerRadius="{StaticResource RadiusScrollTrack}"/>
