@@ -7020,12 +7020,13 @@ public partial class MainWindow : Window
             var newTagChips = new List<TagChip>(tags.Count);
             foreach (var tag in tags)
             {
+                var color = TagColor(tag);
                 newTagChips.Add(new TagChip
                 {
                     Name = tag,
                     Category = TagCategory(tag),
-                    Color = TagColor(tag),
-                    Foreground = TagForeground(tag)
+                    Color = color,
+                    Foreground = TagCatalog.GetTextColorForBackground(color)
                 });
             }
             book.TagItems.AddRange(newTagChips);
@@ -7043,7 +7044,7 @@ public partial class MainWindow : Window
         {
             var expectedCategory = IsCardTagSummary(item.Name) ? item.Category : TagCategory(item.Name);
             var expectedColor = IsCardTagSummary(item.Name) ? "#E5E7EB" : TagColor(item.Name);
-            var expectedForeground = IsCardTagSummary(item.Name) ? "#111827" : TagForeground(item.Name);
+            var expectedForeground = IsCardTagSummary(item.Name) ? "#111827" : TagCatalog.GetTextColorForBackground(expectedColor);
             if (!string.Equals(item.Category, expectedCategory, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(item.Color, expectedColor, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(item.Foreground, expectedForeground, StringComparison.OrdinalIgnoreCase))
@@ -7063,12 +7064,13 @@ public partial class MainWindow : Window
         foreach (var item in current)
         {
             var isSummary = IsCardTagSummary(item.Name);
+            var color = isSummary ? "#E5E7EB" : TagColor(item.Name);
             newCardChips.Add(new TagChip
             {
                 Name = item.Name,
                 Category = isSummary ? item.Category : TagCategory(item.Name),
-                Color = isSummary ? "#E5E7EB" : TagColor(item.Name),
-                Foreground = isSummary ? "#111827" : TagForeground(item.Name)
+                Color = color,
+                Foreground = isSummary ? "#111827" : TagCatalog.GetTextColorForBackground(color)
             });
         }
         book.CardTagItems.AddRange(newCardChips);
@@ -7508,12 +7510,7 @@ public partial class MainWindow : Window
 
     private string TagForeground(string tag)
     {
-        var userColor = ResolveCategoryColor(TagCategory(tag));
-        if (userColor is not null)
-        {
-            return TagCatalog.GetTextColorForBackground(userColor);
-        }
-        return TagService.GetTextColor(tag);
+        return TagCatalog.GetTextColorForBackground(TagColor(tag));
     }
 
     private TagChip CreateTagChip(string tag, bool isSelected = false, bool isExcluded = false)
@@ -7523,14 +7520,15 @@ public partial class MainWindow : Window
         var category = TagCategory(tag);
         var usageCount = GetTagUsageCount(tag);
         var displayName = StripCategoryPrefix(tag, category);
-        var foreground = TagForeground(tag);
+        var color = TagColor(tag);
+        var foreground = TagCatalog.GetTextColorForBackground(color);
         return preset is not null
             ? new TagChip
             {
                 Name = displayName,
                 RawName = tag,
                 Category = category,
-                Color = TagColor(tag),
+                Color = color,
                 Foreground = foreground,
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
@@ -7546,7 +7544,7 @@ public partial class MainWindow : Window
                 Name = displayName,
                 RawName = tag,
                 Category = category,
-                Color = TagColor(tag),
+                Color = color,
                 Foreground = foreground,
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
