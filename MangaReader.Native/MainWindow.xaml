@@ -136,7 +136,7 @@
         <Style x:Key="AppTagChipText" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+            <Setter Property="Foreground" Value="{Binding Foreground}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="DetailHeroTagChipBorder" TargetType="Border" BasedOn="{StaticResource TagChipLg}"/>
@@ -1007,10 +1007,10 @@
                     <TextBlock Text="{Binding Category}" FontSize="11" Margin="0,0,5,0">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter Property="Foreground" Value="{Binding Foreground}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                        <Setter Property="Foreground" Value="{Binding Foreground}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -1019,10 +1019,10 @@
                     <TextBlock Text="{Binding Name}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter Property="Foreground" Value="{Binding Foreground}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                        <Setter Property="Foreground" Value="{Binding Foreground}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -1032,7 +1032,7 @@
                                FontSize="10"
                                Margin="3,0,0,0"
                                VerticalAlignment="Center"
-                               Foreground="{DynamicResource Brush.TextMuted}"
+                               Foreground="{Binding Foreground}"
                                FontWeight="SemiBold"/>
                 </StackPanel>
             </Border>
@@ -1074,10 +1074,10 @@
                     <TextBlock Text="{Binding Name}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource AppTagChipText}">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                <Setter Property="Foreground" Value="{Binding Foreground}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsExcluded}" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+                                        <Setter Property="Foreground" Value="{Binding Foreground}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -1447,9 +1447,11 @@
                     </Grid>
                 </Border>
 
-                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,10" Padding="10" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1">
+                <Border x:Name="LibraryTagPanel" Grid.Row="1" Margin="8,0,22,10" Padding="10" CornerRadius="{StaticResource RadiusPanel}" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.BorderSubtle}" BorderThickness="1"
+                        PreviewMouseWheel="TagScroll_PreviewMouseWheel">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,7">
+                            <Button x:Name="ExpandAllTagGroupsButton" DockPanel.Dock="Right" Content="彻底展开" Click="ExpandAllTagGroups_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="8,0,0,0" ToolTip="展开所有标签分类"/>
                             <Button x:Name="ToggleAllTagGroupsButton" DockPanel.Dock="Right" Content="全折叠" Click="ToggleAllTagGroups_Click" Style="{StaticResource FilterActionButton}" Height="36" MinHeight="36" Padding="14,6" Margin="8,0,0,0" ToolTip="折叠/展开所有标签分类"/>
                             <ComboBox x:Name="TagGroupSortBox" DockPanel.Dock="Right" Width="160" Height="36" MinHeight="36" Padding="14,4" SelectedIndex="1" SelectionChanged="TagGroupSortBox_SelectionChanged" Style="{StaticResource FilterComboBox}" ToolTip="标签分类排序方式" Margin="8,0,0,0">
                                 <ComboBoxItem Content="按分类顺序"/>
@@ -1504,7 +1506,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="168" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
+                        <ScrollViewer x:Name="TagPoolScrollViewer" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="168" PreviewMouseWheel="FastVerticalScrollViewer_PreviewMouseWheel">
                             <ItemsControl x:Name="TagPool" ItemsSource="{Binding VisibleTagGroups}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -1518,7 +1520,13 @@
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
-                                            <Border x:Name="TagGroupHeader" Grid.Row="0" Padding="0,0,0,0" Background="Transparent">
+                                            <Border x:Name="TagGroupHeader" Grid.Row="0" Padding="0,0,0,0" Background="Transparent" Tag="{Binding Category}">
+                                                <Border.ContextMenu>
+                                                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                        <MenuItem Header="重命名分类" Click="RenameTagCategory_Click" Tag="{Binding}"/>
+                                                        <MenuItem Header="合并到其他分类..." Click="MergeTagCategory_Click" Tag="{Binding}"/>
+                                                    </ContextMenu>
+                                                </Border.ContextMenu>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>

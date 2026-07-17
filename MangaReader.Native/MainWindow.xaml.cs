@@ -4466,6 +4466,80 @@ public partial class MainWindow : Window
         }
 
         ToggleAllTagGroupsButton.Content = anyExpanded ? "全展开" : "全折叠";
+
+        if (anyExpanded)
+        {
+            TagPoolScrollViewer.MaxHeight = 168;
+        }
+    }
+
+    private void ExpandAllTagGroups_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var group in VisibleTagGroups)
+        {
+            group.IsExpanded = true;
+        }
+
+        TagPoolScrollViewer.MaxHeight = Math.Max(300, ActualHeight * 0.6);
+        TagPool.UpdateLayout();
+        foreach (var scroller in FindVisualDescendants<System.Windows.Controls.ScrollViewer>(TagPool))
+        {
+            scroller.MaxHeight = double.PositiveInfinity;
+            scroller.VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Disabled;
+        }
+
+        if (ToggleAllTagGroupsButton is not null)
+        {
+            ToggleAllTagGroupsButton.Content = "全折叠";
+        }
+
+        StatusText.Text = "已展开所有标签分类。";
+    }
+
+    private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T result)
+            {
+                yield return result;
+            }
+            foreach (var descendant in FindVisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private void RenameTagCategory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.MenuItem mi && mi.DataContext is string oldCategory)
+        {
+            var newName = Microsoft.VisualBasic.Interaction.InputBox($"重命名分类「{oldCategory}」为：", "重命名分类", oldCategory);
+            if (string.IsNullOrWhiteSpace(newName) || newName == oldCategory) return;
+
+            _database.RenameTagCategory(oldCategory, newName);
+            MarkTagIndexDirty();
+            RefreshVisibleTags();
+            RefreshTagManagementItems();
+            StatusText.Text = $"分类「{oldCategory}」已重命名为「{newName}」。";
+        }
+    }
+
+    private void MergeTagCategory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.MenuItem mi && mi.DataContext is string sourceCategory)
+        {
+            var target = Microsoft.VisualBasic.Interaction.InputBox($"将分类「{sourceCategory}」合并到哪个分类？\n（输入目标分类名）", "合并分类", "");
+            if (string.IsNullOrWhiteSpace(target) || target == sourceCategory) return;
+
+            _database.RenameTagCategory(sourceCategory, target);
+            MarkTagIndexDirty();
+            RefreshVisibleTags();
+            RefreshTagManagementItems();
+            StatusText.Text = $"分类「{sourceCategory}」已合并到「{target}」。";
+        }
     }
 
     private void TagGroupSortBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -6720,6 +6794,29 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void TagScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        var pos = e.GetPosition(sender as System.Windows.IInputElement);
+        if (sender is System.Windows.UIElement el)
+        {
+            var hit = el.InputHitTest(pos) as System.Windows.DependencyObject;
+            while (hit != null)
+            {
+                if (hit is System.Windows.Controls.ScrollViewer sv && sv != TagPoolScrollViewer && sv.ScrollableHeight > 0)
+                {
+                    sv.ScrollToVerticalOffset(ClampOffset(sv.VerticalOffset - e.Delta * WheelScrollMultiplier, sv.ScrollableHeight));
+                    e.Handled = true;
+                    return;
+                }
+                hit = System.Windows.Media.VisualTreeHelper.GetParent(hit);
+            }
+        }
+
+        if (TagPoolScrollViewer is null || TagPoolScrollViewer.ScrollableHeight <= 0) return;
+        TagPoolScrollViewer.ScrollToVerticalOffset(ClampOffset(TagPoolScrollViewer.VerticalOffset - e.Delta * WheelScrollMultiplier, TagPoolScrollViewer.ScrollableHeight));
+        e.Handled = true;
+    }
+
     private void HorizontalShelfScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (sender is not System.Windows.Controls.ScrollViewer viewer || viewer.ScrollableWidth <= 0)
@@ -6902,7 +6999,8 @@ public partial class MainWindow : Window
                 var item = current[i];
                 if (!string.Equals(item.Name, tag, StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(item.Category, TagCategory(tag), StringComparison.OrdinalIgnoreCase)
-                    || !string.Equals(item.Color, TagColor(tag), StringComparison.OrdinalIgnoreCase))
+                    || !string.Equals(item.Color, TagColor(tag), StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(item.Foreground, TagForeground(tag), StringComparison.OrdinalIgnoreCase))
                 {
                     tagItemsMatch = false;
                     break;
@@ -6926,7 +7024,8 @@ public partial class MainWindow : Window
                 {
                     Name = tag,
                     Category = TagCategory(tag),
-                    Color = TagColor(tag)
+                    Color = TagColor(tag),
+                    Foreground = TagForeground(tag)
                 });
             }
             book.TagItems.AddRange(newTagChips);
@@ -6944,8 +7043,10 @@ public partial class MainWindow : Window
         {
             var expectedCategory = IsCardTagSummary(item.Name) ? item.Category : TagCategory(item.Name);
             var expectedColor = IsCardTagSummary(item.Name) ? "#E5E7EB" : TagColor(item.Name);
+            var expectedForeground = IsCardTagSummary(item.Name) ? "#111827" : TagForeground(item.Name);
             if (!string.Equals(item.Category, expectedCategory, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(item.Color, expectedColor, StringComparison.OrdinalIgnoreCase))
+                || !string.Equals(item.Color, expectedColor, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(item.Foreground, expectedForeground, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -6966,7 +7067,8 @@ public partial class MainWindow : Window
             {
                 Name = item.Name,
                 Category = isSummary ? item.Category : TagCategory(item.Name),
-                Color = isSummary ? "#E5E7EB" : TagColor(item.Name)
+                Color = isSummary ? "#E5E7EB" : TagColor(item.Name),
+                Foreground = isSummary ? "#111827" : TagForeground(item.Name)
             });
         }
         book.CardTagItems.AddRange(newCardChips);
@@ -7404,6 +7506,16 @@ public partial class MainWindow : Window
         return ResolveCategoryColor(TagCategory(tag)) ?? TagService.GetColor(tag);
     }
 
+    private string TagForeground(string tag)
+    {
+        var userColor = ResolveCategoryColor(TagCategory(tag));
+        if (userColor is not null)
+        {
+            return TagCatalog.GetTextColorForBackground(userColor);
+        }
+        return TagService.GetTextColor(tag);
+    }
+
     private TagChip CreateTagChip(string tag, bool isSelected = false, bool isExcluded = false)
     {
         var preset = DefaultTagPresets.FirstOrDefault(item => string.Equals(item.Name, tag, StringComparison.OrdinalIgnoreCase));
@@ -7411,6 +7523,7 @@ public partial class MainWindow : Window
         var category = TagCategory(tag);
         var usageCount = GetTagUsageCount(tag);
         var displayName = StripCategoryPrefix(tag, category);
+        var foreground = TagForeground(tag);
         return preset is not null
             ? new TagChip
             {
@@ -7418,6 +7531,7 @@ public partial class MainWindow : Window
                 RawName = tag,
                 Category = category,
                 Color = TagColor(tag),
+                Foreground = foreground,
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
                 IsExcluded = isExcluded,
@@ -7433,6 +7547,7 @@ public partial class MainWindow : Window
                 RawName = tag,
                 Category = category,
                 Color = TagColor(tag),
+                Foreground = foreground,
                 IsExclusive = IsExclusiveTag(tag),
                 IsSelected = isSelected,
                 IsExcluded = isExcluded,

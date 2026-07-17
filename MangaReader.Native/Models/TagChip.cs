@@ -6,6 +6,7 @@ public sealed class TagChip
     public string RawName { get; set; } = "";
     public string Category { get; set; } = "自定义";
     public string Color { get; set; } = "#EFE5DA";
+    public string Foreground { get; set; } = "#111827";
     public bool IsSelected { get; set; }
     public bool IsExcluded { get; set; }
     public int UsageCount { get; set; }

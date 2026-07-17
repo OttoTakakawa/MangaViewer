@@ -46,6 +46,39 @@ public static class TagCatalog
 
         return PresetColors[Math.Abs(tag.GetHashCode()) % PresetColors.Length];
     }
+
+    private static readonly string DarkTextOnLight = "#111827";
+    private static readonly string LightTextOnDark = "#FFFFFF";
+
+    public static string GetTextColor(string tag)
+    {
+        return GetTextColorForBackground(GetColor(tag));
+    }
+
+    public static string GetTextColorForBackground(string backgroundColor)
+    {
+        return ComputeLuminance(backgroundColor) < 0.5 ? LightTextOnDark : DarkTextOnLight;
+    }
+
+    private static double ComputeLuminance(string hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex) || hex.Length < 7 || hex[0] != '#')
+        {
+            return 0.5;
+        }
+
+        try
+        {
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16) / 255.0;
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16) / 255.0;
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16) / 255.0;
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        }
+        catch
+        {
+            return 0.5;
+        }
+    }
 }
 
 public sealed record TagPreset(string Name, string Category, string Color, bool IsExclusive);

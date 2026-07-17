@@ -1102,6 +1102,18 @@ public sealed class LibraryDatabase
         command.ExecuteNonQuery();
     }
 
+    public void RenameTagCategory(string oldCategory, string newCategory)
+    {
+        BackupDatabase("before-tag-category-rename", force: true);
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE managed_tags SET category = $newCat, updated_at = $now WHERE category = $oldCat;";
+        command.Parameters.AddWithValue("$oldCat", oldCategory);
+        command.Parameters.AddWithValue("$newCat", newCategory);
+        command.Parameters.AddWithValue("$now", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
     public void SuppressTag(string tag)
     {
         BackupDatabase("before-tag-suppress", force: true);
