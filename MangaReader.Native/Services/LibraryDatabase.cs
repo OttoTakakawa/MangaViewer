@@ -147,6 +147,32 @@ public sealed class LibraryDatabase
             CREATE INDEX IF NOT EXISTS idx_book_bookmarks_book_id ON book_bookmarks(book_id);
             CREATE INDEX IF NOT EXISTS idx_books_last_opened_at ON books(last_opened_at);
             CREATE INDEX IF NOT EXISTS idx_reverse_organize_pending_target_root ON reverse_organize_pending_redirects(target_root);
+
+            CREATE TABLE IF NOT EXISTS misc_images (
+                id TEXT PRIMARY KEY,
+                file_path TEXT NOT NULL UNIQUE,
+                file_name TEXT NOT NULL DEFAULT '',
+                category TEXT NOT NULL DEFAULT '',
+                tags TEXT NOT NULL DEFAULT '',
+                comment TEXT NOT NULL DEFAULT '',
+                rating REAL NOT NULL DEFAULT 0,
+                is_favorite INTEGER NOT NULL DEFAULT 0,
+                file_size INTEGER NOT NULL DEFAULT 0,
+                imported_at TEXT NOT NULL DEFAULT '',
+                last_opened_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT ''
+            );
+            CREATE INDEX IF NOT EXISTS idx_misc_images_category ON misc_images(category);
+            CREATE INDEX IF NOT EXISTS idx_misc_images_is_favorite ON misc_images(is_favorite);
+            CREATE INDEX IF NOT EXISTS idx_misc_images_last_opened_at ON misc_images(last_opened_at);
+
+            CREATE TABLE IF NOT EXISTS misc_image_tags (
+                name TEXT PRIMARY KEY,
+                category TEXT NOT NULL DEFAULT '',
+                color TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_misc_image_tags_category ON misc_image_tags(category);
             """;
         command.ExecuteNonQuery();
         EnsureColumn(connection, "books", "character_name", "TEXT NOT NULL DEFAULT ''");
@@ -1308,5 +1334,417 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.Parameters.AddWithValue("$isMissing", book.IsMissing ? 1 : 0);
         command.Parameters.AddWithValue("$isPrivacyCover", book.IsPrivacyCover ? 1 : 0);
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+    }
+
+    // ===== 杂图（misc_images）CRUD =====
+    // 独立于 books 表，0-10 评分、独立 tag 体系，不参与反向规整 / 批量整理。
+
+    public void UpsertMiscImage(MiscImage image)
+    {
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            INSERT INTO misc_images(id, file_path, file_name, category, tags, comment, rating,
+                                     is_favorite, file_size, imported_at, last_opened_at, updated_at)
+            VALUES ($id, $filePath, $fileName, $category, $tags, $comment, $rating,
+                    $isFavorite, $fileSize, $importedAt, $lastOpenedAt, $updatedAt)
+            ON CONFLICT(id) DO UPDATE SET
+                file_path = excluded.file_path,
+                file_name = excluded.file_name,
+                category = CASE WHEN misc_images.category = '' THEN excluded.category ELSE misc_images.category END,
+                tags = excluded.tags,
+                comment = excluded.comment,
+                rating = excluded.rating,
+                is_favorite = excluded.is_favorite,
+                file_size = excluded.file_size,
+                last_opened_at = excluded.last_opened_at,
+                updated_at = excluded.updated_at;
+            """;
+        AddMiscImageParameters(command, image);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public void UpsertMiscImagesBatch(IReadOnlyCollection<MiscImage> images)
+    {
+        if (images.Count == 0)
+        {
+            return;
+        }
+
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            INSERT INTO misc_images(id, file_path, file_name, category, tags, comment, rating,
+                                     is_favorite, file_size, imported_at, last_opened_at, updated_at)
+            VALUES ($id, $filePath, $fileName, $category, $tags, $comment, $rating,
+                    $isFavorite, $fileSize, $importedAt, $lastOpenedAt, $updatedAt)
+            ON CONFLICT(id) DO UPDATE SET
+                file_path = excluded.file_path,
+                file_name = excluded.file_name,
+                file_size = excluded.file_size,
+                updated_at = excluded.updated_at;
+            """;
+        foreach (var image in images)
+        {
+            command.Parameters.Clear();
+            AddMiscImageParameters(command, image);
+            command.ExecuteNonQuery();
+        }
+        transaction.Commit();
+    }
+
+    public List<MiscImage> LoadAllMiscImages()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT id, file_path, file_name, category, tags, comment, rating,
+                   is_favorite, file_size, imported_at, last_opened_at
+            FROM misc_images
+            ORDER BY imported_at DESC, file_name COLLATE NOCASE;
+            """;
+        using var reader = command.ExecuteReader();
+        var result = new List<MiscImage>();
+        while (reader.Read())
+        {
+            var image = new MiscImage
+            {
+                Id = reader.GetString(0),
+                FilePath = reader.GetString(1),
+                FileName = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                Category = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                Tags = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                Comment = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                Rating = reader.IsDBNull(6) ? 0 : reader.GetDouble(6),
+                IsFavorite = !reader.IsDBNull(7) && reader.GetInt32(7) == 1,
+                FileSize = reader.IsDBNull(8) ? 0 : reader.GetInt64(8),
+                ImportedAt = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                LastOpenedAt = reader.IsDBNull(10) ? "" : reader.GetString(10)
+            };
+            result.Add(image);
+        }
+        return result;
+    }
+
+    public void DeleteMiscImage(string id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM misc_images WHERE id = $id;";
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+    }
+
+    public void UpdateMiscImageFavorite(string id, bool isFavorite)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET is_favorite = $isFavorite, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$isFavorite", isFavorite ? 1 : 0);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void UpdateMiscImageRating(string id, double rating)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET rating = $rating, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$rating", rating);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void UpdateMiscImageComment(string id, string comment)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET comment = $comment, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$comment", comment ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void UpdateMiscImageTags(string id, string tags)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET tags = $tags, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$tags", tags ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void UpdateMiscImageCategory(string id, string category)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET category = $category, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$category", category ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void UpdateMiscImageLastOpenedAt(string id, string lastOpenedAt)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET last_opened_at = $lastOpenedAt, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$lastOpenedAt", lastOpenedAt ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    // 反向重命名：数据库 file_path/file_name/updated_at 三字段同步更新（File.Move 由调用方执行）。
+    public void RenameMiscImageFile(string id, string newFilePath, string newFileName)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET file_path = $filePath, file_name = $fileName, updated_at = $updatedAt
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$filePath", newFilePath);
+        command.Parameters.AddWithValue("$fileName", newFileName);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    private static void AddMiscImageParameters(SqliteCommand command, MiscImage image)
+    {
+        command.Parameters.AddWithValue("$id", image.Id);
+        command.Parameters.AddWithValue("$filePath", image.FilePath);
+        command.Parameters.AddWithValue("$fileName", image.FileName);
+        command.Parameters.AddWithValue("$category", image.Category ?? "");
+        command.Parameters.AddWithValue("$tags", image.Tags ?? "");
+        command.Parameters.AddWithValue("$comment", image.Comment ?? "");
+        command.Parameters.AddWithValue("$rating", image.Rating);
+        command.Parameters.AddWithValue("$isFavorite", image.IsFavorite ? 1 : 0);
+        command.Parameters.AddWithValue("$fileSize", image.FileSize);
+        command.Parameters.AddWithValue("$importedAt", string.IsNullOrWhiteSpace(image.ImportedAt) ? DateTimeOffset.Now.ToString("O") : image.ImportedAt);
+        command.Parameters.AddWithValue("$lastOpenedAt", image.LastOpenedAt ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+    }
+
+    // ===== 杂图 tag（misc_image_tags）CRUD =====
+    // 独立于 managed_tags 表，颜色/分类独立存储，与漫画 tag 体系完全隔离。
+
+    public List<ManagedTagRecord> LoadMiscTags()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT name, category, color, updated_at
+            FROM misc_image_tags
+            ORDER BY category COLLATE NOCASE, name COLLATE NOCASE;
+            """;
+        using var reader = command.ExecuteReader();
+        var result = new List<ManagedTagRecord>();
+        while (reader.Read())
+        {
+            result.Add(new ManagedTagRecord(
+                reader.GetString(0),
+                reader.IsDBNull(1) ? "" : reader.GetString(1),
+                false,
+                reader.IsDBNull(3) ? "" : reader.GetString(3),
+                reader.IsDBNull(2) ? "" : reader.GetString(2)
+            ));
+        }
+        return result;
+    }
+
+    public void UpsertMiscTag(string name, string category, string color)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO misc_image_tags(name, category, color, updated_at)
+            VALUES ($name, $category, $color, $updatedAt)
+            ON CONFLICT(name) DO UPDATE SET
+                category = excluded.category,
+                color = excluded.color,
+                updated_at = excluded.updated_at;
+            """;
+        command.Parameters.AddWithValue("$name", name);
+        command.Parameters.AddWithValue("$category", category ?? "");
+        command.Parameters.AddWithValue("$color", color ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void DeleteMiscTag(string name)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM misc_image_tags WHERE name = $name;";
+        command.Parameters.AddWithValue("$name", name);
+        command.ExecuteNonQuery();
+    }
+
+    // 重命名杂图 tag：更新 misc_image_tags.name 并同步替换 misc_images.tags 字段中所有引用。
+    // tags 字段以逗号分隔，需逐条解析后重写，避免误伤同名子串。
+    public void RenameMiscTag(string oldName, string newName)
+    {
+        if (string.IsNullOrWhiteSpace(oldName) || string.IsNullOrWhiteSpace(newName) || string.Equals(oldName, newName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            // 1. 检查新名称是否已存在
+            using (var checkCmd = connection.CreateCommand())
+            {
+                checkCmd.Transaction = transaction;
+                checkCmd.CommandText = "SELECT COUNT(*) FROM misc_image_tags WHERE name = $newName;";
+                checkCmd.Parameters.AddWithValue("$newName", newName);
+                var existing = Convert.ToInt32(checkCmd.ExecuteScalar());
+                if (existing > 0)
+                {
+                    throw new InvalidOperationException($"目标名称已存在：{newName}");
+                }
+            }
+
+            // 2. 重命名 misc_image_tags
+            using (var renameCmd = connection.CreateCommand())
+            {
+                renameCmd.Transaction = transaction;
+                renameCmd.CommandText =
+                    """
+                    UPDATE misc_image_tags
+                    SET name = $newName, updated_at = $updatedAt
+                    WHERE name = $oldName;
+                    """;
+                renameCmd.Parameters.AddWithValue("$oldName", oldName);
+                renameCmd.Parameters.AddWithValue("$newName", newName);
+                renameCmd.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+                renameCmd.ExecuteNonQuery();
+            }
+
+            // 3. 同步替换 misc_images.tags 中引用此 tag 的记录
+            using (var queryCmd = connection.CreateCommand())
+            {
+                queryCmd.Transaction = transaction;
+                queryCmd.CommandText = "SELECT id, tags FROM misc_images WHERE tags LIKE $pattern;";
+                queryCmd.Parameters.AddWithValue("$pattern", $"%{oldName}%");
+                using var reader = queryCmd.ExecuteReader();
+                var pending = new List<(string Id, string NewTags)>();
+                while (reader.Read())
+                {
+                    var id = reader.GetString(0);
+                    var raw = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    var newTags = RewriteTagList(raw, oldName, newName);
+                    if (!string.Equals(raw, newTags, StringComparison.Ordinal))
+                    {
+                        pending.Add((id, newTags));
+                    }
+                }
+
+                foreach (var (id, newTags) in pending)
+                {
+                    using var updateCmd = connection.CreateCommand();
+                    updateCmd.Transaction = transaction;
+                    updateCmd.CommandText = "UPDATE misc_images SET tags = $tags, updated_at = $updatedAt WHERE id = $id;";
+                    updateCmd.Parameters.AddWithValue("$id", id);
+                    updateCmd.Parameters.AddWithValue("$tags", newTags);
+                    updateCmd.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+                    updateCmd.ExecuteNonQuery();
+                }
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            try { transaction.Rollback(); } catch { /* ignore */ }
+            throw;
+        }
+    }
+
+    // 统计某个 tag 在 misc_images.tags 中被多少张图引用。
+    // 通过 LIKE 粗筛后在内存中精确比对，避免误命中同名子串。
+    public int CountMiscTagUsage(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(tagName)) return 0;
+
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT tags FROM misc_images WHERE tags LIKE $pattern;";
+        command.Parameters.AddWithValue("$pattern", $"%{tagName}%");
+        using var reader = command.ExecuteReader();
+        var count = 0;
+        while (reader.Read())
+        {
+            var raw = reader.IsDBNull(0) ? "" : reader.GetString(0);
+            foreach (var t in raw.Split([',', '，', ';', '；'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (string.Equals(t, tagName, StringComparison.Ordinal))
+                {
+                    count++;
+                    break;
+                }
+            }
+        }
+        return count;
+    }
+
+    private static string RewriteTagList(string raw, string oldName, string newName)
+    {
+        if (string.IsNullOrEmpty(raw)) return raw;
+        var separators = new[] { ',', '，', ';', '；' };
+        var parts = raw.Split(separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var rewritten = parts.Select(p => string.Equals(p, oldName, StringComparison.Ordinal) ? newName : p);
+        return string.Join(", ", rewritten);
     }
 }

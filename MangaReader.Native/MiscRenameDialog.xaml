@@ -1,0 +1,67 @@
+<Window x:Class="MangaReader.Native.MiscRenameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="反向重命名"
+        Width="540"
+        Height="380"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+    <Grid Margin="22">
+        <Border Style="{StaticResource AppDialogShadowBorder}"/>
+        <Border CornerRadius="{StaticResource RadiusDialog}"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                BorderThickness="1"
+                Padding="26"
+                SnapsToDevicePixels="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="反向重命名" Style="{StaticResource AppDialogTitleText}"/>
+                    <TextBlock Text="输入新文件名（不含扩展名）。文件系统与数据库会同步更新。"
+                               Style="{StaticResource AppDialogSubtitleText}"/>
+                </StackPanel>
+
+                <Grid Grid.Row="1" Margin="0,24,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="原文件名" Style="{StaticResource AppDialogLabelText}"/>
+                        <TextBlock x:Name="OldNameText" Margin="0,8,0,0" Style="{StaticResource AppDialogReadOnlyText}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                        <TextBlock Text="新文件名" Style="{StaticResource AppDialogLabelText}"/>
+                        <TextBox x:Name="NewNameBox" Margin="0,8,0,0" Style="{StaticResource AppDialogTextBox}"/>
+                    </StackPanel>
+
+                    <TextBlock x:Name="PreviewPathText"
+                               Grid.Row="2"
+                               Margin="0,16,0,0"
+                               FontSize="11"
+                               Foreground="{DynamicResource Brush.TextMuted}"
+                               TextWrapping="Wrap"/>
+                </Grid>
+
+                <DockPanel Grid.Row="2" Margin="0,22,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="取消" Width="104" Margin="0,0,10,0" Click="Cancel_Click" Style="{StaticResource AppDialogGhostButton}"/>
+                        <Button Content="确认" Width="104" Click="Confirm_Click" Style="{StaticResource AppDialogButton}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

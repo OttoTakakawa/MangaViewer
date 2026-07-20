@@ -1,0 +1,155 @@
+<Window x:Class="MangaReader.Native.MiscImageViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="杂图浏览"
+        Height="900" Width="1280" MinHeight="600" MinWidth="900"
+        Background="#050608"
+        WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <DropShadowEffect x:Key="ToolbarShadow" Color="#000000" BlurRadius="22" ShadowDepth="6" Opacity="0.32"/>
+
+        <Style x:Key="ViewerButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="3"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="Foreground" Value="#F9FAFB"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        </Style>
+
+        <Style x:Key="RatingSlider" TargetType="Slider">
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="10"/>
+            <Setter Property="TickFrequency" Value="0.5"/>
+            <Setter Property="IsSnapToTickEnabled" Value="True"/>
+            <Setter Property="Width" Value="180"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- 主图 -->
+        <Canvas x:Name="ImageCanvas" Background="#050608">
+            <Image x:Name="MainImage" Stretch="Uniform"/>
+        </Canvas>
+
+        <!-- 顶部工具栏 -->
+        <Border VerticalAlignment="Top"
+                HorizontalAlignment="Stretch"
+                Margin="12,12,12,0"
+                Padding="18,10"
+                CornerRadius="14"
+                Background="#CC0F172A"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="1"
+                Effect="{StaticResource ToolbarShadow}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="FileNameText"
+                               Foreground="#F9FAFB"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               MaxWidth="520"/>
+                    <TextBlock x:Name="PositionText"
+                               Foreground="#94A3B8"
+                               FontSize="12"
+                               Margin="14,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="评分"
+                               Foreground="#94A3B8"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                    <Slider x:Name="RatingSlider" Style="{StaticResource RatingSlider}"
+                            ValueChanged="RatingSlider_ValueChanged"/>
+                    <TextBlock x:Name="RatingText"
+                               Foreground="#F59E0B"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               MinWidth="44"
+                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <Button Content="编辑 Tag" Style="{StaticResource ViewerButton}" Click="EditTags_Click"/>
+                    <Button Content="评语" Style="{StaticResource ViewerButton}" Click="EditComment_Click"/>
+                    <Button Content="收藏" Style="{StaticResource ViewerButton}" Click="ToggleFavorite_Click"/>
+                    <Button Content="反向重命名" Style="{StaticResource ViewerButton}" Click="Rename_Click"/>
+                    <Button Content="关闭" Style="{StaticResource ViewerButton}" Click="Close_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 评语浮窗 -->
+        <Border x:Name="CommentOverlay"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Stretch"
+                Margin="12,0,12,80"
+                Padding="14,8"
+                CornerRadius="10"
+                Background="#CC0F172A"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="1"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Text="评语" Foreground="#94A3B8" FontSize="11" Margin="0,0,0,4"/>
+                <TextBox x:Name="CommentBox"
+                         Background="Transparent"
+                         Foreground="#F9FAFB"
+                         BorderThickness="0"
+                         FontSize="14"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         MinLines="2"
+                         MaxLines="4"
+                         LostFocus="CommentBox_LostFocus"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 底部翻页栏 -->
+        <Border VerticalAlignment="Bottom"
+                HorizontalAlignment="Center"
+                Margin="0,0,0,18"
+                Padding="20,8"
+                CornerRadius="14"
+                Background="#CC0F172A"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="1"
+                Effect="{StaticResource ToolbarShadow}">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="◀ 上一张" Style="{StaticResource ViewerButton}" Click="Prev_Click"/>
+                <TextBlock x:Name="CounterText"
+                           Foreground="#F9FAFB"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="14,0"
+                           MinWidth="80"
+                           TextAlignment="Center"/>
+                <Button Content="下一张 ▶" Style="{StaticResource ViewerButton}" Click="Next_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -101,6 +101,7 @@ public partial class MainWindow : Window
     private readonly LibraryDatabase _database;
     private readonly CoverCache _coverCache;
     private readonly CoverThumbnailPipeline _coverPipeline;
+    private readonly MiscImageThumbnailPipeline _miscPipeline;
     private readonly UpdateService _updateService;
     private MangaBook? _currentBook;
     private MangaBook? _detailCatalogBook;
@@ -230,6 +231,7 @@ public partial class MainWindow : Window
         _updateService = new UpdateService(_storage);
         _coverCache = new CoverCache(_storage, _database);
         _coverPipeline = new CoverThumbnailPipeline(_coverCache);
+        _miscPipeline = new MiscImageThumbnailPipeline(_storage);
         SetDetailVisible(false);
         ShowHomeView();
         UpdateLogPanelVisibility();
@@ -6605,6 +6607,8 @@ public partial class MainWindow : Window
         if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
         if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
+        if (MiscPagePanel is not null) MotionService.HideWithFade(MiscPagePanel);
+        LeaveMiscView();
         SetDetailVisible(false);
         RefreshHomeShelves();
         UpdateNavigationVisuals();
@@ -6617,6 +6621,8 @@ public partial class MainWindow : Window
         if (LibraryPagePanel is not null) MotionService.ShowWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
         if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
+        if (MiscPagePanel is not null) MotionService.HideWithFade(MiscPagePanel);
+        LeaveMiscView();
         SetDetailVisible(_currentBook is not null && BooksList.SelectedItem is not null);
         UpdateNavigationVisuals();
         RefreshBookFilter(ensureLibraryView: true);
@@ -6629,6 +6635,8 @@ public partial class MainWindow : Window
         if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.ShowWithFade(TagsPagePanel);
         if (AuthorsPagePanel is not null) MotionService.HideWithFade(AuthorsPagePanel);
+        if (MiscPagePanel is not null) MotionService.HideWithFade(MiscPagePanel);
+        LeaveMiscView();
         SetDetailVisible(false);
         RefreshLibraryViews(tags: false, tagManager: true, authors: false, filter: false);
         UpdateNavigationVisuals();
@@ -6641,6 +6649,8 @@ public partial class MainWindow : Window
         if (LibraryPagePanel is not null) MotionService.HideWithFade(LibraryPagePanel);
         if (TagsPagePanel is not null) MotionService.HideWithFade(TagsPagePanel);
         if (AuthorsPagePanel is not null) MotionService.ShowWithFade(AuthorsPagePanel);
+        if (MiscPagePanel is not null) MotionService.HideWithFade(MiscPagePanel);
+        LeaveMiscView();
         SetDetailVisible(false);
         RefreshAuthorManagementItems();
         UpdateNavigationVisuals();
@@ -6707,6 +6717,7 @@ public partial class MainWindow : Window
     {
         SetNavButtonState(HomeNavButton, _currentNavigationKey == "home");
         SetNavButtonState(LibraryNavButton, _currentNavigationKey == "library");
+        SetNavButtonState(MiscNavButton, _currentNavigationKey == "misc");
         SetNavButtonState(TagsNavButton, _currentNavigationKey == "tags");
         SetNavButtonState(AuthorsNavButton, _currentNavigationKey == "authors");
     }

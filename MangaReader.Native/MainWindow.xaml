@@ -1153,6 +1153,7 @@
                                 </Border>
                                 <Button x:Name="HomeNavButton" Content="主页" Click="NavHome_Click" Style="{StaticResource SidebarNavButton}"/>
                                 <Button x:Name="LibraryNavButton" Content="书库" Click="NavLibrary_Click" Style="{StaticResource SidebarNavButton}"/>
+                                <Button x:Name="MiscNavButton" Content="杂图" Click="NavMisc_Click" Style="{StaticResource SidebarNavButton}"/>
                                 <Button x:Name="TagsNavButton" Content="标签" Click="NavTags_Click" Style="{StaticResource SidebarNavButton}"/>
                                 <Button x:Name="AuthorsNavButton" Content="作者" Click="NavAuthors_Click" Style="{StaticResource SidebarNavButton}"/>
                             </StackPanel>
@@ -2688,6 +2689,231 @@
                 </ScrollViewer>
             </Grid>
         </Border>
+
+        <!-- 杂图总集瀑布流面板：默认隐藏，NavMisc 切换显示 -->
+        <Grid x:Name="MiscPagePanel"
+              Grid.Column="1"
+              Grid.ColumnSpan="2"
+              Visibility="Collapsed"
+              HorizontalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    Margin="12,12,12,0"
+                    Padding="14,10"
+                    CornerRadius="{StaticResource RadiusPanel}"
+                    Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="杂图总集"
+                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                   FontSize="18"
+                                   FontWeight="Black"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="MiscCountText"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                   FontSize="12"
+                                   Margin="14,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="分类"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <ComboBox x:Name="MiscCategoryFilter"
+                                  Width="120"
+                                  Height="32"
+                                  Margin="0,0,12,0"
+                                  SelectedIndex="0"
+                                  SelectionChanged="MiscCategoryFilter_SelectionChanged"
+                                  Style="{StaticResource FilterComboBox}">
+                            <ComboBoxItem Content="全部" Tag=""/>
+                            <ComboBoxItem Content="真人" Tag="真人"/>
+                            <ComboBoxItem Content="绘画" Tag="绘画"/>
+                        </ComboBox>
+
+                        <TextBlock Text="收藏"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <Button x:Name="MiscFavoriteOnlyToggle"
+                                      Content="仅看收藏"
+                                      Margin="0,0,12,0"
+                                      Padding="10,4"
+                                      Click="MiscFavoriteOnlyToggle_Click"
+                                      Style="{StaticResource AppGhostButton}"/>
+
+                        <Button Content="导入图片"
+                                Margin="0,0,6,0"
+                                Click="MiscImportFiles_Click"
+                                Style="{StaticResource AppGhostButton}"/>
+                        <Button Content="扫描文件夹"
+                                Margin="0,0,6,0"
+                                Click="MiscImportFolder_Click"
+                                Style="{StaticResource AppGhostButton}"/>
+                        <Button Content="管理 Tag"
+                                Click="MiscManageTags_Click"
+                                Style="{StaticResource AppGhostButton}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1"
+                    Margin="12,12,12,12"
+                    CornerRadius="{StaticResource RadiusPanel}"
+                    Background="{DynamicResource Brush.SurfaceMuted}"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderThickness="1"
+                    AllowDrop="True"
+                    DragEnter="MiscPagePanel_DragEnter"
+                    DragOver="MiscPagePanel_DragOver"
+                    DragLeave="MiscPagePanel_DragLeave"
+                    Drop="MiscPagePanel_Drop">
+                <Grid>
+                    <ListBox x:Name="MiscList"
+                             Margin="0"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.CacheLength="4"
+                             VirtualizingPanel.CacheLengthUnit="Page"
+                             ScrollViewer.CanContentScroll="True"
+                             MouseDoubleClick="MiscList_MouseDoubleClick"
+                             PreviewMouseWheel="FastItemsScrollViewer_PreviewMouseWheel">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <controls:VirtualizingWrapPanel ItemWidth="220"
+                                                                 ItemHeight="220"
+                                                                 HorizontalSpacing="12"
+                                                                 VerticalSpacing="12"
+                                                                 OverscanRows="3"/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:MiscImage}">
+                                <Grid Width="220" Height="220">
+                                    <Image Source="{Binding Thumbnail}"
+                                           Stretch="UniformToFill"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <!-- 收藏角标 22×28 直角 -->
+                                    <Path Width="22" Height="28"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Top"
+                                          Margin="0,6,6,0"
+                                          Fill="{DynamicResource Brush.Accent}"
+                                          Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVisibility}}"
+                                          Data="M 0,0 H 22 V 28 L 11,21 L 0,28 Z"
+                                          Effect="{StaticResource PanelShadow}"/>
+                                    <!-- 评分 -->
+                                    <Border HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="6,0,0,6"
+                                            Padding="6,2"
+                                            CornerRadius="3"
+                                            Background="#AA000000">
+                                        <TextBlock Text="{Binding RatingText}"
+                                                   Foreground="#F59E0B"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                    <!-- 分类标签 -->
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,6,6"
+                                            Padding="6,2"
+                                            CornerRadius="3"
+                                            Background="#AA000000">
+                                        <TextBlock Text="{Binding CategoryText}"
+                                                   Foreground="#F9FAFB"
+                                                   FontSize="10"/>
+                                    </Border>
+                                    <!-- 右键菜单 -->
+                                    <Grid.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="打开浏览" Click="MiscOpenViewer_Click"/>
+                                            <MenuItem Header="编辑评语" Click="MiscEditComment_Click"/>
+                                            <MenuItem Header="编辑 Tag" Click="MiscEditTags_Click"/>
+                                            <MenuItem Header="切换收藏" Click="MiscToggleFavorite_Click"/>
+                                            <MenuItem Header="设置分类：真人" Click="MiscSetCategoryReal_Click"/>
+                                            <MenuItem Header="设置分类：绘画" Click="MiscSetCategoryArt_Click"/>
+                                            <MenuItem Header="清空分类" Click="MiscSetCategoryNone_Click"/>
+                                            <MenuItem Header="反向重命名" Click="MiscRename_Click"/>
+                                            <MenuItem Header="打开文件位置" Click="MiscOpenFileLocation_Click"/>
+                                            <MenuItem Header="删除记录（保留文件）" Click="MiscDeleteRecord_Click"/>
+                                        </ContextMenu>
+                                    </Grid.ContextMenu>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border x:Name="MiscEmptyState"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Padding="28"
+                            CornerRadius="{StaticResource RadiusPanel}"
+                            Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                            BorderThickness="1"
+                            Visibility="Collapsed">
+                        <StackPanel Width="320">
+                            <TextBlock Text="杂图库是空的"
+                                       FontSize="22"
+                                       FontWeight="Black"
+                                       Foreground="{DynamicResource Brush.TextPrimary}"
+                                       TextAlignment="Center"/>
+                            <TextBlock Text="拖拽图片到此处，或点击「导入图片」/「扫描文件夹」。"
+                                       Margin="0,12,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       TextAlignment="Center"
+                                       LineHeight="22"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
 
         <Grid x:Name="DetailCatalogOverlay"
               Grid.Column="1"
