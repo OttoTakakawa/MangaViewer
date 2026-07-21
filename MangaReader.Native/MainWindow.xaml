@@ -2698,6 +2698,7 @@
               HorizontalAlignment="Stretch">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
@@ -2745,6 +2746,18 @@
                             <ComboBoxItem Content="绘画" Tag="绘画"/>
                         </ComboBox>
 
+                        <TextBlock Text="Tag"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <ComboBox x:Name="MiscTagFilterBox"
+                                  Width="160"
+                                  Height="32"
+                                  Margin="0,0,12,0"
+                                  SelectionChanged="MiscTagFilter_SelectionChanged"
+                                  Style="{StaticResource FilterComboBox}"/>
+
                         <TextBlock Text="收藏"
                                    Foreground="{DynamicResource Brush.TextMuted}"
                                    FontSize="12"
@@ -2766,13 +2779,94 @@
                                 Click="MiscImportFolder_Click"
                                 Style="{StaticResource AppGhostButton}"/>
                         <Button Content="管理 Tag"
+                                Margin="0,0,12,0"
                                 Click="MiscManageTags_Click"
                                 Style="{StaticResource AppGhostButton}"/>
+
+                        <TextBlock Text="造型"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <ComboBox x:Name="MiscCardShapeBox"
+                                  Width="100"
+                                  Height="32"
+                                  SelectedIndex="0"
+                                  SelectionChanged="MiscCardShape_SelectionChanged"
+                                  Style="{StaticResource FilterComboBox}">
+                            <ComboBoxItem Content="直角" Tag="0"/>
+                            <ComboBoxItem Content="小圆角" Tag="4"/>
+                            <ComboBoxItem Content="大圆角" Tag="12"/>
+                            <ComboBoxItem Content="胶囊" Tag="40"/>
+                        </ComboBox>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <Border Grid.Row="1"
+            <!-- 杂图独立 Tag 池：与漫画 TagPool 完全隔离的数据源。
+                 chip 可拖拽到下方任意杂图卡片完成 tag 分配；单击 chip 作为筛选条件。
+                 默认展开，可通过头部折叠按钮收起。-->
+            <Expander x:Name="MiscTagPoolExpander"
+                      Grid.Row="1"
+                      Margin="12,8,12,0"
+                      Padding="0"
+                      IsExpanded="True"
+                      Header="杂图 Tag 池（拖到图片即可分配 · 单击筛选）"
+                      Background="{DynamicResource Brush.Surface}"
+                      BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                      BorderThickness="1">
+                <Grid Margin="14,4,14,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <ItemsControl Grid.Row="0"
+                                  x:Name="MiscTagPoolItemsControl"
+                                  ItemsSource="{Binding MiscTagPoolItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:TagChip}">
+                                <Border Margin="0,4,6,4"
+                                        Padding="10,5"
+                                        Background="{Binding Color}"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        PreviewMouseLeftButtonDown="MiscTagChip_PreviewMouseLeftButtonDown"
+                                        PreviewMouseLeftButtonUp="MiscTagChip_PreviewMouseLeftButtonUp"
+                                        MouseMove="MiscTagChip_MouseMove"
+                                        ToolTip="{Binding Category}">
+                                    <TextBlock Text="{Binding Name}"
+                                               Foreground="{Binding Foreground}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border x:Name="MiscTagPoolEmptyHint"
+                            Grid.Row="1"
+                            Visibility="Collapsed"
+                            Margin="0,4,0,0"
+                            Padding="10,6"
+                            CornerRadius="4"
+                            Background="{DynamicResource Brush.SurfaceMuted}"
+                            BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                            BorderThickness="1">
+                        <TextBlock Text="当前没有任何杂图 Tag。点击右上角「管理 Tag」新建后，可拖到这里分配给图片。"
+                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+                </Grid>
+            </Expander>
+
+            <Border Grid.Row="2"
                     Margin="12,12,12,12"
                     CornerRadius="{StaticResource RadiusPanel}"
                     Background="{DynamicResource Brush.SurfaceMuted}"
@@ -2795,15 +2889,17 @@
                              VirtualizingPanel.CacheLength="4"
                              VirtualizingPanel.CacheLengthUnit="Page"
                              ScrollViewer.CanContentScroll="True"
-                             MouseDoubleClick="MiscList_MouseDoubleClick"
+                             PreviewMouseLeftButtonUp="MiscList_PreviewMouseLeftButtonUp"
+                             ScrollViewer.ScrollChanged="MiscList_ScrollChanged"
                              PreviewMouseWheel="FastItemsScrollViewer_PreviewMouseWheel">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <controls:VirtualizingWrapPanel ItemWidth="220"
-                                                                 ItemHeight="220"
                                                                  HorizontalSpacing="12"
                                                                  VerticalSpacing="12"
-                                                                 OverscanRows="3"/>
+                                                                 OverscanRows="3"
+                                                                 PinterestMode="True"
+                                                                 AspectRatioPath="AspectRatio"/>
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
@@ -2814,6 +2910,7 @@
                                 <Setter Property="VerticalContentAlignment" Value="Stretch"/>
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Cursor" Value="Hand"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ListBoxItem">
@@ -2826,17 +2923,33 @@
                                         </ControlTemplate>
                                     </Setter.Value>
                                 </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Panel.ZIndex" Value="10"/>
+                                    </Trigger>
+                                </Style.Triggers>
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:MiscImage}">
-                                <Grid Width="220" Height="220">
-                                    <Image Source="{Binding Thumbnail}"
-                                           Stretch="UniformToFill"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    <!-- 收藏角标 22×28 直角 -->
+                                <!-- 单层 Grid 叠加布局（方案 A）。
+                                     VirtualizingWrapPanel.PinterestMode 按 AspectRatio 计算 item 高度，
+                                     不允许"图片+tag下方空间"的两行结构（tag 会被 Arrange 裁掉）。
+                                     因此所有元素都在同一 Grid 内叠加：图片铺满，tag/评分/分类 overlay 在上。
+                                     item 高度 = ItemWidth / aspect，与图片实际展示高度一致，瀑布流稳定。-->
+                                <Grid Width="220"
+                                      ClipToBounds="True">
+                                    <Border CornerRadius="{Binding MiscCardCornerRadius, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            x:Name="CardBorder"
+                                            ClipToBounds="True">
+                                        <Image Source="{Binding Thumbnail}"
+                                               Stretch="UniformToFill"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Stretch"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Border>
+
+                                    <!-- 收藏角标（右上） -->
                                     <Path Width="22" Height="28"
                                           HorizontalAlignment="Right"
                                           VerticalAlignment="Top"
@@ -2845,29 +2958,72 @@
                                           Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVisibility}}"
                                           Data="M 0,0 H 22 V 28 L 11,21 L 0,28 Z"
                                           Effect="{StaticResource PanelShadow}"/>
-                                    <!-- 评分 -->
-                                    <Border HorizontalAlignment="Left"
-                                            VerticalAlignment="Bottom"
-                                            Margin="6,0,0,6"
+
+                                    <!-- 评分（右上，收藏角标下方） -->
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,34,6,0"
                                             Padding="6,2"
                                             CornerRadius="3"
-                                            Background="#AA000000">
+                                            Background="#AA000000"
+                                            Visibility="{Binding HasRating, Converter={StaticResource BoolToVisibility}}">
                                         <TextBlock Text="{Binding RatingText}"
                                                    Foreground="#F59E0B"
                                                    FontSize="11"
                                                    FontWeight="Bold"/>
                                     </Border>
-                                    <!-- 分类标签 -->
-                                    <Border HorizontalAlignment="Right"
-                                            VerticalAlignment="Bottom"
-                                            Margin="0,0,6,6"
+
+                                    <!-- 分类标签（左上，未分类时隐藏） -->
+                                    <Border HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            Margin="6,6,0,0"
                                             Padding="6,2"
                                             CornerRadius="3"
-                                            Background="#AA000000">
+                                            Background="#AA000000"
+                                            Visibility="{Binding HasCategory, Converter={StaticResource BoolToVisibility}}">
                                         <TextBlock Text="{Binding CategoryText}"
                                                    Foreground="#F9FAFB"
                                                    FontSize="10"/>
                                     </Border>
+
+                                    <!-- Tag 叠加层（底部半透明渐变 + chip 列表，最多 2 行） -->
+                                    <Grid VerticalAlignment="Bottom"
+                                          Margin="0,0,0,0">
+                                        <Grid.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#00000000" Offset="0"/>
+                                                <GradientStop Color="#CC000000" Offset="0.4"/>
+                                                <GradientStop Color="#E6000000" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Grid.Background>
+                                        <ItemsControl ItemsSource="{Binding CardTagItems}"
+                                                      Margin="6,14,6,6">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,4,2"
+                                                            Padding="6,2"
+                                                            MaxWidth="120"
+                                                            Background="{Binding Color}"
+                                                            CornerRadius="3"
+                                                            SnapsToDevicePixels="True">
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   Foreground="Black"
+                                                                   FontSize="10"
+                                                                   FontWeight="SemiBold"
+                                                                   TextWrapping="NoWrap"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Name}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+
                                     <!-- 右键菜单 -->
                                     <Grid.ContextMenu>
                                         <ContextMenu>
@@ -2884,6 +3040,15 @@
                                         </ContextMenu>
                                     </Grid.ContextMenu>
                                 </Grid>
+                                <DataTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="CardBorder" Property="Effect">
+                                            <Setter.Value>
+                                                <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="10" Opacity="0.55"/>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Trigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>

@@ -455,10 +455,15 @@
                              Background="Transparent"
                              BorderThickness="0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel/>
+                                <controls:VirtualizingWrapPanel ItemWidth="142"
+                                                                 ItemHeight="210"
+                                                                 HorizontalSpacing="14"
+                                                                 VerticalSpacing="14"/>
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
@@ -610,6 +615,14 @@
                     <ComboBoxItem Content="滚轮滚动"/>
                 </ComboBox>
                 <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
+                <!-- 杂图专属操作组（仅杂图模式可见） -->
+                <StackPanel x:Name="MiscActionsPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <Button Content="Tag" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscEditTags_Click"/>
+                    <Button Content="评语" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscEditComment_Click"/>
+                    <Button Content="收藏" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscToggleFavorite_Click"/>
+                    <Button Content="重命名" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscRename_Click"/>
+                    <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
+                </StackPanel>
                 <!-- 功能组 -->
                 <Button x:Name="CatalogButton" Content="目录" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="CatalogButton_Click"/>
                 <Button x:Name="SignButton" Content="标记" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="SignButton_Click"/>
@@ -617,7 +630,7 @@
                 <Button x:Name="MoreMenuButton" Content="更多" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MoreMenuButton_Click">
                     <Button.ContextMenu>
                         <ContextMenu x:Name="MoreMenu">
-                            <MenuItem Header="打开详情页" Click="OpenDetailFromReader_Click"/>
+                            <MenuItem x:Name="OpenDetailMenuItem" Header="打开详情页" Click="OpenDetailFromReader_Click"/>
                             <Separator/>
                             <MenuItem Header="返回第一页" Click="NextBookGoFirst_Click"/>
                         </ContextMenu>

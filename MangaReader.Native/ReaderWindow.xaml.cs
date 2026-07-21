@@ -136,7 +136,8 @@ public partial class ReaderWindow : Window
         Func<MangaBook, NextBookRecommendations?>? nextBookResolver = null,
         Action<MangaBook>? openBookRequest = null,
         CoverThumbnailPipeline? coverPipeline = null,
-        Action<MangaBook>? openDetailRequest = null)
+        Action<MangaBook>? openDetailRequest = null,
+        MiscSession? miscSession = null)
     {
         InitializeComponent();
         _book = book;
@@ -147,6 +148,7 @@ public partial class ReaderWindow : Window
         _openBookRequest = openBookRequest;
         _coverPipeline = coverPipeline;
         _openDetailRequest = openDetailRequest;
+        _misc = miscSession;
         _requestedPageIndex = Math.Clamp(book.LastReadPageIndex, 0, Math.Max(0, book.PageCount - 1));
         DataContext = this;
         Title = book.Title;
@@ -166,12 +168,127 @@ public partial class ReaderWindow : Window
         UpdateQualityModeButton();
         UpdateToolbarMenuLabels();
         BuildQuickRatingStars();
+        if (_misc is not null)
+        {
+            ApplyMiscMode();
+        }
+    }
+
+    // 杂图会话：当 ReaderWindow 被用于浏览杂图列表时传入。
+    // - 评分/收藏/Tag/评语/重命名走 misc_images 表，不走 books 表
+    // - 翻页时同步 _book.Rating/IsFavorite 为当前杂图状态
+    // - 不保存进度、不显示 NextBook 推荐、不显示双页/方向选项
+    public sealed class MiscSession
+    {
+        public required IReadOnlyList<MiscImage> Images { get; init; }
+    }
+
+    private readonly MiscSession? _misc;
+
+    private void ApplyMiscMode()
+    {
+        if (MiscActionsPanel is not null) MiscActionsPanel.Visibility = Visibility.Visible;
+        if (ReadingModeBox is not null) ReadingModeBox.Visibility = Visibility.Collapsed;
+        if (DirectionBox is not null) DirectionBox.Visibility = Visibility.Collapsed;
+        if (OpenDetailMenuItem is not null) OpenDetailMenuItem.Visibility = Visibility.Collapsed;
+        // 杂图模式：不支持书签（每张图独立，无"页"概念），隐藏标记按钮
+        if (SignButton is not null) SignButton.Visibility = Visibility.Collapsed;
+        // 杂图永久单页模式
+        if (ReadingModeBox is not null && ReadingModeBox.Items.Count > 0)
+        {
+            ReadingModeBox.SelectedIndex = 0;
+        }
+    }
+
+    private bool TryGetCurrentMiscImage(out MiscImage image)
+    {
+        image = null!;
+        if (_misc is null || _requestedPageIndex < 0 || _requestedPageIndex >= _misc.Images.Count)
+        {
+            return false;
+        }
+        image = _misc.Images[_requestedPageIndex];
+        return true;
+    }
+
+    // 杂图按钮事件
+    private void MiscEditTags_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCurrentMiscImage(out var image)) return;
+        var dialog = new TagNameDialog(image.Tags, "编辑 Tag（逗号分隔）") { Owner = this };
+        if (dialog.ShowDialog() == true)
+        {
+            var newTags = MiscTagService.FormatTags(MiscTagService.ParseTags(dialog.TagName));
+            image.Tags = newTags;
+            try { _database.UpdateMiscImageTags(image.Id, newTags); }
+            catch (Exception ex) { AppLogger.Warn("misc-tags", $"保存 Tag 失败：{image.Id}。{ex.Message}"); }
+        }
+    }
+
+    private void MiscEditComment_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCurrentMiscImage(out var image)) return;
+        var dialog = new TagNameDialog(image.Comment, "编辑评语") { Owner = this };
+        if (dialog.ShowDialog() == true)
+        {
+            image.Comment = dialog.TagName;
+            try { _database.UpdateMiscImageComment(image.Id, image.Comment); }
+            catch (Exception ex) { AppLogger.Warn("misc-comment", $"保存评语失败：{image.Id}。{ex.Message}"); }
+        }
+    }
+
+    private void MiscToggleFavorite_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCurrentMiscImage(out var image)) return;
+        image.IsFavorite = !image.IsFavorite;
+        _book.IsFavorite = image.IsFavorite;
+        try { _database.UpdateMiscImageFavorite(image.Id, image.IsFavorite); }
+        catch (Exception ex) { AppLogger.Warn("misc-favorite", $"保存收藏失败：{image.Id}。{ex.Message}"); }
+    }
+
+    private void MiscRename_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCurrentMiscImage(out var image)) return;
+        if (!File.Exists(image.FilePath))
+        {
+            System.Windows.MessageBox.Show("找不到原文件，无法重命名。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var dialog = new MiscRenameDialog(image.FilePath) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        var newFileName = dialog.NewFileName;
+        var directory = Path.GetDirectoryName(image.FilePath) ?? "";
+        var newPath = Path.Combine(directory, newFileName);
+        if (File.Exists(newPath))
+        {
+            System.Windows.MessageBox.Show($"目标文件已存在：{newFileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        try
+        {
+            File.Move(image.FilePath, newPath);
+            _database.RenameMiscImageFile(image.Id, newPath, newFileName);
+            image.FilePath = newPath;
+            image.FileName = newFileName;
+            // 更新 _book.Pages 中的路径，避免后续翻页失败
+            if (_requestedPageIndex >= 0 && _requestedPageIndex < _book.Pages.Count)
+            {
+                _book.Pages[_requestedPageIndex] = newPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("misc-rename", ex, $"反向重命名失败：{image.FilePath} → {newPath}");
+            System.Windows.MessageBox.Show($"反向重命名失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void ReaderWindow_Loaded(object sender, RoutedEventArgs e)
     {
         AppLogger.Info("reader-open", $"Reader loaded: {_book.Title}, pages={_book.Pages.Count}, start={_book.LastReadPageIndex + 1}");
-        Dispatcher.InvokeAsync(() => RequestPageLoad(_book.LastReadPageIndex, immediate: true), DispatcherPriority.ApplicationIdle);
+        // 杂图模式首图优先显示（Normal），避免被目录构建占用 Dispatcher；普通模式仍走 ApplicationIdle 让窗口先完成布局
+        var priority = _misc is not null ? DispatcherPriority.Normal : DispatcherPriority.ApplicationIdle;
+        Dispatcher.InvokeAsync(() => RequestPageLoad(_book.LastReadPageIndex, immediate: true), priority);
     }
 
     private void ReaderWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -234,6 +351,14 @@ public partial class ReaderWindow : Window
     private void TryGoToNextBook()
     {
         if (_isNextBookPromptOpen) return;
+
+        // 杂图模式：末页不弹推荐浮窗
+        if (_misc is not null)
+        {
+            _boundaryHint = "已经是最后一张";
+            UpdateNavigationState();
+            return;
+        }
 
         var recs = _nextBookResolver?.Invoke(_book);
         if (recs is null || (recs.NextInView is null && recs.SameAuthor is null && recs.SimilarTags is null))
@@ -374,7 +499,15 @@ public partial class ReaderWindow : Window
 
         try
         {
-            await Task.Run(() => _database.SaveMetadata(_book));
+            if (_misc is not null && TryGetCurrentMiscImage(out var misc))
+            {
+                misc.Rating = newRating;
+                await Task.Run(() => _database.UpdateMiscImageRating(misc.Id, newRating));
+            }
+            else
+            {
+                await Task.Run(() => _database.SaveMetadata(_book));
+            }
             _boundaryHint = _book.HasRating ? $"已评分 {_book.RatingText}" : "评分已清除";
             UpdateNavigationState();
         }
@@ -453,6 +586,8 @@ public partial class ReaderWindow : Window
 
     private void OpenDetailFromReader_Click(object sender, RoutedEventArgs e)
     {
+        // 杂图模式没有详情页
+        if (_misc is not null) return;
         _openDetailRequest?.Invoke(_book);
         Close();
     }
@@ -537,6 +672,8 @@ public partial class ReaderWindow : Window
 
     private void SaveProgressSafely(MangaBook book)
     {
+        // 杂图模式不保存进度（每张图独立，没有"页进度"概念）
+        if (_misc is not null) return;
         try
         {
             _database.SaveProgress(book);
@@ -1044,6 +1181,13 @@ public partial class ReaderWindow : Window
             if (safeIndex > 0 && _book.ReadingStatus == "unread")
             {
                 _book.ReadingStatus = "reading";
+            }
+            // 杂图模式：翻页后同步当前杂图的评分/收藏到 _book，刷新星星 UI
+            if (_misc is not null && TryGetCurrentMiscImage(out var currentMisc))
+            {
+                _book.Rating = currentMisc.Rating;
+                _book.IsFavorite = currentMisc.IsFavorite;
+                BuildQuickRatingStars();
             }
             UpdateNavigationState();
             HideReaderMessage();
@@ -2363,8 +2507,16 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        _bookmarks = _database.LoadBookmarks(_book.Id);
-        UpdateSignButton();
+        // 杂图模式不支持书签，跳过数据库查询
+        if (_misc is null)
+        {
+            _bookmarks = _database.LoadBookmarks(_book.Id);
+            UpdateSignButton();
+        }
+        else
+        {
+            _bookmarks = [];
+        }
         PageCatalogItems.Clear();
         var catalogItems = new List<PageCatalogItem>(_book.Pages.Count);
         for (var i = 0; i < _book.Pages.Count; i++)
@@ -2538,6 +2690,12 @@ public partial class ReaderWindow : Window
         var token = _catalogLoadCancellation.Token;
         var items = PageCatalogItems.ToList();
 
+        // 杂图模式：几千张图全量加载会卡死。只加载前 256 张（用户滚动时再触发增量加载）
+        if (_misc is not null && items.Count > 256)
+        {
+            items = items.Take(256).ToList();
+        }
+
         _ = Task.Run(async () =>
         {
             foreach (var item in items)
@@ -2580,6 +2738,8 @@ public partial class ReaderWindow : Window
 
     private async void SetCatalogPageAsCover_Click(object sender, RoutedEventArgs e)
     {
+        // 杂图模式没有"设为封面"概念
+        if (_misc is not null) return;
         if ((sender as FrameworkElement)?.DataContext is not PageCatalogItem item)
         {
             return;

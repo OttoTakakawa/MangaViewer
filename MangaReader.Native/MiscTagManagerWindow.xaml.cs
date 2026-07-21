@@ -146,15 +146,15 @@ public partial class MiscTagManagerWindow : Window
 
     private void CreateTag_Click(object sender, RoutedEventArgs e)
     {
-        var chip = new TagChip
-        {
-            Name = "",
-            RawName = "",
-            Category = "自定义",
-            Color = MiscTagService.PresetColors[0],
-            IsExclusive = false
-        };
-        var dialog = new TagEditDialog(chip, new List<MangaBook>())
+        // 走杂图专属对话框，与漫画 TagEditDialog 完全解耦：独立色板、无互斥、无关联漫画。
+        var (existingCategories, categoryColors) = LoadMiscCategoryContext();
+        var dialog = new MiscTagEditDialog(
+            initialName: "",
+            initialCategory: "未分类",
+            initialColor: MiscTagService.PresetColors[0],
+            isNew: true,
+            existingCategories: existingCategories,
+            categoryColors: categoryColors)
         {
             Owner = this
         };
@@ -189,16 +189,15 @@ public partial class MiscTagManagerWindow : Window
     {
         if (sender is not FrameworkElement { DataContext: MiscTagRow row }) return;
 
-        var chip = new TagChip
-        {
-            Name = row.Name,
-            RawName = row.Name,
-            Category = string.IsNullOrEmpty(row.RawCategory) ? "自定义" : row.RawCategory,
-            Color = row.Color,
-            IsExclusive = false,
-            UsageCount = row.UsageCount
-        };
-        var dialog = new TagEditDialog(chip, new List<MangaBook>())
+        var (existingCategories, categoryColors) = LoadMiscCategoryContext();
+        var dialog = new MiscTagEditDialog(
+            initialName: row.Name,
+            initialCategory: string.IsNullOrEmpty(row.RawCategory) ? "未分类" : row.RawCategory,
+            initialColor: row.Color,
+            isNew: false,
+            existingCategories: existingCategories,
+            categoryColors: categoryColors,
+            usageCount: row.UsageCount)
         {
             Owner = this
         };
@@ -236,6 +235,42 @@ public partial class MiscTagManagerWindow : Window
         {
             AppLogger.Error("misc-tag-edit", ex, $"编辑杂图 Tag 失败：{row.Name}");
             System.Windows.MessageBox.Show($"编辑失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // 从 misc_image_tags 表加载已有分类及其颜色，用于：
+    // 1. 编辑对话框的分组下拉候选项
+    // 2. 切换分组时自动套用同组颜色（与漫画 TagEditDialog 行为对齐，但数据源完全独立）
+    private (IReadOnlyList<string> Categories, IReadOnlyDictionary<string, string> CategoryColors) LoadMiscCategoryContext()
+    {
+        try
+        {
+            var records = _database.LoadMiscTags();
+            var categories = records
+                .Select(r => r.Category ?? "")
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var colors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in records)
+            {
+                var cat = r.Category ?? "";
+                if (string.IsNullOrWhiteSpace(cat))
+                {
+                    continue;
+                }
+                // 同组多个 tag 颜色可能不一致，取第一条非空作为代表色
+                if (!colors.ContainsKey(cat) && !string.IsNullOrWhiteSpace(r.Color))
+                {
+                    colors[cat] = r.Color;
+                }
+            }
+            return (categories, colors);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("misc-tag-ctx", $"加载杂图分类上下文失败：{ex.Message}");
+            return (Array.Empty<string>(), new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
         }
     }
 

@@ -1,6 +1,7 @@
 using MangaReader.Native.Models;
 using Microsoft.Data.Sqlite;
 using System.Collections.Concurrent;
+using System.Windows.Media.Imaging;
 
 namespace MangaReader.Native.Services;
 
@@ -145,7 +146,6 @@ public sealed class LibraryDatabase
             CREATE INDEX IF NOT EXISTS idx_books_is_hidden ON books(is_hidden);
             CREATE INDEX IF NOT EXISTS idx_books_folder_path ON books(folder_path);
             CREATE INDEX IF NOT EXISTS idx_book_bookmarks_book_id ON book_bookmarks(book_id);
-            CREATE INDEX IF NOT EXISTS idx_books_last_opened_at ON books(last_opened_at);
             CREATE INDEX IF NOT EXISTS idx_reverse_organize_pending_target_root ON reverse_organize_pending_redirects(target_root);
 
             CREATE TABLE IF NOT EXISTS misc_images (
@@ -189,10 +189,22 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "books", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "is_privacy_cover", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "books", "last_opened_at", "TEXT NOT NULL DEFAULT ''");
+        EnsureIndex(connection, "idx_books_last_opened_at", "books(last_opened_at)");
         EnsureColumn(connection, "managed_tags", "category", "TEXT NOT NULL DEFAULT '自定义'");
         EnsureColumn(connection, "managed_tags", "is_exclusive", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "managed_tags", "color", "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(connection, "book_bookmarks", "label", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(connection, "misc_images", "width", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "misc_images", "height", "INTEGER NOT NULL DEFAULT 0");
+
+        // 一次性迁移：杂图评分从 0-10 → 0-5（与 books.rating 统一，便于复用 ReaderWindow）
+        if (LoadSetting("misc.rating.migrated_to_5_scale") != "1")
+        {
+            using var migrateCmd = connection.CreateCommand();
+            migrateCmd.CommandText = "UPDATE misc_images SET rating = rating / 2.0 WHERE rating > 5;";
+            migrateCmd.ExecuteNonQuery();
+            SaveSetting("misc.rating.migrated_to_5_scale", "1");
+        }
     }
 
     public void SaveLibraryRoot(string path)
@@ -1310,8 +1322,32 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         {
             command.ExecuteNonQuery();
         }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase))
+        catch (SqliteException ex)
         {
+            // 容错：列已存在 / 表不存在（表不存在时跳过，由调用方负责建表，避免初始化雪崩）
+            var msg = ex.Message ?? "";
+            if (msg.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("no such table", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+            throw;
+        }
+    }
+
+    // 幂等创建索引：已存在 / 依赖列暂不存在 时安全跳过。
+    // 用途：依赖 EnsureColumn 添加列之后再创建对应索引，避免在多语句初始化 SQL 中提前失败导致雪崩。
+    private static void EnsureIndex(SqliteConnection connection, string indexName, string indexDefinition)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"CREATE INDEX IF NOT EXISTS {indexName} ON {indexDefinition};";
+        try
+        {
+            command.ExecuteNonQuery();
+        }
+        catch (SqliteException ex)
+        {
+            AppLogger.Warn("db-migrate", $"创建索引失败（已跳过）：{indexName}。{ex.Message}");
         }
     }
 
@@ -1348,9 +1384,9 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.CommandText =
             """
             INSERT INTO misc_images(id, file_path, file_name, category, tags, comment, rating,
-                                     is_favorite, file_size, imported_at, last_opened_at, updated_at)
+                                     is_favorite, file_size, imported_at, last_opened_at, updated_at, width, height)
             VALUES ($id, $filePath, $fileName, $category, $tags, $comment, $rating,
-                    $isFavorite, $fileSize, $importedAt, $lastOpenedAt, $updatedAt)
+                    $isFavorite, $fileSize, $importedAt, $lastOpenedAt, $updatedAt, $width, $height)
             ON CONFLICT(id) DO UPDATE SET
                 file_path = excluded.file_path,
                 file_name = excluded.file_name,
@@ -1361,6 +1397,8 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
                 is_favorite = excluded.is_favorite,
                 file_size = excluded.file_size,
                 last_opened_at = excluded.last_opened_at,
+                width = CASE WHEN excluded.width > 0 THEN excluded.width ELSE misc_images.width END,
+                height = CASE WHEN excluded.height > 0 THEN excluded.height ELSE misc_images.height END,
                 updated_at = excluded.updated_at;
             """;
         AddMiscImageParameters(command, image);
@@ -1382,13 +1420,15 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.CommandText =
             """
             INSERT INTO misc_images(id, file_path, file_name, category, tags, comment, rating,
-                                     is_favorite, file_size, imported_at, last_opened_at, updated_at)
+                                     is_favorite, file_size, imported_at, last_opened_at, updated_at, width, height)
             VALUES ($id, $filePath, $fileName, $category, $tags, $comment, $rating,
-                    $isFavorite, $fileSize, $importedAt, $lastOpenedAt, $updatedAt)
+                    $isFavorite, $fileSize, $importedAt, $lastOpenedAt, $updatedAt, $width, $height)
             ON CONFLICT(id) DO UPDATE SET
                 file_path = excluded.file_path,
                 file_name = excluded.file_name,
                 file_size = excluded.file_size,
+                width = CASE WHEN excluded.width > 0 THEN excluded.width ELSE misc_images.width END,
+                height = CASE WHEN excluded.height > 0 THEN excluded.height ELSE misc_images.height END,
                 updated_at = excluded.updated_at;
             """;
         foreach (var image in images)
@@ -1407,7 +1447,7 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.CommandText =
             """
             SELECT id, file_path, file_name, category, tags, comment, rating,
-                   is_favorite, file_size, imported_at, last_opened_at
+                   is_favorite, file_size, imported_at, last_opened_at, width, height
             FROM misc_images
             ORDER BY imported_at DESC, file_name COLLATE NOCASE;
             """;
@@ -1427,7 +1467,9 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
                 IsFavorite = !reader.IsDBNull(7) && reader.GetInt32(7) == 1,
                 FileSize = reader.IsDBNull(8) ? 0 : reader.GetInt64(8),
                 ImportedAt = reader.IsDBNull(9) ? "" : reader.GetString(9),
-                LastOpenedAt = reader.IsDBNull(10) ? "" : reader.GetString(10)
+                LastOpenedAt = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                PixelWidth = reader.IsDBNull(11) ? 0 : reader.GetInt32(11),
+                PixelHeight = reader.IsDBNull(12) ? 0 : reader.GetInt32(12)
             };
             result.Add(image);
         }
@@ -1539,6 +1581,39 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.ExecuteNonQuery();
     }
 
+    // 回填单张图片的原始像素尺寸（用于历史记录迁移，只更新 width/height/updated_at）
+    public void UpdateMiscImageDimensions(string id, int width, int height)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            UPDATE misc_images
+            SET width = $width, height = $height, updated_at = $updatedAt
+            WHERE id = $id AND (width = 0 OR height = 0);
+            """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$width", width);
+        command.Parameters.AddWithValue("$height", height);
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    // 加载尚未回填尺寸的杂图（width=0 或 height=0），返回 (id, file_path) 列表供后台迁移使用
+    public List<(string Id, string FilePath)> LoadMiscImagesWithoutDimensions()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, file_path FROM misc_images WHERE width = 0 OR height = 0;";
+        using var reader = command.ExecuteReader();
+        var result = new List<(string Id, string FilePath)>();
+        while (reader.Read())
+        {
+            result.Add((reader.GetString(0), reader.GetString(1)));
+        }
+        return result;
+    }
+
     // 反向重命名：数据库 file_path/file_name/updated_at 三字段同步更新（File.Move 由调用方执行）。
     public void RenameMiscImageFile(string id, string newFilePath, string newFileName)
     {
@@ -1571,6 +1646,8 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.Parameters.AddWithValue("$importedAt", string.IsNullOrWhiteSpace(image.ImportedAt) ? DateTimeOffset.Now.ToString("O") : image.ImportedAt);
         command.Parameters.AddWithValue("$lastOpenedAt", image.LastOpenedAt ?? "");
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.Parameters.AddWithValue("$width", image.PixelWidth);
+        command.Parameters.AddWithValue("$height", image.PixelHeight);
     }
 
     // ===== 杂图 tag（misc_image_tags）CRUD =====
@@ -1746,5 +1823,212 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         var parts = raw.Split(separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var rewritten = parts.Select(p => string.Equals(p, oldName, StringComparison.Ordinal) ? newName : p);
         return string.Join(", ", rewritten);
+    }
+
+    // 读取图片原始像素尺寸，用于导入与历史回填。失败返回 (0, 0)，不抛异常。
+    // 使用直接解析文件头部的方式（PNG/JPEG），不解码像素，速度比 BitmapImage 快 10-50 倍。
+    public static (int Width, int Height) ReadImageDimensions(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return (0, 0);
+        }
+
+        try
+        {
+            using var fs = File.OpenRead(path);
+            using var br = new BinaryReader(fs);
+            return ReadImageDimensionsFromStream(br);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or System.Runtime.InteropServices.COMException)
+        {
+            AppLogger.Warn("misc-dim", $"读取图片尺寸失败：{path}。{ex.Message}");
+            return (0, 0);
+        }
+    }
+
+    // 从 BinaryReader 解析图片尺寸。支持 PNG / JPEG / GIF / BMP。
+    // 失败时回退到 BitmapImage 解码（WPF 原生，慢但兼容性好）。
+    private static (int Width, int Height) ReadImageDimensionsFromStream(BinaryReader br)
+    {
+        // PNG: 8-byte signature + IHDR chunk (width at offset 16, height at offset 20, big-endian)
+        if (TryReadPngDimensions(br, out var pngSize))
+        {
+            return pngSize;
+        }
+
+        // JPEG: scan markers for SOF0/SOF2
+        if (TryReadJpegDimensions(br, out var jpegSize))
+        {
+            return jpegSize;
+        }
+
+        // GIF: width at offset 6, height at offset 8, little-endian
+        if (TryReadGifDimensions(br, out var gifSize))
+        {
+            return gifSize;
+        }
+
+        // BMP: width at offset 18, height at offset 22, little-endian int32
+        if (TryReadBmpDimensions(br, out var bmpSize))
+        {
+            return bmpSize;
+        }
+
+        // 回退到 BitmapImage（慢但兼容所有格式）
+        return ReadDimensionsWithBitmapImage(br);
+    }
+
+    private static bool TryReadPngDimensions(BinaryReader br, out (int, int) size)
+    {
+        size = (0, 0);
+        try
+        {
+            br.BaseStream.Position = 0;
+            // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+            var sig = br.ReadBytes(8);
+            if (sig.Length < 8 || sig[0] != 0x89 || sig[1] != 0x50 || sig[2] != 0x4E || sig[3] != 0x47)
+            {
+                return false;
+            }
+            // IHDR chunk: width (4 bytes BE) at offset 16, height (4 bytes BE) at offset 20
+            br.BaseStream.Position = 16;
+            var w = BitConverter.ToInt32(br.ReadBytes(4).Reverse().ToArray(), 0);
+            var h = BitConverter.ToInt32(br.ReadBytes(4).Reverse().ToArray(), 0);
+            if (w > 0 && h > 0)
+            {
+                size = (w, h);
+                return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    private static bool TryReadJpegDimensions(BinaryReader br, out (int, int) size)
+    {
+        size = (0, 0);
+        try
+        {
+            br.BaseStream.Position = 0;
+            // SOI marker: FF D8
+            var soi = br.ReadBytes(2);
+            if (soi.Length < 2 || soi[0] != 0xFF || soi[1] != 0xD8)
+            {
+                return false;
+            }
+
+            // Scan markers until we find SOF0 (FF C0) or SOF2 (FF C2)
+            while (br.BaseStream.Position < br.BaseStream.Length - 10)
+            {
+                if (br.ReadByte() != 0xFF)
+                {
+                    continue;
+                }
+                var marker = br.ReadByte();
+                // SOF0 (C0) / SOF1 (C1) / SOF2 (C2) / SOF3 (C3) / SOF5 (C5) / SOF6 (C6) / SOF7 (C7) / SOF9 (C9) / SOF10 (CA) / SOF11 (CB) / SOF13 (CD) / SOF14 (CE) / SOF15 (CF)
+                if (marker >= 0xC0 && marker <= 0xCF && marker != 0xC4 && marker != 0xC8 && marker != 0xCC)
+                {
+                    // Found SOF marker. Next 2 bytes = segment length, then 1 byte precision, then 2 bytes height, 2 bytes width
+                    br.ReadByte(); // length high byte
+                    br.ReadByte(); // length low byte
+                    br.ReadByte(); // precision
+                    var h = (br.ReadByte() << 8) | br.ReadByte();
+                    var w = (br.ReadByte() << 8) | br.ReadByte();
+                    if (w > 0 && h > 0)
+                    {
+                        size = (w, h);
+                        return true;
+                    }
+                    return false;
+                }
+                // Other markers: skip segment
+                if (marker == 0xD8 || marker == 0xD9 || (marker >= 0xD0 && marker <= 0xD7))
+                {
+                    continue; // standalone markers, no segment
+                }
+                if (marker == 0x01 || marker == 0x00)
+                {
+                    continue;
+                }
+                var segLen = (br.ReadByte() << 8) | br.ReadByte();
+                if (segLen < 2)
+                {
+                    return false;
+                }
+                br.BaseStream.Position += segLen - 2;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    private static bool TryReadGifDimensions(BinaryReader br, out (int, int) size)
+    {
+        size = (0, 0);
+        try
+        {
+            br.BaseStream.Position = 0;
+            var sig = br.ReadBytes(6);
+            if (sig.Length < 6 || sig[0] != 0x47 || sig[1] != 0x49 || sig[2] != 0x46)
+            {
+                return false; // 'GIF'
+            }
+            // width at offset 6, height at offset 8, little-endian uint16
+            br.BaseStream.Position = 6;
+            var w = br.ReadUInt16();
+            var h = br.ReadUInt16();
+            if (w > 0 && h > 0)
+            {
+                size = (w, h);
+                return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    private static bool TryReadBmpDimensions(BinaryReader br, out (int, int) size)
+    {
+        size = (0, 0);
+        try
+        {
+            br.BaseStream.Position = 0;
+            var sig = br.ReadBytes(2);
+            if (sig.Length < 2 || sig[0] != 0x42 || sig[1] != 0x4D)
+            {
+                return false; // 'BM'
+            }
+            // width at offset 18 (int32 LE), height at offset 22 (int32 LE)
+            br.BaseStream.Position = 18;
+            var w = br.ReadInt32();
+            var h = Math.Abs(br.ReadInt32()); // height can be negative for top-down BMP
+            if (w > 0 && h > 0)
+            {
+                size = (w, h);
+                return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    private static (int, int) ReadDimensionsWithBitmapImage(BinaryReader br)
+    {
+        try
+        {
+            br.BaseStream.Position = 0;
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.None;
+            bi.StreamSource = br.BaseStream;
+            bi.EndInit();
+            bi.Freeze();
+            return (bi.PixelWidth, bi.PixelHeight);
+        }
+        catch
+        {
+            return (0, 0);
+        }
     }
 }

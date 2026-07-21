@@ -10,6 +10,146 @@
         MinWidth="720"
         MinHeight="480"
         ShowInTaskbar="False">
+    <!-- 本窗口专用样式：MainWindow.Window.Resources 对其他窗口不可见，
+         必须在此重新声明 MetricCard / FilterTextBox / FilterComboBox / HeaderActionButton，
+         否则 StaticResource 解析失败会导致窗口构造异常（点击「管理 Tag」即崩）。
+         FilterComboBox 删除了 EventSetter（MiscTagManagerWindow 没有 FilterComboBox_PreviewMouseLeftButtonDown 处理器）。-->
+    <Window.Resources>
+        <DropShadowEffect x:Key="MiscPanelShadow" Color="{DynamicResource Color.TextPrimary}" BlurRadius="28" ShadowDepth="10" Opacity="0.08"/>
+
+        <Style x:Key="MiscMetricCard" TargetType="Border">
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPanel}"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style x:Key="MiscHeaderActionButton" TargetType="Button" BasedOn="{StaticResource AppGhostButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Padding" Value="16,7"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="MiscFilterTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+            <Setter Property="BorderThickness" Value="1.2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MiscFilterComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Background" Value="{DynamicResource Brush.SurfaceMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="ComboRoot" SnapsToDevicePixels="True">
+                            <Border x:Name="ComboBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="{StaticResource RadiusField}">
+                                <Grid Margin="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="42"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                                    <Border Grid.Column="1"
+                                            Width="28"
+                                            Height="28"
+                                            Margin="0,0,10,0"
+                                            Background="{DynamicResource Brush.ScrollTrack}"
+                                            CornerRadius="{StaticResource RadiusControl}"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center">
+                                        <Path Data="M 0 0 L 5 5 L 10 0"
+                                              Stroke="{DynamicResource Brush.TextMuted}"
+                                              StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                            <ToggleButton Background="Transparent"
+                                          BorderThickness="0"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PlacementTarget="{Binding ElementName=ComboRoot}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Margin="0,8,0,0"
+                                        Width="{Binding ActualWidth, ElementName=ComboRoot}"
+                                        Background="{DynamicResource Brush.Surface}"
+                                        BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource RadiusControl}"
+                                        Effect="{StaticResource MiscPanelShadow}">
+                                    <ScrollViewer MaxHeight="280" CanContentScroll="True" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsPresenter Margin="6"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource Brush.Dim}"/>
+                                <Setter TargetName="ComboBorder" Property="Background" Value="{DynamicResource Brush.Surface}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid Margin="22">
         <Border Style="{StaticResource AppDialogShadowBorder}"/>
         <Border CornerRadius="{StaticResource RadiusDialog}"
@@ -42,13 +182,13 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Style="{StaticResource MetricCard}" Margin="0,0,10,0" Padding="14,8">
+                    <Border Grid.Column="0" Style="{StaticResource MiscMetricCard}" Margin="0,0,10,0" Padding="14,8">
                         <StackPanel>
                             <TextBlock Text="全部 Tag" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" FontWeight="SemiBold"/>
                             <TextBlock x:Name="TotalCountText" Text="0 个" Margin="0,4,0,0" FontSize="20" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="1" Style="{StaticResource MetricCard}" Margin="0,0,10,0" Padding="14,8">
+                    <Border Grid.Column="1" Style="{StaticResource MiscMetricCard}" Margin="0,0,10,0" Padding="14,8">
                         <StackPanel>
                             <TextBlock Text="分组数" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" FontWeight="SemiBold"/>
                             <TextBlock x:Name="GroupCountText" Text="0 组" Margin="0,4,0,0" FontSize="20" FontWeight="Black" Foreground="{DynamicResource Brush.TextPrimary}"/>
@@ -60,7 +200,7 @@
                              VerticalContentAlignment="Center"
                              Margin="10,0,10,0"
                              TextChanged="SearchBox_TextChanged"
-                             Style="{StaticResource FilterTextBox}"
+                             Style="{StaticResource MiscFilterTextBox}"
                              ToolTip="按名称或分类搜索"/>
                     <ComboBox Grid.Column="3"
                               x:Name="GroupFilterBox"
@@ -69,13 +209,13 @@
                               Margin="0,0,10,0"
                               SelectedIndex="0"
                               SelectionChanged="GroupFilter_Changed"
-                              Style="{StaticResource FilterComboBox}">
+                              Style="{StaticResource MiscFilterComboBox}">
                         <ComboBoxItem Content="全部分组"/>
                     </ComboBox>
                     <Button Grid.Column="4"
                             Content="新建 Tag"
                             Click="CreateTag_Click"
-                            Style="{StaticResource HeaderActionButton}"/>
+                            Style="{StaticResource MiscHeaderActionButton}"/>
                 </Grid>
 
                 <!-- 列表 -->

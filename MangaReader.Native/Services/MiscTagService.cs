@@ -79,6 +79,12 @@ public static class MiscTagService
         _cache.TryRemove(name, out _);
     }
 
+    // 返回缓存中所有 tag 名称（按字母排序），用于过滤下拉框
+    public static IReadOnlyList<string> GetAllTags()
+    {
+        return _cache.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
     private static double ComputeLuminance(string hex)
     {
         if (string.IsNullOrWhiteSpace(hex) || hex.Length < 7 || hex[0] != '#')

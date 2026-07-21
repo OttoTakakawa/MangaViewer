@@ -51,6 +51,14 @@ public partial class MainWindow : Window
             typeof(MainWindow),
             new PropertyMetadata(true));
 
+    // 杂图卡片圆角半径（0=直角，4=小圆角，12=大圆角，40=胶囊）
+    public static readonly DependencyProperty MiscCardCornerRadiusProperty =
+        DependencyProperty.Register(
+            nameof(MiscCardCornerRadius),
+            typeof(System.Windows.CornerRadius),
+            typeof(MainWindow),
+            new PropertyMetadata(new System.Windows.CornerRadius(0)));
+
     private const double WheelScrollMultiplier = 1.45;
     private const double NormalLogPanelHeight = 160;
     private const double ExpandedLogPanelHeight = 420;
@@ -213,6 +221,12 @@ public partial class MainWindow : Window
     {
         get => (bool)GetValue(ShowLibraryCardHoverProperty);
         set => SetValue(ShowLibraryCardHoverProperty, value);
+    }
+
+    public System.Windows.CornerRadius MiscCardCornerRadius
+    {
+        get => (System.Windows.CornerRadius)GetValue(MiscCardCornerRadiusProperty);
+        set => SetValue(MiscCardCornerRadiusProperty, value);
     }
 
     public RangeObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];
