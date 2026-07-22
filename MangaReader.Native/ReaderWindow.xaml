@@ -235,6 +235,63 @@
             </ScrollViewer>
         </Border>
 
+        <!-- 杂图评语浮层（仅杂图模式 + 有评语时显示，底部半透明） -->
+        <Border x:Name="MiscCommentBar"
+                Panel.ZIndex="7"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,56"
+                MaxWidth="720"
+                Padding="16,10"
+                CornerRadius="8"
+                Background="#CC000000"
+                Visibility="Collapsed">
+            <TextBlock x:Name="MiscCommentText"
+                       Foreground="#F9FAFB"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       MaxWidth="688"/>
+        </Border>
+
+        <!-- 翻页加载指示器：翻页请求发出后显示，图片解码完成后隐藏。
+             防闪：< 150ms 的快速加载不显示。 -->
+        <Border x:Name="PageLoadingIndicator"
+                Panel.ZIndex="6"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="24,16"
+                CornerRadius="12"
+                Background="#99000000"
+                Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="◐"
+                           FontSize="28"
+                           Foreground="#FFFFFF"
+                           HorizontalAlignment="Center"
+                           RenderTransformOrigin="0.5,0.5">
+                    <TextBlock.RenderTransform>
+                        <RotateTransform x:Name="PageLoadingSpinner" Angle="0"/>
+                    </TextBlock.RenderTransform>
+                    <TextBlock.Triggers>
+                        <EventTrigger RoutedEvent="TextBlock.Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetProperty="(TextBlock.RenderTransform).(RotateTransform.Angle)"
+                                                     From="0" To="360" Duration="0:0:1"
+                                                     RepeatBehavior="Forever"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </TextBlock.Triggers>
+                </TextBlock>
+                <TextBlock Text="加载中…"
+                           Foreground="#E5E7EB"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+
         <Border x:Name="ReaderMessagePanel"
                 Panel.ZIndex="8"
                 HorizontalAlignment="Center"

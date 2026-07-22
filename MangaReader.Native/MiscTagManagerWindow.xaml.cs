@@ -218,7 +218,10 @@ public partial class MiscTagManagerWindow : Window
         {
             if (!string.Equals(newName, row.Name, StringComparison.Ordinal))
             {
+                // 改名时先 RenameMiscTag（更新 name + 同步 misc_images.tags 引用），
+                // 再 UpsertMiscTag 补写 category/color（RenameMiscTag 不更新这两列）
                 _database.RenameMiscTag(row.Name, newName);
+                _database.UpsertMiscTag(newName, newCategory, newColor);
                 MiscTagService.RemoveLocal(row.Name);
                 MiscTagService.UpsertLocal(newName, newCategory, newColor);
             }

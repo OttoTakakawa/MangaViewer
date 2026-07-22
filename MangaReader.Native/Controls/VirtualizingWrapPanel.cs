@@ -132,6 +132,33 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
         InvalidateMeasure();
     }
 
+    // 返回与 [viewportTop, viewportBottom] 相交的 item 索引列表（精确，基于 _pinterestLayout）。
+    // 用于缩略图加载器精确知道当前哪些 item 可见，避免估算偏差导致优先级错误。
+    // overscan 像素扩展上下边界，让即将可见的图也优先加载。
+    public List<int> GetVisibleIndices(double viewportTop, double viewportBottom, double overscanPixels = 0)
+    {
+        var result = new List<int>();
+        if (_pinterestLayout is null || _pinterestLayout.Count == 0)
+        {
+            return result;
+        }
+
+        var top = viewportTop - overscanPixels;
+        var bottom = viewportBottom + overscanPixels;
+
+        for (var i = 0; i < _pinterestLayout.Count; i++)
+        {
+            var rect = _pinterestLayout[i];
+            if (rect.Bottom < top) continue;
+            if (rect.Y > bottom) continue;
+            result.Add(i);
+        }
+        return result;
+    }
+
+    // 判断 PinterestMode 是否已生效（_pinterestLayout 非空）
+    public bool HasPinterestLayout => _pinterestLayout is { Count: > 0 };
+
     public bool CanVerticallyScroll { get; set; } = true;
     public bool CanHorizontallyScroll { get; set; }
     public ScrollViewer? ScrollOwner { get; set; }

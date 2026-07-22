@@ -2765,10 +2765,15 @@
                                    Margin="0,0,8,0"/>
                         <Button x:Name="MiscFavoriteOnlyToggle"
                                       Content="仅看收藏"
-                                      Margin="0,0,12,0"
+                                      Margin="0,0,6,0"
                                       Padding="10,4"
                                       Click="MiscFavoriteOnlyToggle_Click"
                                       Style="{StaticResource AppGhostButton}"/>
+                        <Button Content="清空筛选"
+                                Margin="0,0,12,0"
+                                Padding="10,4"
+                                Click="MiscClearFilters_Click"
+                                Style="{StaticResource AppGhostButton}"/>
 
                         <Button Content="导入图片"
                                 Margin="0,0,6,0"
@@ -2779,26 +2784,14 @@
                                 Click="MiscImportFolder_Click"
                                 Style="{StaticResource AppGhostButton}"/>
                         <Button Content="管理 Tag"
-                                Margin="0,0,12,0"
+                                Margin="0,0,6,0"
                                 Click="MiscManageTags_Click"
                                 Style="{StaticResource AppGhostButton}"/>
-
-                        <TextBlock Text="造型"
-                                   Foreground="{DynamicResource Brush.TextMuted}"
-                                   FontSize="12"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0"/>
-                        <ComboBox x:Name="MiscCardShapeBox"
-                                  Width="100"
-                                  Height="32"
-                                  SelectedIndex="0"
-                                  SelectionChanged="MiscCardShape_SelectionChanged"
-                                  Style="{StaticResource FilterComboBox}">
-                            <ComboBoxItem Content="直角" Tag="0"/>
-                            <ComboBoxItem Content="小圆角" Tag="4"/>
-                            <ComboBoxItem Content="大圆角" Tag="12"/>
-                            <ComboBoxItem Content="胶囊" Tag="40"/>
-                        </ComboBox>
+                        <Button x:Name="MiscBatchToggleButton"
+                                Content="多选"
+                                Margin="0,0,12,0"
+                                Click="MiscToggleBatchMode_Click"
+                                Style="{StaticResource AppGhostButton}"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -2986,6 +2979,39 @@
                                                    FontSize="10"/>
                                     </Border>
 
+                                    <!-- 多选标记（左上角圆形勾选，仅多选模式可见） -->
+                                    <!-- 不用 CheckBox 控件（默认样式会拉伸且丑），改用 Border+点击事件 -->
+                                    <Border x:Name="MiscBatchMarker"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            Margin="6,6,0,0"
+                                            Width="24" Height="24"
+                                            CornerRadius="12"
+                                            BorderBrush="#FFFFFFFF"
+                                            BorderThickness="2"
+                                            Cursor="Hand"
+                                            MouseLeftButtonDown="MiscBatchToggleSingle_Click"
+                                            Visibility="{Binding IsMiscBatchMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#99000000"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelectedForBatch}" Value="True">
+                                                        <Setter Property="Background" Value="#E64469E0"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <!-- 选中时显示白色勾 -->
+                                        <TextBlock Text="✓"
+                                                   Foreground="White"
+                                                   FontSize="14"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Visibility="{Binding IsSelectedForBatch, Converter={StaticResource BoolToVisibility}}"/>
+                                    </Border>
+
                                     <!-- Tag 叠加层（底部半透明渐变 + chip 列表，最多 2 行） -->
                                     <Grid VerticalAlignment="Bottom"
                                           Margin="0,0,0,0">
@@ -3077,6 +3103,61 @@
                         </StackPanel>
                     </Border>
                 </Grid>
+            </Border>
+
+            <!-- 多选操作栏（浮动在底部，仅多选模式可见） -->
+            <Border x:Name="MiscBatchBar"
+                    Grid.RowSpan="3"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
+                    Margin="12,0,12,12"
+                    Padding="14,10"
+                    CornerRadius="{StaticResource RadiusPanel}"
+                    Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.BorderStrong}"
+                    BorderThickness="1"
+                    Effect="{StaticResource PanelShadow}"
+                    Visibility="{Binding IsMiscBatchMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                    Panel.ZIndex="15">
+                <WrapPanel Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Run Text="已选 "/><Run x:Name="MiscBatchCountText" Text="0"/><Run Text=" 张"/>
+                    </TextBlock>
+                    <Button Content="全选"
+                            Click="MiscBatchSelectAll_Click"
+                            Style="{StaticResource AppGhostButton}"
+                            Margin="0,0,6,0"
+                            Padding="10,4"/>
+                    <Button Content="清空选择"
+                            Click="MiscBatchClear_Click"
+                            Style="{StaticResource AppGhostButton}"
+                            Margin="0,0,6,0"
+                            Padding="10,4"/>
+                    <Button Content="+ Tag"
+                            Click="MiscBatchAddTag_Click"
+                            Style="{StaticResource AppGhostButton}"
+                            Margin="0,0,6,0"
+                            Padding="10,4"/>
+                    <Button Content="- Tag"
+                            Click="MiscBatchRemoveTag_Click"
+                            Style="{StaticResource AppGhostButton}"
+                            Margin="0,0,6,0"
+                            Padding="10,4"/>
+                    <Button Content="切换收藏"
+                            Click="MiscBatchToggleFavorite_Click"
+                            Style="{StaticResource AppGhostButton}"
+                            Margin="0,0,6,0"
+                            Padding="10,4"/>
+                    <Button Content="删除选中"
+                            Click="MiscBatchDelete_Click"
+                            Style="{StaticResource AppDangerButton}"
+                            Margin="0,0,6,0"
+                            Padding="10,4"/>
+                    <Button Content="退出多选"
+                            Click="MiscToggleBatchMode_Click"
+                            Style="{StaticResource AppGhostButton}"
+                            Padding="10,4"/>
+                </WrapPanel>
             </Border>
         </Grid>
 

@@ -59,6 +59,14 @@ public partial class MainWindow : Window
             typeof(MainWindow),
             new PropertyMetadata(new System.Windows.CornerRadius(0)));
 
+    // 杂图多选模式开关：true 时卡片显示复选框 + 底部批量操作栏
+    public static readonly DependencyProperty IsMiscBatchModeProperty =
+        DependencyProperty.Register(
+            nameof(IsMiscBatchMode),
+            typeof(bool),
+            typeof(MainWindow),
+            new PropertyMetadata(false));
+
     private const double WheelScrollMultiplier = 1.45;
     private const double NormalLogPanelHeight = 160;
     private const double ExpandedLogPanelHeight = 420;
@@ -227,6 +235,12 @@ public partial class MainWindow : Window
     {
         get => (System.Windows.CornerRadius)GetValue(MiscCardCornerRadiusProperty);
         set => SetValue(MiscCardCornerRadiusProperty, value);
+    }
+
+    public bool IsMiscBatchMode
+    {
+        get => (bool)GetValue(IsMiscBatchModeProperty);
+        set => SetValue(IsMiscBatchModeProperty, value);
     }
 
     public RangeObservableCollection<MangaBook> ContinueReadingBooks { get; } = [];

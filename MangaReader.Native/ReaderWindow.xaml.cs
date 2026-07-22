@@ -2,6 +2,7 @@ using MangaReader.Native.Models;
 using MangaReader.Native.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -58,6 +59,7 @@ public partial class ReaderWindow : Window
     private readonly DispatcherTimer _controlsRevealTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private readonly DispatcherTimer _doublePageGapSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(260) };
     private readonly DispatcherTimer _pageLoadCoalesceTimer = new() { Interval = PageLoadCoalesceDelay };
+    private readonly DispatcherTimer _pageLoadingDelayTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private readonly DispatcherTimer _progressSaveTimer = new() { Interval = ProgressSaveDelay };
     private readonly DispatcherTimer _fitModeApplyTimer = new() { Interval = FitModeApplyDelay };
     private readonly MangaBook _book;
@@ -80,6 +82,7 @@ public partial class ReaderWindow : Window
     private bool _isFullscreen;
     private WindowStyle _previousWindowStyle;
     private WindowState _previousWindowState;
+    private bool _previousTopmost;
     private double _holdZoomBaseValue = 1;
     private const double ZoomMin = 0.05;
     private const double ZoomMax = 3;
@@ -90,6 +93,7 @@ public partial class ReaderWindow : Window
     private int? _activePageLoadIndex;
     private CancellationTokenSource? _pageLoadCancellation;
     private CancellationTokenSource? _pagePreloadCancellation;
+    private int _pageLoadingIndicatorRequestId;
     private int _backgroundMode;
     private bool _isLoadingViewerPreferences;
     private bool _isNextBookPromptOpen;
@@ -234,7 +238,22 @@ public partial class ReaderWindow : Window
             image.Comment = dialog.TagName;
             try { _database.UpdateMiscImageComment(image.Id, image.Comment); }
             catch (Exception ex) { AppLogger.Warn("misc-comment", $"保存评语失败：{image.Id}。{ex.Message}"); }
+            UpdateMiscCommentBar(image);
         }
+    }
+
+    // 更新杂图评语浮层：有评语时显示在底部，无则隐藏
+    private void UpdateMiscCommentBar(MiscImage image)
+    {
+        if (MiscCommentBar is null || MiscCommentText is null) return;
+        var comment = image.Comment ?? "";
+        if (string.IsNullOrWhiteSpace(comment))
+        {
+            MiscCommentBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+        MiscCommentText.Text = comment;
+        MiscCommentBar.Visibility = Visibility.Visible;
     }
 
     private void MiscToggleFavorite_Click(object sender, RoutedEventArgs e)
@@ -1093,6 +1112,7 @@ public partial class ReaderWindow : Window
         var safeIndex = Math.Clamp(pageIndex, 0, _book.Pages.Count - 1);
         _requestedPageIndex = safeIndex;
         UpdateSignButton();
+        ShowPageLoadingIndicator();
 
         if (_isPageDecodeActive)
         {
@@ -1113,6 +1133,40 @@ public partial class ReaderWindow : Window
         }
 
         _pageLoadCoalesceTimer.Start();
+    }
+
+    // 显示翻页加载指示器（防闪：150ms 后才真正显示，快读时不闪烁）
+    private void ShowPageLoadingIndicator()
+    {
+        _pageLoadingIndicatorRequestId++;
+        var requestId = _pageLoadingIndicatorRequestId;
+        _pageLoadingDelayTimer.Stop();
+        _pageLoadingDelayTimer.Tick -= PageLoadingDelay_Tick!;
+        _pageLoadingDelayTimer.Tick += PageLoadingDelay_Tick!;
+        _pageLoadingDelayTimer.Tag = requestId;
+        _pageLoadingDelayTimer.Start();
+    }
+
+    private void PageLoadingDelay_Tick(object sender, EventArgs e)
+    {
+        _pageLoadingDelayTimer.Stop();
+        _pageLoadingDelayTimer.Tick -= PageLoadingDelay_Tick!;
+        // 只显示最新请求的指示器，避免旧请求的延迟回弹
+        if (PageLoadingIndicator is not null
+            && Equals(_pageLoadingDelayTimer.Tag, _pageLoadingIndicatorRequestId))
+        {
+            PageLoadingIndicator.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void HidePageLoadingIndicator()
+    {
+        _pageLoadingIndicatorRequestId++;
+        _pageLoadingDelayTimer.Stop();
+        if (PageLoadingIndicator is not null)
+        {
+            PageLoadingIndicator.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void PageLoadCoalesceTimer_Tick(object? sender, EventArgs e)
@@ -1167,12 +1221,14 @@ public partial class ReaderWindow : Window
 
             if (requestId != _pageLoadRequestId || cancellationToken.IsCancellationRequested)
             {
+                HidePageLoadingIndicator();
                 return;
             }
 
             _currentLoadedPage = page;
             _currentRightToLeft = rightToLeft;
             RestoreOriginalReaderSources();
+            HidePageLoadingIndicator();
 
             NormalizeDisplayedImageSizing();
             ApplyDoublePageGap();
@@ -1182,12 +1238,13 @@ public partial class ReaderWindow : Window
             {
                 _book.ReadingStatus = "reading";
             }
-            // 杂图模式：翻页后同步当前杂图的评分/收藏到 _book，刷新星星 UI
+            // 杂图模式：翻页后同步当前杂图的评分/收藏/评语到 UI
             if (_misc is not null && TryGetCurrentMiscImage(out var currentMisc))
             {
                 _book.Rating = currentMisc.Rating;
                 _book.IsFavorite = currentMisc.IsFavorite;
                 BuildQuickRatingStars();
+                UpdateMiscCommentBar(currentMisc);
             }
             UpdateNavigationState();
             HideReaderMessage();
@@ -1197,9 +1254,11 @@ public partial class ReaderWindow : Window
         }
         catch (OperationCanceledException)
         {
+            HidePageLoadingIndicator();
         }
         catch (Exception ex)
         {
+            HidePageLoadingIndicator();
             AppLogger.Error("reader-load-page", ex, $"Failed to load page for {_book.Title}. page={safeIndex + 1}, path={firstPath}");
             var message = $"图片读取失败：{ex.Message}";
             PageText.Text = message;
@@ -2430,8 +2489,12 @@ public partial class ReaderWindow : Window
         _isFullscreen = true;
         _previousWindowStyle = WindowStyle;
         _previousWindowState = WindowState;
+        _previousTopmost = Topmost;
         WindowStyle = WindowStyle.None;
         WindowState = WindowState.Maximized;
+        // 真全屏：置顶 + 隐藏任务栏，避免 Windows 任务栏浮在窗口上方
+        Topmost = true;
+        HideTaskbar();
         UpdatePresentationButton();
         ScheduleFitModeApply();
     }
@@ -2444,6 +2507,8 @@ public partial class ReaderWindow : Window
         }
 
         _isFullscreen = false;
+        ShowTaskbar();
+        Topmost = _previousTopmost;
         WindowStyle = _previousWindowStyle;
         WindowState = _previousWindowState;
         UpdatePresentationButton();
@@ -2458,6 +2523,62 @@ public partial class ReaderWindow : Window
         }
 
         FullscreenButton.Content = _isFullscreen ? "窗口" : "全屏";
+    }
+
+    // ===== Win32 任务栏隐藏（真全屏） =====
+    // WindowStyle.None + Maximized 在某些 Windows 配置下不遮挡任务栏，
+    // 需要 SHFullScreen API 配合 SWP 隐藏任务栏。
+    private const int SWP_HIDEWINDOW = 0x0080;
+    private const int SWP_SHOWWINDOW = 0x0040;
+    private const int SWP_NOACTIVATE = 0x0010;
+    private const int SWP_NOZORDER = 0x0004;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern int SHFullScreen(IntPtr hwndRequester, int fuState);
+
+    private const int SHFS_HIDETASKBAR = 0x0002;
+    private const int SHFS_SHOWTASKBAR = 0x0001;
+
+    private void HideTaskbar()
+    {
+        try
+        {
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            SHFullScreen(hwnd, SHFS_HIDETASKBAR);
+            var taskbarHwnd = FindWindow("Shell_TrayWnd", null);
+            if (taskbarHwnd != IntPtr.Zero)
+            {
+                SetWindowPos(taskbarHwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_HIDEWINDOW | SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("reader-fullscreen", $"隐藏任务栏失败（忽略）：{ex.Message}");
+        }
+    }
+
+    private void ShowTaskbar()
+    {
+        try
+        {
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            SHFullScreen(hwnd, SHFS_SHOWTASKBAR);
+            var taskbarHwnd = FindWindow("Shell_TrayWnd", null);
+            if (taskbarHwnd != IntPtr.Zero)
+            {
+                SetWindowPos(taskbarHwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_SHOWWINDOW | SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("reader-fullscreen", $"显示任务栏失败（忽略）：{ex.Message}");
+        }
     }
 
     private void CatalogButton_Click(object sender, RoutedEventArgs e)
