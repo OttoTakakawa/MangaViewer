@@ -89,7 +89,7 @@ public partial class MainWindow : Window
     private const string TagDragDataFormat = "MangaReader.TagName";
     private const double ExpandedSidebarWidth = 228;
     private const double CollapsedSidebarWidth = 94;
-    private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(160);
+    private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TagPreset[] DefaultTagPresets = TagCatalog.BuiltInPresets;
 
     private static SolidColorBrush FrozenBrush(string hex)
@@ -129,6 +129,7 @@ public partial class MainWindow : Window
     private List<Key> _nextKeys = [Key.Right, Key.Space];
     private List<Key> _prevKeys = [Key.Left];
     private bool _isEditMode;
+    private bool _isClosing;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _excludedTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _managedTags = new(StringComparer.OrdinalIgnoreCase);
@@ -279,6 +280,7 @@ public partial class MainWindow : Window
     {
         if (_pendingExitConfirmed)
         {
+            _isClosing = true;
             AppLogger.LineWritten -= AppLogger_LineWritten;
             _statusLogTimer.Stop();
             StopSearchDebounceTimers();
@@ -2008,7 +2010,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        EnsureDetailCatalogItems(_currentBook);
+        _ = EnsureDetailCatalogItemsAsync(_currentBook);
         _detailCatalogBook = _currentBook;
         DetailCatalogTitleText.Text = $"目录预览 · {_currentBook.Title}";
         DetailCatalogPreviewImage.Source = null;
@@ -2103,9 +2105,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void EnsureDetailCatalogItems(MangaBook book)
+    private async Task EnsureDetailCatalogItemsAsync(MangaBook book)
     {
-        var bookmarks = _database.LoadBookmarks(book.Id);
+        Dictionary<int, string> bookmarks;
+        try
+        {
+            bookmarks = await Task.Run(() => _database.LoadBookmarks(book.Id));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("detail-bookmarks", $"加载详情页书签失败：{ex.Message}");
+            return;
+        }
+        if (_isClosing || !ReferenceEquals(_currentBook, book))
+        {
+            return;
+        }
         if (DetailPageCatalogItems.Count == book.Pages.Count
             && DetailPageCatalogItems.Select(item => item.Path).SequenceEqual(book.Pages, StringComparer.OrdinalIgnoreCase))
         {
@@ -2437,7 +2452,7 @@ public partial class MainWindow : Window
             }
 
             _detailCatalogBook = book;
-            EnsureDetailCatalogItems(book);
+            _ = EnsureDetailCatalogItemsAsync(book);
         }
         catch (Exception ex)
         {
@@ -2702,59 +2717,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ChooseDataFolder_Click(object sender, RoutedEventArgs e)
-    {
-        using var dialog = new WinForms.FolderBrowserDialog
-        {
-            Description = "选择软件数据目录：数据库、封面缓存、备份、日志都会保存在这里",
-            SelectedPath = Directory.Exists(_storage.Root) ? _storage.Root : AppStorage.DefaultRoot,
-            UseDescriptionForTitle = true
-        };
-
-        if (dialog.ShowDialog() != WinForms.DialogResult.OK)
-        {
-            return;
-        }
-
-        var selectedPath = Path.GetFullPath(dialog.SelectedPath);
-        var currentPath = Path.GetFullPath(_storage.Root);
-        if (selectedPath.Equals(currentPath, StringComparison.OrdinalIgnoreCase))
-        {
-            StatusText.Text = "当前已经在使用这个数据目录。";
-            return;
-        }
-
-        try
-        {
-            AppStorage.SaveCustomRoot(selectedPath);
-            AppLogger.Info("storage", $"Data root changed for next launch: {selectedPath}");
-
-            var result = System.Windows.MessageBox.Show(
-                @"数据目录已指定。需要立即重启软件以生效，是否现在重启?",
-                @"重启软件",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question,
-                MessageBoxResult.Yes);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                if (!RestartCurrentProcess())
-                {
-                    StatusText.Text = "数据目录已指定。自动重启失败，请手动重启软件后生效。";
-                }
-            }
-            else
-            {
-                StatusText.Text = "数据目录已指定，重启软件后生效。当前运行中的数据库不会热切换，避免写库过程中损坏数据。";
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            AppLogger.Error("storage", ex, "Failed to update data root.");
-            StatusText.Text = $"数据目录设置失败：{ex.Message}";
-        }
-    }
-
     private bool RestartCurrentProcess()
     {
         var executablePath = Environment.ProcessPath;
@@ -2850,7 +2812,11 @@ public partial class MainWindow : Window
 
         if (dialog.ShortcutsChanged)
         {
-            var shortcuts = _database.LoadShortcuts();
+            var shortcuts = await Task.Run(() => _database.LoadShortcuts());
+            if (_isClosing)
+            {
+                return;
+            }
             ApplyShortcuts(shortcuts);
         }
 
@@ -5897,24 +5863,35 @@ public partial class MainWindow : Window
             return;
         }
 
-        var homeBooks = _allBooks
-            .Where(book => !book.IsHidden && !book.IsMissing && book.Pages.Count > 0)
-            .ToList();
+        var homeBooks = new List<MangaBook>(_allBooks.Count);
+        var continueCandidates = new List<MangaBook>();
+        var readingCandidates = new List<MangaBook>();
+        var favoriteCandidates = new List<MangaBook>();
+        foreach (var book in _allBooks)
+        {
+            if (book.IsHidden || book.IsMissing || book.Pages.Count == 0)
+            {
+                continue;
+            }
 
-        ReplaceBooks(ContinueReadingBooks, homeBooks
-            .Where(book => !string.IsNullOrEmpty(book.LastOpenedAt))
+            homeBooks.Add(book);
+            if (!string.IsNullOrEmpty(book.LastOpenedAt)) continueCandidates.Add(book);
+            if (book.ReadingStatus == "reading") readingCandidates.Add(book);
+            if (book.IsFavorite) favoriteCandidates.Add(book);
+        }
+
+        ReplaceBooks(ContinueReadingBooks, continueCandidates
             .OrderByDescending(book => book.LastOpenedAt)
             .Take(3));
 
         var continueIds = ContinueReadingBooks.Select(b => b.Id).ToHashSet();
-        ReplaceBooks(RecentReadingBooks, homeBooks
-            .Where(book => book.ReadingStatus == "reading" && !continueIds.Contains(book.Id))
+        ReplaceBooks(RecentReadingBooks, readingCandidates
+            .Where(book => !continueIds.Contains(book.Id))
             .OrderByDescending(book => book.ReadCount)
             .ThenByDescending(book => book.LastReadPageIndex)
             .Take(4));
 
-        ReplaceBooks(FavoriteShowcaseBooks, homeBooks
-            .Where(book => book.IsFavorite)
+        ReplaceBooks(FavoriteShowcaseBooks, favoriteCandidates
             .OrderByDescending(book => book.ReadingStatus == "reading")
             .ThenByDescending(book => book.ReadCount)
             .ThenBy(book => book.Title)
@@ -6196,18 +6173,6 @@ public partial class MainWindow : Window
     private void NavHome_Click(object sender, RoutedEventArgs e)
     {
         ShowHomeView();
-    }
-
-    private bool ConfirmLeaveLibrary()
-    {
-        var summary = BuildSessionSummary();
-        var dialog = new ExitConfirmDialog(summary) { Owner = this };
-        var result = dialog.ShowDialog();
-        if (dialog.ViewLogRequested)
-        {
-            ShowActivityHistoryDialog();
-        }
-        return result == true && dialog.Confirmed;
     }
 
     private void ShowActivityHistoryDialog()

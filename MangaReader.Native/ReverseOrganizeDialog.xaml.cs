@@ -535,7 +535,7 @@ public partial class ReverseOrganizeDialog : Window
 
         var errors = _plan.Issues.Count(issue => issue.Severity == ReverseOrganizeIssueSeverity.Error);
         var warnings = _plan.Issues.Count(issue => issue.Severity == ReverseOrganizeIssueSeverity.Warning);
-        PlanSummaryText.Text = $"计划 {_plan.Items.Count} 本，可执行 {_plan.ExecutableCount} 本，总大小 {FormatSize(_plan.TotalBytes)}。错误 {errors}，警告 {warnings}。";
+        PlanSummaryText.Text = $"计划 {_plan.Items.Count} 本，可执行 {_plan.ExecutableCount} 本，总大小 {FileSizeFormatter.FormatWithUnitSuffix(_plan.TotalBytes)}。错误 {errors}，警告 {warnings}。";
     }
 
     private void RefreshPendingRedirectState()
@@ -581,13 +581,6 @@ public partial class ReverseOrganizeDialog : Window
         }
 
         ReapplySort(ItemsList, _itemsSortProperty, _itemsSortDirection);
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        const double gb = 1024d * 1024d * 1024d;
-        const double mb = 1024d * 1024d;
-        return bytes >= gb ? $"{bytes / gb:0.##}GB" : $"{Math.Max(1, bytes / mb):0.#}MB";
     }
 
     private void UpdateDisplayedItem(string bookId, ReverseOrganizeItemStatus status, string message)

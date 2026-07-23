@@ -4,10 +4,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <ApplicationIcon>AppIcon.ico</ApplicationIcon>
-    <Version>0.8.0.31</Version>
-    <AssemblyVersion>0.8.0.31</AssemblyVersion>
-    <FileVersion>0.8.0.31</FileVersion>
-    <InformationalVersion>0.8.0.31</InformationalVersion>
+    <Version>0.8.0.43</Version>
+    <AssemblyVersion>0.8.0.43</AssemblyVersion>
+    <FileVersion>0.8.0.43</FileVersion>
+    <InformationalVersion>0.8.0.43</InformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="SkiaSharp" Version="4.150.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.150.1" />
   </ItemGroup>
 
   <Target Name="PublishUpdater" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64' and '$(PublishUpdater)' != 'false'">

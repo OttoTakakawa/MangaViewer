@@ -1,6 +1,5 @@
 using MangaReader.Native.Models;
 using MangaReader.Native.Services;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -23,8 +22,8 @@ public partial class MainWindow
     // 漫画 Tag 池拖到杂图卡片不会被识别；反之亦然。两套体系完全隔离。
     private const string MiscTagDragDataFormat = "MangaReader.MiscTagName";
 
-    private readonly ObservableCollection<MiscImage> _allMiscImages = new();
-    private readonly ObservableCollection<MiscImage> _filteredMiscImages = new();
+    private readonly RangeObservableCollection<MiscImage> _allMiscImages = [];
+    private readonly RangeObservableCollection<MiscImage> _filteredMiscImages = [];
     private CancellationTokenSource? _miscThumbCts;
     private CancellationTokenSource? _miscLoadCts;
     private string _miscCategoryFilter = "";
@@ -34,6 +33,7 @@ public partial class MainWindow
     // 杂图独立 Tag 池：与漫画 TagPool 完全隔离的数据源，绑定到 MiscPagePanel 顶部的 Tag 池 UI。
     // chip 可拖拽到任意杂图卡片完成 tag 分配，也可点击作为筛选条件（与 MiscTagFilterBox 同步）。
     public RangeObservableCollection<TagChip> MiscTagPoolItems { get; } = [];
+    public RangeObservableCollection<MiscTagPoolGroup> MiscTagPoolGroups { get; } = [];
 
     // 杂图 chip 拖拽轨迹（参考漫画 TagChip 拖拽实现，独立字段避免共享状态）。
     private System.Windows.Point? _miscTagDragStartPoint;
@@ -91,12 +91,11 @@ public partial class MainWindow
                 Dispatcher.Invoke(() =>
                 {
                     MiscTagService.RefreshCache(tags);
-                    _allMiscImages.Clear();
                     foreach (var r in records)
                     {
                         r.PropertyChanged += MiscImage_PropertyChanged;
-                        _allMiscImages.Add(r);
                     }
+                    _allMiscImages.ReplaceRange(records);
                     UpdateMiscCount();
                     RefreshMiscFilter();
                 });
@@ -235,7 +234,7 @@ public partial class MainWindow
         {
             return;
         }
-        _filteredMiscImages.Clear();
+        var filtered = new List<MiscImage>(_allMiscImages.Count);
         foreach (var img in _allMiscImages)
         {
             if (_miscFavoriteOnly && !img.IsFavorite)
@@ -250,8 +249,10 @@ public partial class MainWindow
             {
                 continue;
             }
-            _filteredMiscImages.Add(img);
+            filtered.Add(img);
         }
+
+        _filteredMiscImages.ReplaceRange(filtered);
 
         MiscList.ItemsSource = _filteredMiscImages;
         MiscEmptyState.Visibility = _filteredMiscImages.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -361,69 +362,64 @@ public partial class MainWindow
 
     // ===== 缩略图加载 =====
 
-    // 缩略图加载策略（v0.8.0.28 重构）：
-    // - 先过滤已加载的（Thumbnail != null），只对 pending 排序
-    // - 不再 Take(256) 截断：旧版在过滤前截断，前 256 张已加载后后面的永远没机会加载
-    // - 内存安全：Pipeline 内部 LRU(480) 自动回收，全量调度不会爆内存
-    private void ScheduleMiscThumbnailLoading()
+    // 缩略图加载策略：滚动时只调度可视区与附近图片；停稳后再用有界 worker 补载其余图片。
+    // 不一次性创建全库 Task，避免快速滚动后新可视图片排在旧 Semaphore 等待队列末尾。
+    private void ScheduleMiscThumbnailLoading(bool visibleOnly = false)
     {
         CancelMiscThumbnailLoading();
         var cts = new CancellationTokenSource();
         _miscThumbCts = cts;
         var token = cts.Token;
-        _ = Task.Run(async () =>
+
+        var pending = _filteredMiscImages
+            .Where(image => image.Thumbnail is null)
+            .ToList();
+        if (pending.Count == 0)
         {
-            try
-            {
-                // 1. 先过滤已加载的，只对 pending 排序（不再 Take(256) 截断）
-                var pending = new List<MiscImage>(_filteredMiscImages.Count);
-                foreach (var img in _filteredMiscImages)
-                {
-                    if (img.Thumbnail is null)
-                    {
-                        pending.Add(img);
-                    }
-                }
-                if (pending.Count == 0)
-                {
-                    return;
-                }
+            return;
+        }
 
-                // 2. 按距视口远近排序（可见区优先）
-                var ordered = OrderMiscImagesByVisibility(pending);
+        var ordered = OrderMiscImagesByVisibility(pending);
+        if (visibleOnly)
+        {
+            ordered = GetVisibleMiscImages(ordered);
+        }
 
-                // 3. 分批全量加载，batch size 提高到 48 减少任务数
-                var batch = new List<MiscImage>(48);
-                var tasks = new List<Task>();
-                foreach (var img in ordered)
-                {
-                    if (token.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                    batch.Add(img);
-                    if (batch.Count >= 48)
-                    {
-                        var batchSnapshot = batch.ToList();
-                        batch.Clear();
-                        tasks.Add(LoadMiscThumbnailBatchAsync(batchSnapshot, token));
-                    }
-                }
-                if (batch.Count > 0)
-                {
-                    tasks.Add(LoadMiscThumbnailBatchAsync(batch, token));
-                }
+        _ = LoadMiscThumbnailQueueAsync(ordered, token);
+    }
 
-                await Task.WhenAll(tasks).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
+    private List<MiscImage> GetVisibleMiscImages(IReadOnlyList<MiscImage> orderedPending)
+    {
+        if (orderedPending.Count == 0 || MiscList is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            var scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(MiscList);
+            var panel = FindMiscVirtualizingPanel();
+            if (scrollViewer is not null && scrollViewer.ViewportHeight > 0 && panel is { HasPinterestLayout: true })
             {
+                var indices = panel.GetVisibleIndices(
+                    scrollViewer.VerticalOffset,
+                    scrollViewer.VerticalOffset + scrollViewer.ViewportHeight,
+                    scrollViewer.ViewportHeight * 1.25);
+                var pendingSet = orderedPending.ToHashSet();
+                return indices
+                    .Where(index => index >= 0 && index < _filteredMiscImages.Count)
+                    .Select(index => _filteredMiscImages[index])
+                    .Where(image => image.Thumbnail is null && pendingSet.Contains(image))
+                    .ToList();
             }
-            catch (Exception ex)
-            {
-                AppLogger.Warn("misc-thumb", $"加载缩略图批次失败：{ex.Message}");
-            }
-        }, token);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("misc-thumb-priority", $"计算可视区缩略图失败：{ex.Message}");
+        }
+
+        // 布局尚未生成时只取排序后的少量候选，绝不退化为一次性全库排队。
+        return orderedPending.Take(36).ToList();
     }
 
     // 按 ScrollViewer 当前视口位置排序：可见/即将可见的图片优先加载，其他延后。
@@ -457,8 +453,6 @@ public partial class MainWindow
                 // 所以需要把 panel 的索引映射回 source（source 是按 _filteredMiscImages 原始顺序过滤的）。
                 // 简化：用 source 所在的 _filteredMiscImages 来查 panel，然后筛选出在 source 中的。
                 var visibleIndices = panel.GetVisibleIndices(viewportTop, viewportBottom, overscan);
-                var visibleSet = new HashSet<int>(visibleIndices);
-
                 var result = new List<MiscImage>(source.Count);
                 // 先收集可见区中且在 source（pending）里的
                 // source 是 pending 列表，需要知道每个 pending 在 _filteredMiscImages 中的原始索引
@@ -501,29 +495,47 @@ public partial class MainWindow
         }
     }
 
-    // 批量并发加载：每张缩略图独立 await，互不阻塞
-    private async Task LoadMiscThumbnailBatchAsync(IReadOnlyList<MiscImage> batch, CancellationToken token)
+    // 固定数量 worker 逐张领取任务。取消后不会继续向共享 LRU 的并发门控排入旧任务。
+    private async Task LoadMiscThumbnailQueueAsync(IReadOnlyList<MiscImage> images, CancellationToken token)
     {
-        var tasks = batch.Select(async img =>
+        if (images.Count == 0)
         {
-            token.ThrowIfCancellationRequested();
-            try
+            return;
+        }
+
+        var nextIndex = -1;
+        var workerCount = Math.Min(6, images.Count);
+        var workers = Enumerable.Range(0, workerCount).Select(async _ =>
+        {
+            while (!token.IsCancellationRequested)
             {
-                var thumb = await _miscPipeline.LoadAsync(img, token).ConfigureAwait(true);
-                if (thumb is not null)
+                var index = Interlocked.Increment(ref nextIndex);
+                if (index >= images.Count)
                 {
-                    img.Thumbnail = thumb;
+                    return;
+                }
+
+                var image = images[index];
+                try
+                {
+                    var thumbnail = await _miscPipeline.LoadAsync(image, token).ConfigureAwait(false);
+                    if (thumbnail is not null && !token.IsCancellationRequested)
+                    {
+                        await Dispatcher.InvokeAsync(() => image.Thumbnail = thumbnail);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn("misc-thumb", $"加载缩略图失败：{image.FilePath}。{ex.Message}");
                 }
             }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Warn("misc-thumb", $"加载缩略图失败：{img.FilePath}。{ex.Message}");
-            }
         }).ToList();
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        await Task.WhenAll(workers).ConfigureAwait(false);
     }
 
     private void CancelMiscThumbnailLoading()
@@ -535,8 +547,7 @@ public partial class MainWindow
         }
     }
 
-    // 滚动时取消当前缩略图加载，重新按可见区域优先调度。
-    // 防抖：500ms（旧版 200ms 太短，快速滚动时频繁取消+重调度，加载永远完不成）
+    // 滚动发生时立即取消旧队列并抢先加载当前可视区；500ms 防抖只负责停稳后的全量补载。
     private System.Windows.Threading.DispatcherTimer? _miscScrollDebounce;
     private void MiscList_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
     {
@@ -544,6 +555,7 @@ public partial class MainWindow
         {
             return;
         }
+        ScheduleMiscThumbnailLoading(visibleOnly: true);
         _miscScrollDebounce?.Stop();
         _miscScrollDebounce = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _miscScrollDebounce.Tick += (_, _) =>
@@ -851,14 +863,20 @@ public partial class MainWindow
     private void MiscEditComment_Click(object sender, RoutedEventArgs e)
     {
         if (!TryGetMiscImageFromMenu(sender, out var img)) return;
-        var dialog = new TagNameDialog(img.Comment, "编辑评语")
+        var dialog = new TagNameDialog("", "新增评语贴纸")
         {
             Owner = this
         };
         if (dialog.ShowDialog() == true)
         {
-            img.Comment = dialog.TagName;
-            try { _database.UpdateMiscImageComment(img.Id, img.Comment); }
+            var text = dialog.TagName.Trim();
+            if (text.Length == 0) return;
+            img.Comment = text;
+            try
+            {
+                _database.UpsertMiscImageComment(new MiscImageComment { ImageId = img.Id, Text = text });
+                _database.UpdateMiscImageComment(img.Id, text);
+            }
             catch (Exception ex) { AppLogger.Warn("misc-comment", $"保存评语失败：{ex.Message}"); }
         }
     }
@@ -872,9 +890,31 @@ public partial class MainWindow
         };
         if (dialog.ShowDialog() == true)
         {
-            img.Tags = MiscTagService.FormatTags(MiscTagService.ParseTags(dialog.TagName));
-            try { _database.UpdateMiscImageTags(img.Id, img.Tags); }
-            catch (Exception ex) { AppLogger.Warn("misc-tags", $"保存 Tag 失败：{ex.Message}"); }
+            var previousTags = img.Tags;
+            var parsedTags = MiscTagService.ParseTags(dialog.TagName).ToList();
+            var newTags = MiscTagService.FormatTags(parsedTags);
+            try
+            {
+                foreach (var tag in parsedTags)
+                {
+                    var color = MiscTagService.GetColor(tag);
+                    if (_database.EnsureMiscTag(tag, "未分类", color))
+                    {
+                        MiscTagService.UpsertLocal(tag, "未分类", color);
+                    }
+                }
+                _database.UpdateMiscImageTags(img.Id, newTags);
+                img.Tags = newTags;
+                RefreshMiscTagCache();
+                StatusText.Text = $"已保存「{img.FileName}」的 {parsedTags.Count} 个 Tag。";
+                AppLogger.Info("misc-tags", $"已保存杂图 Tag：{img.Id}，count={parsedTags.Count}。");
+            }
+            catch (Exception ex)
+            {
+                img.Tags = previousTags;
+                AppLogger.Warn("misc-tags", $"保存 Tag 失败：{img.Id}。{ex.Message}");
+                StatusText.Text = $"保存 Tag 失败：{ex.Message}";
+            }
         }
     }
 
@@ -887,6 +927,37 @@ public partial class MainWindow
         if (_miscFavoriteOnly)
         {
             RefreshMiscFilter();
+        }
+    }
+
+    private void MiscSetRating_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetMiscImageFromMenu(sender, out var img)
+            || sender is not MenuItem { Tag: string ratingText }
+            || !double.TryParse(
+                ratingText,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var rating))
+        {
+            return;
+        }
+
+        var previousRating = img.Rating;
+        img.Rating = rating;
+        try
+        {
+            _database.UpdateMiscImageRating(img.Id, img.Rating);
+            StatusText.Text = img.HasRating
+                ? $"已给「{img.FileName}」评分 {img.RatingText}"
+                : $"已清除「{img.FileName}」的评分";
+            AppLogger.Info("misc-rating", $"已保存杂图评分：{img.Id}，rating={img.Rating:0.0}。");
+        }
+        catch (Exception ex)
+        {
+            img.Rating = previousRating;
+            AppLogger.Warn("misc-rating", $"保存评分失败：{img.Id}。{ex.Message}");
+            StatusText.Text = $"保存评分失败：{ex.Message}";
         }
     }
 
@@ -1008,8 +1079,21 @@ public partial class MainWindow
     {
         image = null!;
         if (sender is not MenuItem menuItem) return false;
-        // ContextMenu 不在视觉树中，需通过 Parent 链找到 ContextMenu，再取 PlacementTarget。
-        var menu = menuItem.Parent as ContextMenu;
+        // ContextMenu 显式绑定 PlacementTarget.DataContext；顶层和二级菜单项都会继承当前杂图。
+        if (menuItem.DataContext is MiscImage contextualImage)
+        {
+            image = contextualImage;
+            return true;
+        }
+
+        // 二级菜单由独立 Popup 承载，FrameworkElement.Parent 并不可靠。
+        // 用 WPF 的容器归属关系逐层从子菜单项回溯到根 ContextMenu。
+        ItemsControl? owner = ItemsControl.ItemsControlFromItemContainer(menuItem);
+        while (owner is MenuItem parentMenuItem)
+        {
+            owner = ItemsControl.ItemsControlFromItemContainer(parentMenuItem);
+        }
+        var menu = owner as ContextMenu;
         if (menu?.PlacementTarget is not FrameworkElement fe) return false;
         image = fe.DataContext as MiscImage ?? null!;
         return image is not null;
@@ -1061,8 +1145,23 @@ public partial class MainWindow
                 })
                 .ToList();
 
-            MiscTagPoolItems.Clear();
-            MiscTagPoolItems.AddRange(chips);
+            MiscTagPoolItems.ReplaceRange(chips);
+            var chipsByCategory = chips
+                .GroupBy(chip => string.IsNullOrWhiteSpace(chip.Category) ? "未分类" : chip.Category, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => (IReadOnlyList<TagChip>)group.ToList(), StringComparer.OrdinalIgnoreCase);
+            var categoryNames = _database.LoadMiscTagCategories()
+                .Select(category => category.Name)
+                .Concat(chipsByCategory.Keys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(category => string.Equals(category, "未分类", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                .ThenBy(category => category, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var groups = categoryNames
+                .Select(category => new MiscTagPoolGroup(
+                    category,
+                    chipsByCategory.TryGetValue(category, out var categoryChips) ? categoryChips : []))
+                .ToList();
+            MiscTagPoolGroups.ReplaceRange(groups);
 
             if (MiscTagPoolEmptyHint is not null)
             {
@@ -1198,8 +1297,11 @@ public partial class MainWindow
             // 用"未分类"代替空字符串，避免分组显示为空
             try
             {
-                _database.UpsertMiscTag(tag, "未分类", MiscTagService.GetColor(tag));
-                MiscTagService.UpsertLocal(tag, "未分类", MiscTagService.GetColor(tag));
+                var fallbackColor = MiscTagService.GetColor(tag);
+                if (_database.EnsureMiscTag(tag, "未分类", fallbackColor))
+                {
+                    MiscTagService.UpsertLocal(tag, "未分类", fallbackColor);
+                }
             }
             catch (Exception ex)
             {
@@ -1347,14 +1449,21 @@ public partial class MainWindow
 
         try
         {
+            _database.CreateTagManagementBackup();
+            foreach (var tag in newTags)
+            {
+                var fallbackColor = MiscTagService.GetColor(tag);
+                if (_database.EnsureMiscTag(tag, "未分类", fallbackColor))
+                {
+                    MiscTagService.UpsertLocal(tag, "未分类", fallbackColor);
+                }
+            }
+
             foreach (var img in selected)
             {
                 foreach (var tag in newTags)
                 {
                     img.AddTag(tag);
-                    // 自动补齐 misc_image_tags 记录（用"未分类"避免分组为空）
-                    _database.UpsertMiscTag(tag, "未分类", MiscTagService.GetColor(tag));
-                    MiscTagService.UpsertLocal(tag, "未分类", MiscTagService.GetColor(tag));
                 }
                 _database.UpdateMiscImageTags(img.Id, img.Tags);
                 img.NotifyAll();
@@ -1459,3 +1568,5 @@ public partial class MainWindow
         }
     }
 }
+
+public sealed record MiscTagPoolGroup(string Name, IReadOnlyList<TagChip> Items);

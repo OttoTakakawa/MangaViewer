@@ -174,7 +174,7 @@ public sealed class MiscImage : INotifyPropertyChanged
     public RangeObservableCollection<TagChip> TagItems { get; } = [];
     public RangeObservableCollection<TagChip> CardTagItems { get; } = [];
 
-    public string SizeText => FormatSize(FileSize);
+    public string SizeText => FileSizeFormatter.Format(FileSize);
     public string CategoryText => Category switch
     {
         "真人" => "真人",
@@ -250,97 +250,13 @@ public sealed class MiscImage : INotifyPropertyChanged
 
     private void RefreshCardTagItems(IReadOnlyList<string> tags)
     {
-        if (tags.Count == 0)
-        {
-            return;
-        }
-
-        var rows = new int[MaxCardTagRows];
-        var visible = new List<(TagChip Chip, int Row, int Units)>();
-
-        foreach (var tag in tags)
-        {
-            if (!TryPlaceCardTag(tag, rows, out var row, out var units))
-            {
-                continue;
-            }
-
-            visible.Add((new TagChip
-            {
-                Name = tag,
-                Color = MiscTagService.GetColor(tag)
-            }, row, units));
-        }
-
-        var hiddenCount = tags.Count - visible.Count;
-        var visibleChips = new List<TagChip>(visible.Count);
-        foreach (var item in visible)
-        {
-            visibleChips.Add(item.Chip);
-        }
-        CardTagItems.AddRange(visibleChips);
-
-        if (hiddenCount > 0)
-        {
-            CardTagItems.Add(new TagChip
-            {
-                Name = $"+{hiddenCount}",
-                Color = "#E5E7EB"
-            });
-        }
-    }
-
-    private static bool TryPlaceCardTag(string tag, int[] rows, out int row, out int units)
-    {
-        row = -1;
-        var textUnits = CountCardTagTextUnits(tag);
-        units = textUnits + 4;
-
-        if (textUnits > MaxCardTagTextUnits)
-        {
-            return false;
-        }
-
-        if (units <= MaxCardTagRowUnits)
-        {
-            for (var i = 0; i < rows.Length; i++)
-            {
-                if (rows[i] + units <= MaxCardTagRowUnits)
-                {
-                    rows[i] += units;
-                    row = i;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        return false;
-    }
-
-    private static int CountCardTagTextUnits(string text)
-    {
-        var units = 0;
-        foreach (var c in text)
-        {
-            units += c <= 0x007F ? 1 : 2;
-        }
-
-        return units;
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        if (bytes <= 0)
-        {
-            return "0MB";
-        }
-
-        const double mb = 1024d * 1024d;
-        const double gb = 1024d * 1024d * 1024d;
-        return bytes >= gb
-            ? $"{bytes / gb:0.##}G"
-            : $"{Math.Max(1, bytes / mb):0.#}MB";
+        var options = new TagCardLayoutOptions(
+            MaxCardTagRows,
+            MaxCardTagRowUnits,
+            MaxCardTagTextUnits,
+            ChromeUnits: 4,
+            AllowSpanningLongTag: false,
+            ReserveSummarySpace: false);
+        CardTagItems.AddRange(TagCardLayout.Build(tags, options, MiscTagService.GetColor));
     }
 }

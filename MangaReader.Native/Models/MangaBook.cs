@@ -200,7 +200,7 @@ public sealed class MangaBook : INotifyPropertyChanged
 
     public string ProgressText => PageCount <= 0 ? "0 / 0" : $"{LastReadPageIndex + 1} / {PageCount}";
     public string PageCountText => $"{PageCount}页";
-    public string SizeText => FormatSize(TotalBytes);
+    public string SizeText => FileSizeFormatter.Format(TotalBytes);
     public string ReadCountText => ReadCount <= 0 ? "未标记读过" : $"读过 {ReadCount} 次";
     public string ReadCountBadgeText => ReadCount <= 0 ? "" : ReadCountText;
     public string ReadStateText => ReadCount > 0 ? $"读过 {ReadCount} 次" : ReadingStatusText;
@@ -308,118 +308,14 @@ public sealed class MangaBook : INotifyPropertyChanged
 
     private void RefreshCardTagItems(IReadOnlyList<string> tags)
     {
-        if (tags.Count == 0)
-        {
-            return;
-        }
-
-        var rows = new int[MaxCardTagRows];
-        var visible = new List<(TagChip Chip, int Row, int Units)>();
-
-        foreach (var tag in tags)
-        {
-            if (!TryPlaceCardTag(tag, rows, out var row, out var units))
-            {
-                continue;
-            }
-
-            visible.Add((new TagChip
-            {
-                Name = tag,
-                Color = TagColor(tag)
-            }, row, units));
-        }
-
-        var hiddenCount = tags.Count - visible.Count;
-        if (hiddenCount > 0)
-        {
-            while (visible.Count > 0 && !CanPlaceCardSummary(rows))
-            {
-                RemoveCardTagPlacement(rows, visible[^1].Row, visible[^1].Units);
-                visible.RemoveAt(visible.Count - 1);
-                hiddenCount++;
-            }
-        }
-
-        var visibleChips = new List<TagChip>(visible.Count);
-        foreach (var item in visible)
-        {
-            visibleChips.Add(item.Chip);
-        }
-        CardTagItems.AddRange(visibleChips);
-
-        if (hiddenCount > 0)
-        {
-            CardTagItems.Add(new TagChip
-            {
-                Name = $"+{hiddenCount}",
-                Color = "#E5E7EB"
-            });
-        }
-    }
-
-    private static bool TryPlaceCardTag(string tag, int[] rows, out int row, out int units)
-    {
-        row = -1;
-        var textUnits = CountCardTagTextUnits(tag);
-        units = textUnits + CardTagChromeUnits;
-
-        if (textUnits > MaxCardTagTextUnits)
-        {
-            return false;
-        }
-
-        if (units <= MaxCardTagRowUnits)
-        {
-            for (var i = 0; i < rows.Length; i++)
-            {
-                if (rows[i] + units <= MaxCardTagRowUnits)
-                {
-                    rows[i] += units;
-                    row = i;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        if (rows.Any(value => value > 0))
-        {
-            return false;
-        }
-
-        rows[0] = MaxCardTagRowUnits;
-        rows[1] = Math.Min(MaxCardTagRowUnits, units - MaxCardTagRowUnits);
-        return true;
-    }
-
-    private static bool CanPlaceCardSummary(int[] rows)
-    {
-        const int summaryUnits = 6;
-        return rows.Any(rowUnits => rowUnits + summaryUnits <= MaxCardTagRowUnits);
-    }
-
-    private static void RemoveCardTagPlacement(int[] rows, int row, int units)
-    {
-        if (row < 0)
-        {
-            Array.Clear(rows);
-            return;
-        }
-
-        rows[row] = Math.Max(0, rows[row] - units);
-    }
-
-    private static int CountCardTagTextUnits(string text)
-    {
-        var units = 0;
-        foreach (var c in text)
-        {
-            units += c <= 0x007F ? 1 : 2;
-        }
-
-        return units;
+        var options = new TagCardLayoutOptions(
+            MaxCardTagRows,
+            MaxCardTagRowUnits,
+            MaxCardTagTextUnits,
+            CardTagChromeUnits,
+            AllowSpanningLongTag: true,
+            ReserveSummarySpace: true);
+        CardTagItems.AddRange(TagCardLayout.Build(tags, options, TagColor));
     }
 
     private static string TagColor(string tag)
@@ -436,17 +332,4 @@ public sealed class MangaBook : INotifyPropertyChanged
         };
     }
 
-    private static string FormatSize(long bytes)
-    {
-        if (bytes <= 0)
-        {
-            return "0MB";
-        }
-
-        const double mb = 1024d * 1024d;
-        const double gb = 1024d * 1024d * 1024d;
-        return bytes >= gb
-            ? $"{bytes / gb:0.##}G"
-            : $"{Math.Max(1, bytes / mb):0.#}MB";
-    }
 }

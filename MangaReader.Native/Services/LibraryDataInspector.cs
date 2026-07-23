@@ -193,30 +193,6 @@ public sealed class LibraryDataInspector
         return new string(value.Trim().ToLowerInvariant().Where(ch => !char.IsWhiteSpace(ch)).ToArray());
     }
 
-    private static void AppendIssueSummary(StringBuilder builder, string name, int count)
-    {
-        builder.AppendLine($"- {name}：{count}");
-    }
-
-    private static void AppendBookSection(StringBuilder builder, string title, IReadOnlyList<MangaBook> books)
-    {
-        if (books.Count == 0)
-        {
-            return;
-        }
-
-        builder.AppendLine($"{title}：");
-        foreach (var book in books.Take(50))
-        {
-            builder.AppendLine($"- {book.Title} | {book.FolderPath}");
-        }
-        if (books.Count > 50)
-        {
-            builder.AppendLine($"... 还有 {books.Count - 50} 项未显示");
-        }
-        builder.AppendLine();
-    }
-
     private static string Display(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "未指定" : value;

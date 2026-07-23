@@ -127,13 +127,10 @@ public partial class TagEditDialog : Window
             return;
         }
 
-        foreach (var color in customColors.Where(IsValidHexColor).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var color in TagDialogSupport.NormalizeCustomColors(customColors, PresetColors))
         {
-            if (!PresetColors.Contains(color, StringComparer.OrdinalIgnoreCase))
-            {
-                CustomColors.Add(color);
-                AvailableColors.Add(color);
-            }
+            CustomColors.Add(color);
+            AvailableColors.Add(color);
         }
     }
 
@@ -169,18 +166,7 @@ public partial class TagEditDialog : Window
 
     private string GetSelectedCategory()
     {
-        var text = TagCategoryBox.Text?.Trim();
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            return text;
-        }
-
-        if (TagCategoryBox.SelectedItem is ComboBoxItem item)
-        {
-            return item.Content as string ?? "自定义";
-        }
-
-        return "自定义";
+        return TagDialogSupport.GetSelectedCategory(TagCategoryBox, "自定义");
     }
 
     private void SelectCategory(string category)
@@ -199,7 +185,7 @@ public partial class TagEditDialog : Window
 
     private void SelectColor(string color)
     {
-        if (!IsValidHexColor(color))
+        if (!TagDialogSupport.IsValidHexColor(color))
         {
             return;
         }
@@ -208,16 +194,6 @@ public partial class TagEditDialog : Window
         SelectedColorPreview.Background = new SolidColorBrush(
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
         SelectedColorText.Text = $"已选颜色：{color}";
-    }
-
-    private static bool IsValidHexColor(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Length != 7 || value[0] != '#')
-        {
-            return false;
-        }
-
-        return value.Skip(1).All(Uri.IsHexDigit);
     }
 
     private void More_Click(object sender, RoutedEventArgs e)

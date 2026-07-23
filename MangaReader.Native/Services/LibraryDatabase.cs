@@ -166,6 +166,17 @@ public sealed class LibraryDatabase
             CREATE INDEX IF NOT EXISTS idx_misc_images_is_favorite ON misc_images(is_favorite);
             CREATE INDEX IF NOT EXISTS idx_misc_images_last_opened_at ON misc_images(last_opened_at);
 
+            CREATE TABLE IF NOT EXISTS misc_image_comments (
+                id TEXT PRIMARY KEY,
+                image_id TEXT NOT NULL,
+                text TEXT NOT NULL DEFAULT '',
+                relative_x REAL NOT NULL DEFAULT 0.5,
+                relative_y REAL NOT NULL DEFAULT 0.78,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_misc_image_comments_image_id ON misc_image_comments(image_id);
+
             CREATE TABLE IF NOT EXISTS misc_image_tags (
                 name TEXT PRIMARY KEY,
                 category TEXT NOT NULL DEFAULT '',
@@ -173,6 +184,12 @@ public sealed class LibraryDatabase
                 updated_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_misc_image_tags_category ON misc_image_tags(category);
+
+            CREATE TABLE IF NOT EXISTS misc_tag_categories (
+                name TEXT PRIMARY KEY COLLATE NOCASE,
+                color TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL
+            );
             """;
         command.ExecuteNonQuery();
         EnsureColumn(connection, "books", "character_name", "TEXT NOT NULL DEFAULT ''");
@@ -196,6 +213,39 @@ public sealed class LibraryDatabase
         EnsureColumn(connection, "book_bookmarks", "label", "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(connection, "misc_images", "width", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(connection, "misc_images", "height", "INTEGER NOT NULL DEFAULT 0");
+
+        // 旧版分组仅存在于 misc_image_tags.category；登记为独立目录后，空分组也不会消失。
+        using (var migrateMiscTagCategories = connection.CreateCommand())
+        {
+            migrateMiscTagCategories.CommandText =
+                """
+                INSERT INTO misc_tag_categories(name, color, updated_at)
+                SELECT trim(category), max(color), max(updated_at)
+                FROM misc_image_tags
+                WHERE trim(category) <> '' AND category <> '未分类'
+                GROUP BY category COLLATE NOCASE
+                ON CONFLICT(name) DO NOTHING;
+                """;
+            migrateMiscTagCategories.ExecuteNonQuery();
+        }
+
+        // 将旧版单条评语迁移为第一张静态贴纸；NOT EXISTS 保证重复启动幂等。
+        using (var migrateComments = connection.CreateCommand())
+        {
+            migrateComments.CommandText =
+                """
+                INSERT INTO misc_image_comments(id, image_id, text, relative_x, relative_y, created_at, updated_at)
+                SELECT lower(hex(randomblob(16))), id, comment, 0.5, 0.78,
+                       CASE WHEN updated_at = '' THEN datetime('now') ELSE updated_at END,
+                       CASE WHEN updated_at = '' THEN datetime('now') ELSE updated_at END
+                FROM misc_images
+                WHERE trim(comment) <> ''
+                  AND NOT EXISTS (
+                      SELECT 1 FROM misc_image_comments comments WHERE comments.image_id = misc_images.id
+                  );
+                """;
+            migrateComments.ExecuteNonQuery();
+        }
 
         // 一次性迁移：杂图评分从 0-10 → 0-5（与 books.rating 统一，便于复用 ReaderWindow）
         if (LoadSetting("misc.rating.migrated_to_5_scale") != "1")
@@ -1312,6 +1362,7 @@ public sealed class LibraryDatabase
 
 
 public sealed record ManagedTagRecord(string Name, string Category, bool IsExclusive, string UpdatedAt, string Color = "");
+public sealed record MiscTagCategoryRecord(string Name, string Color);
 public sealed record BookmarkRecord(string BookId, int PageIndex, string CreatedAt);
 
     private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
@@ -1479,8 +1530,76 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
     public void DeleteMiscImage(string id)
     {
         using var connection = Open();
+        using var transaction = connection.BeginTransaction();
+        using var deleteComments = connection.CreateCommand();
+        deleteComments.Transaction = transaction;
+        deleteComments.CommandText = "DELETE FROM misc_image_comments WHERE image_id = $id;";
+        deleteComments.Parameters.AddWithValue("$id", id);
+        deleteComments.ExecuteNonQuery();
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "DELETE FROM misc_images WHERE id = $id;";
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    public List<MiscImageComment> LoadMiscImageComments(string imageId)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT id, image_id, text, relative_x, relative_y
+            FROM misc_image_comments
+            WHERE image_id = $imageId
+            ORDER BY created_at, id;
+            """;
+        command.Parameters.AddWithValue("$imageId", imageId);
+        using var reader = command.ExecuteReader();
+        var result = new List<MiscImageComment>();
+        while (reader.Read())
+        {
+            result.Add(new MiscImageComment
+            {
+                Id = reader.GetString(0),
+                ImageId = reader.GetString(1),
+                Text = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                RelativeX = Math.Clamp(reader.IsDBNull(3) ? 0.5 : reader.GetDouble(3), 0, 1),
+                RelativeY = Math.Clamp(reader.IsDBNull(4) ? 0.78 : reader.GetDouble(4), 0, 1)
+            });
+        }
+        return result;
+    }
+
+    public void UpsertMiscImageComment(MiscImageComment comment)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO misc_image_comments(id, image_id, text, relative_x, relative_y, created_at, updated_at)
+            VALUES ($id, $imageId, $text, $relativeX, $relativeY, $now, $now)
+            ON CONFLICT(id) DO UPDATE SET
+                text = excluded.text,
+                relative_x = excluded.relative_x,
+                relative_y = excluded.relative_y,
+                updated_at = excluded.updated_at;
+            """;
+        command.Parameters.AddWithValue("$id", comment.Id);
+        command.Parameters.AddWithValue("$imageId", comment.ImageId);
+        command.Parameters.AddWithValue("$text", comment.Text ?? "");
+        command.Parameters.AddWithValue("$relativeX", Math.Clamp(comment.RelativeX, 0, 1));
+        command.Parameters.AddWithValue("$relativeY", Math.Clamp(comment.RelativeY, 0, 1));
+        command.Parameters.AddWithValue("$now", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
+    public void DeleteMiscImageComment(string id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM misc_image_comments WHERE id = $id;";
         command.Parameters.AddWithValue("$id", id);
         command.ExecuteNonQuery();
     }
@@ -1512,9 +1631,12 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
             WHERE id = $id;
             """;
         command.Parameters.AddWithValue("$id", id);
-        command.Parameters.AddWithValue("$rating", rating);
+        command.Parameters.AddWithValue("$rating", Math.Clamp(rating, 0, 5));
         command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
-        command.ExecuteNonQuery();
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException($"没有找到需要更新评分的杂图记录：{id}");
+        }
     }
 
     public void UpdateMiscImageComment(string id, string comment)
@@ -1678,9 +1800,31 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         return result;
     }
 
+    public List<MiscTagCategoryRecord> LoadMiscTagCategories()
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT name, color
+            FROM misc_tag_categories
+            ORDER BY name COLLATE NOCASE;
+            """;
+        using var reader = command.ExecuteReader();
+        var result = new List<MiscTagCategoryRecord>();
+        while (reader.Read())
+        {
+            result.Add(new MiscTagCategoryRecord(
+                reader.GetString(0),
+                reader.IsDBNull(1) ? "" : reader.GetString(1)));
+        }
+        return result;
+    }
+
     public void UpsertMiscTag(string name, string category, string color)
     {
         using var connection = Open();
+        EnsureMiscTagCategory(connection, category, color);
         using var command = connection.CreateCommand();
         command.CommandText =
             """
@@ -1698,8 +1842,50 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
         command.ExecuteNonQuery();
     }
 
+    public bool EnsureMiscTag(string name, string category, string color)
+    {
+        using var connection = Open();
+        EnsureMiscTagCategory(connection, category, color);
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO misc_image_tags(name, category, color, updated_at)
+            VALUES ($name, $category, $color, $updatedAt)
+            ON CONFLICT(name) DO NOTHING;
+            """;
+        command.Parameters.AddWithValue("$name", name);
+        command.Parameters.AddWithValue("$category", category ?? "");
+        command.Parameters.AddWithValue("$color", color ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    private static void EnsureMiscTagCategory(SqliteConnection connection, string? category, string? color)
+    {
+        var normalized = category?.Trim() ?? "";
+        if (normalized.Length == 0 || string.Equals(normalized, "未分类", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            INSERT INTO misc_tag_categories(name, color, updated_at)
+            VALUES ($name, $color, $updatedAt)
+            ON CONFLICT(name) DO UPDATE SET
+                color = CASE WHEN misc_tag_categories.color = '' THEN excluded.color ELSE misc_tag_categories.color END,
+                updated_at = excluded.updated_at;
+            """;
+        command.Parameters.AddWithValue("$name", normalized);
+        command.Parameters.AddWithValue("$color", color ?? "");
+        command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.Now.ToString("O"));
+        command.ExecuteNonQuery();
+    }
+
     public void DeleteMiscTag(string name)
     {
+        BackupDatabase("before-misc-tag-delete", force: true);
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM misc_image_tags WHERE name = $name;";
@@ -1716,6 +1902,7 @@ public sealed record BookmarkRecord(string BookId, int PageIndex, string Created
             return;
         }
 
+        BackupDatabase("before-misc-tag-rename", force: true);
         using var connection = Open();
         using var transaction = connection.BeginTransaction();
         try

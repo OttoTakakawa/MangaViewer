@@ -108,16 +108,7 @@ public partial class MiscTagEditDialog : Window
 
     private string GetSelectedCategory()
     {
-        var text = TagCategoryBox.Text?.Trim();
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            return text;
-        }
-        if (TagCategoryBox.SelectedItem is ComboBoxItem item)
-        {
-            return item.Content as string ?? "未分类";
-        }
-        return "未分类";
+        return TagDialogSupport.GetSelectedCategory(TagCategoryBox, "未分类");
     }
 
     private void SelectCategory(string category)
@@ -171,7 +162,7 @@ public partial class MiscTagEditDialog : Window
 
     private void SelectColor(string color)
     {
-        if (!IsValidHexColor(color))
+        if (!TagDialogSupport.IsValidHexColor(color))
         {
             return;
         }
@@ -180,15 +171,6 @@ public partial class MiscTagEditDialog : Window
         SelectedColorPreview.Background = new SolidColorBrush(
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
         SelectedColorText.Text = $"已选颜色：{color}";
-    }
-
-    private static bool IsValidHexColor(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Length != 7 || value[0] != '#')
-        {
-            return false;
-        }
-        return value.Skip(1).All(Uri.IsHexDigit);
     }
 
     // 分类变更时自动套用同组已有颜色（如果该分类在 misc_image_tags 中已有颜色记录）

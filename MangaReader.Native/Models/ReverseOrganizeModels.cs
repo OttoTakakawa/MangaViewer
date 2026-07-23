@@ -1,3 +1,5 @@
+using MangaReader.Native.Services;
+
 namespace MangaReader.Native.Models;
 
 public enum ReverseOrganizeTemplate
@@ -81,19 +83,7 @@ public sealed class ReverseOrganizeItem
         ReverseOrganizeItemStatus.Canceled => "取消",
         _ => "待执行"
     };
-    public string SizeText => FormatSize(SourceBytes);
-
-    private static string FormatSize(long bytes)
-    {
-        if (bytes <= 0)
-        {
-            return "0MB";
-        }
-
-        const double mb = 1024d * 1024d;
-        const double gb = 1024d * 1024d * 1024d;
-        return bytes >= gb ? $"{bytes / gb:0.##}GB" : $"{Math.Max(1, bytes / mb):0.#}MB";
-    }
+    public string SizeText => FileSizeFormatter.FormatWithUnitSuffix(SourceBytes);
 }
 
 public sealed class ReverseOrganizeValidationIssue

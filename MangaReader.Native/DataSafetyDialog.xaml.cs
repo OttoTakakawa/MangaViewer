@@ -108,7 +108,7 @@ public partial class DataSafetyDialog : Window
             FullPath = fullPath;
             FileName = info.Name;
             LastWriteTime = info.LastWriteTime;
-            SizeText = FormatSize(info.Length);
+            SizeText = FileSizeFormatter.FormatBackupFile(info.Length);
             DetailText = $"{info.LastWriteTime:yyyy-MM-dd HH:mm:ss} · {fullPath}";
         }
 
@@ -118,17 +118,6 @@ public partial class DataSafetyDialog : Window
         public string SizeText { get; }
         public string DetailText { get; }
 
-        private static string FormatSize(long bytes)
-        {
-            const double kb = 1024;
-            const double mb = kb * 1024;
-            if (bytes >= mb)
-            {
-                return $"{bytes / mb:F1} MB";
-            }
-
-            return $"{Math.Max(1, bytes / kb):F0} KB";
-        }
     }
 }
 

@@ -18,6 +18,7 @@ public partial class MiscTagManagerWindow : Window
     private readonly Action _onChanged;
     private readonly ObservableCollection<MiscTagRow> _rows = new();
     private List<MiscTagRow> _allRows = new();
+    private List<LibraryDatabase.MiscTagCategoryRecord> _allCategories = new();
 
     public MiscTagManagerWindow(LibraryDatabase database, Action onChanged)
     {
@@ -39,6 +40,7 @@ public partial class MiscTagManagerWindow : Window
         try
         {
             var records = _database.LoadMiscTags();
+            _allCategories = _database.LoadMiscTagCategories();
             _allRows = records
                 .Select(r => new MiscTagRow
                 {
@@ -66,9 +68,12 @@ public partial class MiscTagManagerWindow : Window
 
     private void RefreshGroupFilter()
     {
-        var groups = _allRows
-            .Select(r => r.RawCategory)
-            .Where(c => !string.IsNullOrEmpty(c))
+        var groups = _allCategories
+            .Select(category => category.Name)
+            .Concat(_allRows
+                .Select(r => r.RawCategory)
+                .Where(c => !string.IsNullOrEmpty(c)
+                    && !string.Equals(c, "未分类", StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -99,9 +104,11 @@ public partial class MiscTagManagerWindow : Window
     private void UpdateStats()
     {
         TotalCountText.Text = $"{_allRows.Count} 个";
-        var groups = _allRows
-            .Select(r => r.RawCategory)
-            .Where(c => !string.IsNullOrEmpty(c))
+        var groups = _allCategories
+            .Select(category => category.Name)
+            .Concat(_allRows.Select(r => r.RawCategory))
+            .Where(category => !string.IsNullOrWhiteSpace(category)
+                && !string.Equals(category, "未分类", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Count();
         GroupCountText.Text = $"{groups} 组";
@@ -249,12 +256,21 @@ public partial class MiscTagManagerWindow : Window
         try
         {
             var records = _database.LoadMiscTags();
-            var categories = records
-                .Select(r => r.Category ?? "")
+            var categoryRecords = _database.LoadMiscTagCategories();
+            var categories = categoryRecords
+                .Select(r => r.Name)
+                .Concat(records.Select(r => r.Category ?? ""))
                 .Where(c => !string.IsNullOrWhiteSpace(c))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var colors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var category in categoryRecords)
+            {
+                if (!string.IsNullOrWhiteSpace(category.Color))
+                {
+                    colors[category.Name] = category.Color;
+                }
+            }
             foreach (var r in records)
             {
                 var cat = r.Category ?? "";

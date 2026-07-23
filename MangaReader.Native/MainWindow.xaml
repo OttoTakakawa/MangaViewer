@@ -2816,28 +2816,55 @@
 
                     <ItemsControl Grid.Row="0"
                                   x:Name="MiscTagPoolItemsControl"
-                                  ItemsSource="{Binding MiscTagPoolItems}">
+                                  ItemsSource="{Binding MiscTagPoolGroups}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal"/>
+                                <StackPanel Orientation="Vertical"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type models:TagChip}">
-                                <Border Margin="0,4,6,4"
-                                        Padding="10,5"
-                                        Background="{Binding Color}"
-                                        CornerRadius="4"
-                                        Cursor="Hand"
-                                        PreviewMouseLeftButtonDown="MiscTagChip_PreviewMouseLeftButtonDown"
-                                        PreviewMouseLeftButtonUp="MiscTagChip_PreviewMouseLeftButtonUp"
-                                        MouseMove="MiscTagChip_MouseMove"
-                                        ToolTip="{Binding Category}">
-                                    <TextBlock Text="{Binding Name}"
-                                               Foreground="{Binding Foreground}"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"/>
-                                </Border>
+                            <DataTemplate>
+                                <Grid Margin="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0"
+                                            Style="{StaticResource AppTagChipBorder}"
+                                            Background="{DynamicResource Brush.SurfaceMuted}"
+                                            Cursor="Arrow"
+                                            ToolTip="Tag 分类">
+                                        <TextBlock Text="{Binding Name}"
+                                                   MaxWidth="112"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Name}"/>
+                                    </Border>
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:TagChip}">
+                                                <Border Style="{StaticResource AppTagChipBorder}"
+                                                        Background="{Binding Color}"
+                                                        Cursor="Hand"
+                                                        PreviewMouseLeftButtonDown="MiscTagChip_PreviewMouseLeftButtonDown"
+                                                        PreviewMouseLeftButtonUp="MiscTagChip_PreviewMouseLeftButtonUp"
+                                                        MouseMove="MiscTagChip_MouseMove"
+                                                        ToolTip="{Binding Category}">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               Style="{StaticResource AppTagChipText}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -3052,10 +3079,24 @@
 
                                     <!-- 右键菜单 -->
                                     <Grid.ContextMenu>
-                                        <ContextMenu>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                             <MenuItem Header="打开浏览" Click="MiscOpenViewer_Click"/>
                                             <MenuItem Header="编辑评语" Click="MiscEditComment_Click"/>
                                             <MenuItem Header="编辑 Tag" Click="MiscEditTags_Click"/>
+                                            <MenuItem Header="评分">
+                                                <MenuItem Header="清除评分" Tag="0" Click="MiscSetRating_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="½ 0.5 分" Tag="0.5" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★ 1 分" Tag="1" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★½ 1.5 分" Tag="1.5" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★ 2 分" Tag="2" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★½ 2.5 分" Tag="2.5" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★★ 3 分" Tag="3" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★★½ 3.5 分" Tag="3.5" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★★★ 4 分" Tag="4" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★★★½ 4.5 分" Tag="4.5" Click="MiscSetRating_Click"/>
+                                                <MenuItem Header="★★★★★ 5 分" Tag="5" Click="MiscSetRating_Click"/>
+                                            </MenuItem>
                                             <MenuItem Header="切换收藏" Click="MiscToggleFavorite_Click"/>
                                             <MenuItem Header="设置分类：真人" Click="MiscSetCategoryReal_Click"/>
                                             <MenuItem Header="设置分类：绘画" Click="MiscSetCategoryArt_Click"/>

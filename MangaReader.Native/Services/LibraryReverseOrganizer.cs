@@ -267,7 +267,7 @@ public sealed class LibraryReverseOrganizer
             {
                 Severity = ReverseOrganizeIssueSeverity.Error,
                 Type = "磁盘空间",
-                Message = $"目标磁盘剩余空间不足。需要 {FormatSize(executableBytes)}，可用 {FormatSize(availableBytes)}。",
+                Message = $"目标磁盘剩余空间不足。需要 {FileSizeFormatter.FormatWithUnitSuffix(executableBytes)}，可用 {FileSizeFormatter.FormatWithUnitSuffix(availableBytes)}。",
                 TargetPath = targetRoot
             });
         }
@@ -510,13 +510,6 @@ public sealed class LibraryReverseOrganizer
         var normalizedRoot = NormalizePath(root);
         return string.Equals(normalizedCandidate, normalizedRoot, StringComparison.OrdinalIgnoreCase)
             || normalizedCandidate.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        const double gb = 1024d * 1024d * 1024d;
-        const double mb = 1024d * 1024d;
-        return bytes >= gb ? $"{bytes / gb:0.##}GB" : $"{Math.Max(1, bytes / mb):0.#}MB";
     }
 
     private sealed class ReverseOrganizeManifest

@@ -24,6 +24,8 @@ public partial class ReaderWindow : Window
     private const double PortraitPageSlotAspect = 0.707;
     private const int MaxReaderPageCacheEntries = 5;
     private const int MaxQualityReaderPageCacheEntries = 3;
+    private const long MaxReaderPageCacheBytes = 160L * 1024 * 1024;
+    private const long MemoryPressureReaderPageCacheBytes = 64L * 1024 * 1024;
     private const int MaxQualityFitCacheEntries = 6;
     private const long MaxQualityFitCacheBytes = 96L * 1024 * 1024;
     private const long MemoryPressureQualityFitCacheBytes = 48L * 1024 * 1024;
@@ -109,13 +111,19 @@ public partial class ReaderWindow : Window
     private readonly object _pageCacheLock = new();
     private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _pageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<PageCacheEntry> _pageCacheLru = new();
+    private long _pageCacheBytes;
     private readonly Dictionary<string, LinkedListNode<PageCacheEntry>> _qualityFitCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<PageCacheEntry> _qualityFitCacheLru = new();
+    private readonly Dictionary<int, string> _ultraContentProfiles = [];
     private long _qualityFitCacheBytes;
     private LoadedPage? _currentLoadedPage;
     private bool _currentRightToLeft;
     private CancellationTokenSource? _qualityFitCancellation;
     private int _qualityFitRequestId;
+    private bool _isMiscCommentHidden;
+    private readonly Dictionary<string, List<MiscImageComment>> _miscCommentsByImageId = new(StringComparer.OrdinalIgnoreCase);
+    private Border? _draggedMiscComment;
+    private MiscImageComment? _draggedMiscCommentModel;
 
     public RangeObservableCollection<PageCatalogItem> PageCatalogItems { get; } = [];
 
@@ -128,8 +136,9 @@ public partial class ReaderWindow : Window
 
     private enum ReaderQualityMode
     {
+        Performance,
         Quality,
-        Performance
+        Ultra
     }
 
     public ReaderWindow(
@@ -166,7 +175,7 @@ public partial class ReaderWindow : Window
         SizeChanged += ReaderWindow_SizeChanged;
         Closing += ReaderWindow_Closing;
         Loaded += ReaderWindow_Loaded;
-        LoadViewerPreferences();
+        _ = LoadViewerPreferencesAsync();
         ApplyReaderBackground();
         UpdateFitButtons();
         UpdateQualityModeButton();
@@ -222,38 +231,221 @@ public partial class ReaderWindow : Window
         var dialog = new TagNameDialog(image.Tags, "编辑 Tag（逗号分隔）") { Owner = this };
         if (dialog.ShowDialog() == true)
         {
-            var newTags = MiscTagService.FormatTags(MiscTagService.ParseTags(dialog.TagName));
-            image.Tags = newTags;
-            try { _database.UpdateMiscImageTags(image.Id, newTags); }
-            catch (Exception ex) { AppLogger.Warn("misc-tags", $"保存 Tag 失败：{image.Id}。{ex.Message}"); }
+            var previousTags = image.Tags;
+            var parsedTags = MiscTagService.ParseTags(dialog.TagName).ToList();
+            var newTags = MiscTagService.FormatTags(parsedTags);
+            try
+            {
+                foreach (var tag in parsedTags)
+                {
+                    var color = MiscTagService.GetColor(tag);
+                    if (_database.EnsureMiscTag(tag, "未分类", color))
+                    {
+                        MiscTagService.UpsertLocal(tag, "未分类", color);
+                    }
+                }
+                _database.UpdateMiscImageTags(image.Id, newTags);
+                image.Tags = newTags;
+                AppLogger.Info("misc-tags", $"已保存杂图 Tag：{image.Id}，count={parsedTags.Count}。");
+            }
+            catch (Exception ex)
+            {
+                image.Tags = previousTags;
+                AppLogger.Warn("misc-tags", $"保存 Tag 失败：{image.Id}。{ex.Message}");
+            }
         }
     }
 
     private void MiscEditComment_Click(object sender, RoutedEventArgs e)
     {
         if (!TryGetCurrentMiscImage(out var image)) return;
-        var dialog = new TagNameDialog(image.Comment, "编辑评语") { Owner = this };
+        var dialog = new TagNameDialog("", "新增评语贴纸") { Owner = this };
         if (dialog.ShowDialog() == true)
         {
-            image.Comment = dialog.TagName;
-            try { _database.UpdateMiscImageComment(image.Id, image.Comment); }
-            catch (Exception ex) { AppLogger.Warn("misc-comment", $"保存评语失败：{image.Id}。{ex.Message}"); }
-            UpdateMiscCommentBar(image);
+            var text = dialog.TagName.Trim();
+            if (text.Length == 0) return;
+            var comment = new MiscImageComment { ImageId = image.Id, Text = text };
+            try
+            {
+                _database.UpsertMiscImageComment(comment);
+                if (!_miscCommentsByImageId.TryGetValue(image.Id, out var comments))
+                {
+                    comments = [];
+                    _miscCommentsByImageId[image.Id] = comments;
+                }
+                comments.Add(comment);
+                RenderMiscComments(image);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn("misc-comment", $"保存评语失败：{image.Id}。{ex.Message}");
+            }
         }
     }
 
-    // 更新杂图评语浮层：有评语时显示在底部，无则隐藏
-    private void UpdateMiscCommentBar(MiscImage image)
+    private async Task LoadAndRenderMiscCommentsAsync(MiscImage image)
     {
-        if (MiscCommentBar is null || MiscCommentText is null) return;
-        var comment = image.Comment ?? "";
-        if (string.IsNullOrWhiteSpace(comment))
+        if (!_miscCommentsByImageId.ContainsKey(image.Id))
         {
-            MiscCommentBar.Visibility = Visibility.Collapsed;
+            try
+            {
+                _miscCommentsByImageId[image.Id] = await Task.Run(() => _database.LoadMiscImageComments(image.Id));
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn("misc-comment", $"加载评语失败：{image.Id}。{ex.Message}");
+                _miscCommentsByImageId[image.Id] = [];
+            }
+        }
+
+        if (_isClosing || !TryGetCurrentMiscImage(out var current) || !ReferenceEquals(current, image)) return;
+        await Dispatcher.InvokeAsync(() => RenderMiscComments(image), DispatcherPriority.Loaded);
+    }
+
+    private void RenderMiscComments(MiscImage image)
+    {
+        if (MiscCommentsLayer is null) return;
+        MiscCommentsLayer.Children.Clear();
+        var comments = _miscCommentsByImageId.GetValueOrDefault(image.Id) ?? [];
+        foreach (var comment in comments)
+        {
+            var sticker = CreateMiscCommentSticker(comment);
+            MiscCommentsLayer.Children.Add(sticker);
+            PositionMiscCommentSticker(sticker, comment);
+        }
+
+        MiscCommentsLayer.Visibility = !_isMiscCommentHidden && comments.Count > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UpdateMiscCommentVisibilityButton(comments.Count > 0);
+    }
+
+    private Border CreateMiscCommentSticker(MiscImageComment comment)
+    {
+        var sticker = new Border
+        {
+            Tag = comment,
+            MaxWidth = 420,
+            Padding = new Thickness(14, 9, 14, 9),
+            CornerRadius = new CornerRadius(9),
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(204, 0, 0, 0)),
+            Cursor = System.Windows.Input.Cursors.SizeAll,
+            Child = new TextBlock
+            {
+                Text = comment.Text,
+                Foreground = System.Windows.Media.Brushes.White,
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap
+            }
+        };
+        sticker.MouseLeftButtonDown += MiscCommentSticker_MouseLeftButtonDown;
+        sticker.MouseMove += MiscCommentSticker_MouseMove;
+        sticker.MouseLeftButtonUp += MiscCommentSticker_MouseLeftButtonUp;
+
+        var editItem = new MenuItem { Header = "编辑评语", Tag = sticker };
+        editItem.Click += EditMiscCommentSticker_Click;
+        var deleteItem = new MenuItem { Header = "删除评语", Tag = sticker };
+        deleteItem.Click += DeleteMiscCommentSticker_Click;
+        sticker.ContextMenu = new ContextMenu { Items = { editItem, deleteItem } };
+        return sticker;
+    }
+
+    private bool TryGetDisplayedMiscImageBounds(out Rect bounds)
+    {
+        bounds = Rect.Empty;
+        if (ReaderImage.Source is null || ReaderImage.ActualWidth <= 0 || ReaderImage.ActualHeight <= 0) return false;
+        try
+        {
+            var topLeft = ReaderImage.TranslatePoint(new System.Windows.Point(0, 0), ReaderRoot);
+            var bottomRight = ReaderImage.TranslatePoint(
+                new System.Windows.Point(ReaderImage.ActualWidth, ReaderImage.ActualHeight), ReaderRoot);
+            bounds = new Rect(topLeft, bottomRight);
+            return bounds.Width > 0 && bounds.Height > 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private void PositionMiscCommentSticker(Border sticker, MiscImageComment comment)
+    {
+        if (!TryGetDisplayedMiscImageBounds(out var bounds)) return;
+        sticker.Measure(new System.Windows.Size(420, double.PositiveInfinity));
+        var width = sticker.ActualWidth > 0 ? sticker.ActualWidth : sticker.DesiredSize.Width;
+        var height = sticker.ActualHeight > 0 ? sticker.ActualHeight : sticker.DesiredSize.Height;
+        Canvas.SetLeft(sticker, bounds.Left + comment.RelativeX * bounds.Width - width / 2);
+        Canvas.SetTop(sticker, bounds.Top + comment.RelativeY * bounds.Height - height / 2);
+    }
+
+    private void ToggleMiscCommentVisibility_Click(object sender, RoutedEventArgs e)
+    {
+        _isMiscCommentHidden = !_isMiscCommentHidden;
+        if (TryGetCurrentMiscImage(out var image))
+        {
+            RenderMiscComments(image);
+        }
+    }
+
+    private void UpdateMiscCommentVisibilityButton(bool hasComment)
+    {
+        if (MiscCommentVisibilityButton is null)
+        {
             return;
         }
-        MiscCommentText.Text = comment;
-        MiscCommentBar.Visibility = Visibility.Visible;
+
+        MiscCommentVisibilityButton.Content = _isMiscCommentHidden ? "显示评语" : "隐藏评语";
+        MiscCommentVisibilityButton.IsEnabled = hasComment;
+    }
+
+    private void MiscCommentSticker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Border { Tag: MiscImageComment comment } sticker) return;
+        _draggedMiscComment = sticker;
+        _draggedMiscCommentModel = comment;
+        sticker.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void MiscCommentSticker_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_draggedMiscComment is null || _draggedMiscCommentModel is null || e.LeftButton != MouseButtonState.Pressed) return;
+        if (!TryGetDisplayedMiscImageBounds(out var bounds)) return;
+        var point = e.GetPosition(ReaderRoot);
+        _draggedMiscCommentModel.RelativeX = Math.Clamp((point.X - bounds.Left) / bounds.Width, 0, 1);
+        _draggedMiscCommentModel.RelativeY = Math.Clamp((point.Y - bounds.Top) / bounds.Height, 0, 1);
+        PositionMiscCommentSticker(_draggedMiscComment, _draggedMiscCommentModel);
+        e.Handled = true;
+    }
+
+    private void MiscCommentSticker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_draggedMiscComment is null || _draggedMiscCommentModel is null) return;
+        var comment = _draggedMiscCommentModel;
+        _draggedMiscComment.ReleaseMouseCapture();
+        _draggedMiscComment = null;
+        _draggedMiscCommentModel = null;
+        _ = Task.Run(() => _database.UpsertMiscImageComment(comment));
+        e.Handled = true;
+    }
+
+    private void EditMiscCommentSticker_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as MenuItem)?.Tag is not Border { Tag: MiscImageComment comment } sticker) return;
+        var dialog = new TagNameDialog(comment.Text, "编辑评语贴纸") { Owner = this };
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.TagName)) return;
+        comment.Text = dialog.TagName.Trim();
+        _database.UpsertMiscImageComment(comment);
+        if (sticker.Child is TextBlock text) text.Text = comment.Text;
+        PositionMiscCommentSticker(sticker, comment);
+    }
+
+    private void DeleteMiscCommentSticker_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as MenuItem)?.Tag is not Border { Tag: MiscImageComment comment }) return;
+        _database.DeleteMiscImageComment(comment.Id);
+        if (_miscCommentsByImageId.TryGetValue(comment.ImageId, out var comments)) comments.Remove(comment);
+        if (TryGetCurrentMiscImage(out var image)) RenderMiscComments(image);
     }
 
     private void MiscToggleFavorite_Click(object sender, RoutedEventArgs e)
@@ -408,29 +600,41 @@ public partial class ReaderWindow : Window
 
     private void BuildQuickRatingStars()
     {
-        if (QuickRatingStarsHost is null || QuickRatingText is null)
+        if (QuickRatingStarsHost is not null && QuickRatingText is not null)
         {
-            return;
+            QuickRatingStarsHost.Children.Clear();
+            QuickRatingText.Text = _book.HasRating ? $"当前 {_book.RatingText} 分 · 再点同分清零" : "未评分";
+
+            for (var rating = 1; rating <= 5; rating++)
+            {
+                QuickRatingStarsHost.Children.Add(CreateQuickRatingStar(_book.Rating, rating, 22, 3));
+            }
         }
 
-        QuickRatingStarsHost.Children.Clear();
-        QuickRatingText.Text = _book.HasRating ? $"当前 {_book.RatingText} 分 · 再点同分清零" : "未评分";
-
-        for (var rating = 1; rating <= 5; rating++)
+        if (MiscRatingStarsHost is not null && MiscRatingText is not null)
         {
-            QuickRatingStarsHost.Children.Add(CreateQuickRatingStar(_book.Rating, rating));
+            MiscRatingStarsHost.Children.Clear();
+            MiscRatingText.Text = _book.HasRating ? _book.RatingText : "—";
+            for (var rating = 1; rating <= 5; rating++)
+            {
+                MiscRatingStarsHost.Children.Add(CreateQuickRatingStar(_book.Rating, rating, 16, 1));
+            }
         }
     }
 
-    private System.Windows.Controls.Grid CreateQuickRatingStar(double rating, int starIndex)
+    private System.Windows.Controls.Grid CreateQuickRatingStar(
+        double rating,
+        int starIndex,
+        double starSize,
+        double horizontalMargin)
     {
-        const double starSize = 22;
         var grid = new System.Windows.Controls.Grid
         {
             Width = starSize,
             Height = starSize,
-            Margin = new Thickness(3, 0, 3, 0),
+            Margin = new Thickness(horizontalMargin, 0, horizontalMargin, 0),
             Cursor = System.Windows.Input.Cursors.Hand,
+            Focusable = false,
             ToolTip = $"左半 {starIndex - 0.5:0.#} 分，右半 {starIndex} 分"
         };
 
@@ -512,16 +716,19 @@ public partial class ReaderWindow : Window
         }
 
         var rating = parts[1] == "L" ? starIndex - 0.5 : starIndex;
+        var previousRating = _book.Rating;
         var newRating = Math.Abs(_book.Rating - rating) < 0.01 ? 0 : rating;
         _book.Rating = newRating;
         BuildQuickRatingStars();
 
+        MiscImage? currentMisc = null;
         try
         {
-            if (_misc is not null && TryGetCurrentMiscImage(out var misc))
+            if (_misc is not null && TryGetCurrentMiscImage(out currentMisc))
             {
-                misc.Rating = newRating;
-                await Task.Run(() => _database.UpdateMiscImageRating(misc.Id, newRating));
+                currentMisc.Rating = newRating;
+                await Task.Run(() => _database.UpdateMiscImageRating(currentMisc.Id, newRating));
+                AppLogger.Info("misc-rating", $"已在阅读器保存杂图评分：{currentMisc.Id}，rating={newRating:0.0}。");
             }
             else
             {
@@ -532,6 +739,9 @@ public partial class ReaderWindow : Window
         }
         catch (Exception ex)
         {
+            _book.Rating = previousRating;
+            if (currentMisc is not null) currentMisc.Rating = previousRating;
+            BuildQuickRatingStars();
             AppLogger.Error("reader-rating", ex, $"阅读器快捷评分保存失败：book={_book.Title}, rating={newRating}");
             _boundaryHint = "评分保存失败";
             UpdateNavigationState();
@@ -760,7 +970,7 @@ public partial class ReaderWindow : Window
 
     private bool TryApplyQualityFit(FitMode mode)
     {
-        if (_qualityMode != ReaderQualityMode.Quality || mode == FitMode.Original || _currentLoadedPage is null)
+        if (_qualityMode == ReaderQualityMode.Performance || mode == FitMode.Original || _currentLoadedPage is null)
         {
             return false;
         }
@@ -798,6 +1008,7 @@ public partial class ReaderWindow : Window
         {
             ApplyFittedReaderSources(cached);
             ApplyZoom(1);
+            AppLogger.Info("reader-quality-fit", $"{_book.Title} page={_requestedPageIndex + 1}, quality={_qualityMode}, cache=hit, key={cacheKey}");
             return true;
         }
 
@@ -813,7 +1024,10 @@ public partial class ReaderWindow : Window
         var rightText = right is null
             ? "single"
             : $"{Math.Max(1, (int)Math.Round(right.PixelWidth * scale))}x{Math.Max(1, (int)Math.Round(right.PixelHeight * scale))}";
-        return $"{_requestedPageIndex}:{mode}:{_currentRightToLeft}:{left.PixelWidth}x{left.PixelHeight}->{leftWidth}x{leftHeight}:{rightText}";
+        var profile = _qualityMode == ReaderQualityMode.Ultra
+            ? _ultraContentProfiles.GetValueOrDefault(_requestedPageIndex, "unclassified")
+            : "wpf";
+        return $"{_requestedPageIndex}:{mode}:{_currentRightToLeft}:{_qualityMode}:{AdaptiveImageResampler.AlgorithmVersion}:{profile}:{left.PixelWidth}x{left.PixelHeight}->{leftWidth}x{leftHeight}:{rightText}";
     }
 
     private async void StartQualityFitRequest(
@@ -829,38 +1043,84 @@ public partial class ReaderWindow : Window
         var fitCancellation = new CancellationTokenSource();
         _qualityFitCancellation = fitCancellation;
         var token = fitCancellation.Token;
+        var requestedQualityMode = _qualityMode;
 
         try
         {
             var result = await Task.Run(() =>
             {
                 var stopwatch = Stopwatch.StartNew();
-                var sharpenAmount = GetSharpenAmount(scale);
-                token.ThrowIfCancellationRequested();
-                var first = CreateCrispFitBitmap(left, scale, sharpenAmount);
-                token.ThrowIfCancellationRequested();
-                var second = right is null ? null : CreateCrispFitBitmap(right, scale, sharpenAmount);
+                var leftWidth = Math.Max(1, (int)Math.Round(left.PixelWidth * scale));
+                var leftHeight = Math.Max(1, (int)Math.Round(left.PixelHeight * scale));
+                var rightWidth = right is null ? 0 : Math.Max(1, (int)Math.Round(right.PixelWidth * scale));
+                var rightHeight = right is null ? 0 : Math.Max(1, (int)Math.Round(right.PixelHeight * scale));
+                BitmapSource first;
+                BitmapSource? second;
+                string contentProfile;
+                string sampler;
+                double sharpenAmount;
+                int sharpenThreshold;
+                if (requestedQualityMode == ReaderQualityMode.Ultra)
+                {
+                    var firstResult = AdaptiveImageResampler.Resize(left, leftWidth, leftHeight, token);
+                    var secondResult = right is null
+                        ? null
+                        : AdaptiveImageResampler.Resize(right, rightWidth, rightHeight, token);
+                    first = firstResult.Bitmap;
+                    second = secondResult?.Bitmap;
+                    contentProfile = secondResult is null
+                        ? firstResult.ContentKind.ToString()
+                        : $"{firstResult.ContentKind}+{secondResult.ContentKind}";
+                    sampler = secondResult is null || secondResult.Sampler == firstResult.Sampler
+                        ? firstResult.Sampler
+                        : $"{firstResult.Sampler}+{secondResult.Sampler}";
+                    sharpenAmount = Math.Max(firstResult.SharpenAmount, secondResult?.SharpenAmount ?? 0);
+                    sharpenThreshold = Math.Min(firstResult.SharpenThreshold, secondResult?.SharpenThreshold ?? int.MaxValue);
+                }
+                else
+                {
+                    sharpenAmount = GetSharpenAmount(scale);
+                    sharpenThreshold = 0;
+                    first = CreateCrispFitBitmap(left, scale, sharpenAmount);
+                    token.ThrowIfCancellationRequested();
+                    second = right is null ? null : CreateCrispFitBitmap(right, scale, sharpenAmount);
+                    contentProfile = "Wpf";
+                    sampler = "WPF-TransformedBitmap";
+                }
                 token.ThrowIfCancellationRequested();
                 var fitted = new LoadedPage(first, second, second is not null);
                 stopwatch.Stop();
-                return new QualityFitResult(fitted, EstimateLoadedPageBytes(fitted), stopwatch.ElapsedMilliseconds, sharpenAmount);
+                return new QualityFitResult(
+                    fitted,
+                    EstimateLoadedPageBytes(fitted),
+                    stopwatch.ElapsedMilliseconds,
+                    contentProfile,
+                    sampler,
+                    sharpenAmount,
+                    sharpenThreshold);
             }, token);
 
             if (token.IsCancellationRequested
                 || requestId != _qualityFitRequestId
                 || _requestedPageIndex != pageIndex
                 || _fitMode != mode
-                || _qualityMode != ReaderQualityMode.Quality)
+                || _qualityMode != requestedQualityMode)
             {
                 return;
             }
 
-            AddQualityFitCache(cacheKey, result.Page, result.ByteSize);
+            var resultCacheKey = cacheKey;
+            if (requestedQualityMode == ReaderQualityMode.Ultra)
+            {
+                _ultraContentProfiles[pageIndex] = result.ContentProfile;
+                resultCacheKey = CreateQualityFitCacheKey(mode, left, right, scale);
+            }
+            AddQualityFitCache(resultCacheKey, result.Page, result.ByteSize);
             ApplyFittedReaderSources(result.Page);
             ApplyZoom(1);
             AppLogger.Info(
                 "reader-quality-fit",
-                $"{_book.Title} page={pageIndex + 1}, mode={mode}, scale={scale:0.###}, bytes={result.ByteSize / 1024 / 1024}MB, sharpen={result.SharpenAmount:0.###}, elapsed={result.ElapsedMs}ms, cache={_qualityFitCacheBytes / 1024 / 1024}MB");
+                $"{_book.Title} page={pageIndex + 1}, quality={requestedQualityMode}, mode={mode}, classification={result.ContentProfile}, sampler={result.Sampler}, target={result.Page.First.PixelWidth}x{result.Page.First.PixelHeight}, sharpen={result.SharpenAmount:0.###}/threshold={result.SharpenThreshold}, scale={scale:0.###}, bytes={result.ByteSize / 1024 / 1024}MB, elapsed={result.ElapsedMs}ms, cache=miss/{_qualityFitCacheBytes / 1024 / 1024}MB");
         }
         catch (OperationCanceledException)
         {
@@ -907,6 +1167,19 @@ public partial class ReaderWindow : Window
         if (ImageScale is null) return;
         ImageScale.ScaleX = _currentZoom;
         ImageScale.ScaleY = _currentZoom;
+        _ = Dispatcher.InvokeAsync(RepositionMiscCommentStickers, DispatcherPriority.Loaded);
+    }
+
+    private void RepositionMiscCommentStickers()
+    {
+        if (MiscCommentsLayer is null) return;
+        foreach (var sticker in MiscCommentsLayer.Children.OfType<Border>())
+        {
+            if (sticker.Tag is MiscImageComment comment)
+            {
+                PositionMiscCommentSticker(sticker, comment);
+            }
+        }
     }
 
     private void DoublePageGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -945,9 +1218,12 @@ public partial class ReaderWindow : Window
 
     private void ToggleQualityModeButton_Click(object sender, RoutedEventArgs e)
     {
-        _qualityMode = _qualityMode == ReaderQualityMode.Quality
-            ? ReaderQualityMode.Performance
-            : ReaderQualityMode.Quality;
+        _qualityMode = _qualityMode switch
+        {
+            ReaderQualityMode.Performance => ReaderQualityMode.Quality,
+            ReaderQualityMode.Quality => ReaderQualityMode.Ultra,
+            _ => ReaderQualityMode.Performance
+        };
         UpdateQualityModeButton();
         ClearReaderPageCache();
         _ = Task.Run(() => _database.SaveShortcut(ReaderQualityModePreferenceKey, _qualityMode.ToString()));
@@ -1244,7 +1520,7 @@ public partial class ReaderWindow : Window
                 _book.Rating = currentMisc.Rating;
                 _book.IsFavorite = currentMisc.IsFavorite;
                 BuildQuickRatingStars();
-                UpdateMiscCommentBar(currentMisc);
+                _ = LoadAndRenderMiscCommentsAsync(currentMisc);
             }
             UpdateNavigationState();
             HideReaderMessage();
@@ -1312,14 +1588,21 @@ public partial class ReaderWindow : Window
     private static bool IsLandscape(BitmapSource image) => image.PixelWidth > image.PixelHeight * 1.15;
     private sealed record LoadedPage(BitmapSource First, BitmapSource? Second, bool UseDouble);
     private sealed record PageCacheEntry(string Key, LoadedPage Page, long ByteSize = 0);
-    private sealed record QualityFitResult(LoadedPage Page, long ByteSize, long ElapsedMs, double SharpenAmount);
+    private sealed record QualityFitResult(
+        LoadedPage Page,
+        long ByteSize,
+        long ElapsedMs,
+        string ContentProfile,
+        string Sampler,
+        double SharpenAmount,
+        int SharpenThreshold);
 
     private string CreateReaderPageCacheKey(int pageIndex, bool doublePageMode, int singleDecodeWidth, int doubleDecodeWidth)
     {
         var mode = doublePageMode ? "double" : "single";
-        if (_qualityMode == ReaderQualityMode.Quality)
+        if (_qualityMode != ReaderQualityMode.Performance)
         {
-            return $"{pageIndex}:{mode}:quality";
+            return $"{pageIndex}:{mode}:{_qualityMode.ToString().ToLowerInvariant()}";
         }
 
         return $"{pageIndex}:{mode}:performance:{singleDecodeWidth}:{doubleDecodeWidth}";
@@ -1390,22 +1673,26 @@ public partial class ReaderWindow : Window
 
     private void AddReaderPageCache(string key, LoadedPage page)
     {
+        var byteSize = EstimateLoadedPageBytes(page);
         lock (_pageCacheLock)
         {
             if (_pageCache.TryGetValue(key, out var existing))
             {
-                existing.Value = new PageCacheEntry(key, page);
+                _pageCacheBytes -= existing.Value.ByteSize;
+                existing.Value = new PageCacheEntry(key, page, byteSize);
+                _pageCacheBytes += byteSize;
                 _pageCacheLru.Remove(existing);
                 _pageCacheLru.AddFirst(existing);
             }
             else
             {
-                var node = new LinkedListNode<PageCacheEntry>(new PageCacheEntry(key, page));
+                var node = new LinkedListNode<PageCacheEntry>(new PageCacheEntry(key, page, byteSize));
                 _pageCacheLru.AddFirst(node);
                 _pageCache[key] = node;
+                _pageCacheBytes += byteSize;
             }
 
-            TrimReaderPageCache(GetReaderPageCacheLimit());
+            TrimReaderPageCache(GetReaderPageCacheLimit(), GetReaderPageCacheByteLimit());
         }
     }
 
@@ -1416,18 +1703,24 @@ public partial class ReaderWindow : Window
             return MemoryPressureReaderPageCacheEntries;
         }
 
-        return _qualityMode == ReaderQualityMode.Quality
+        return _qualityMode != ReaderQualityMode.Performance
             ? MaxQualityReaderPageCacheEntries
             : MaxReaderPageCacheEntries;
     }
 
-    private void TrimReaderPageCache(int maxEntries)
+    private long GetReaderPageCacheByteLimit()
     {
-        while (_pageCache.Count > maxEntries && _pageCacheLru.Last is not null)
+        return IsMemoryPressureHigh() ? MemoryPressureReaderPageCacheBytes : MaxReaderPageCacheBytes;
+    }
+
+    private void TrimReaderPageCache(int maxEntries, long maxBytes)
+    {
+        while ((_pageCache.Count > maxEntries || _pageCacheBytes > maxBytes) && _pageCacheLru.Last is not null)
         {
             var last = _pageCacheLru.Last;
             _pageCacheLru.RemoveLast();
             _pageCache.Remove(last.Value.Key);
+            _pageCacheBytes -= last.Value.ByteSize;
         }
     }
 
@@ -1437,6 +1730,7 @@ public partial class ReaderWindow : Window
         {
             _pageCache.Clear();
             _pageCacheLru.Clear();
+            _pageCacheBytes = 0;
             _qualityFitCache.Clear();
             _qualityFitCacheLru.Clear();
             _qualityFitCacheBytes = 0;
@@ -1456,7 +1750,7 @@ public partial class ReaderWindow : Window
         {
             lock (_pageCacheLock)
             {
-                TrimReaderPageCache(MemoryPressureReaderPageCacheEntries);
+                TrimReaderPageCache(MemoryPressureReaderPageCacheEntries, MemoryPressureReaderPageCacheBytes);
                 TrimQualityFitCache();
             }
             return;
@@ -1524,7 +1818,7 @@ public partial class ReaderWindow : Window
 
     private void NormalizeDisplayedImageSizing()
     {
-        if (_qualityMode == ReaderQualityMode.Quality)
+        if (_qualityMode != ReaderQualityMode.Performance)
         {
             NormalizeQualityImageSizing();
             return;
@@ -1902,7 +2196,7 @@ public partial class ReaderWindow : Window
 
     private int GetReaderDecodePixelWidth(bool isDoublePage)
     {
-        if (_qualityMode == ReaderQualityMode.Quality)
+        if (_qualityMode != ReaderQualityMode.Performance)
         {
             return 0;
         }
@@ -2232,12 +2526,16 @@ public partial class ReaderWindow : Window
         }
     }
 
-    private void LoadViewerPreferences()
+    private async Task LoadViewerPreferencesAsync()
     {
         _isLoadingViewerPreferences = true;
-        var shortcuts = _database.LoadShortcuts();
         try
         {
+            var shortcuts = await Task.Run(() => _database.LoadShortcuts());
+            if (_isClosing)
+            {
+                return;
+            }
             if (shortcuts.TryGetValue("reader.wheelmode", out var wheelMode)
                 && int.TryParse(wheelMode, out var wheelModeIndex)
                 && wheelModeIndex >= 0
@@ -2273,6 +2571,10 @@ public partial class ReaderWindow : Window
             if (shortcuts.TryGetValue("reader.key.pagination", out var pagKeys) && pagKeys.Length > 0)
                 _paginationKeys = ParseKeys(pagKeys);
         }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("reader-preferences", $"加载阅读器设置失败：{ex.Message}");
+        }
         finally
         {
             _isLoadingViewerPreferences = false;
@@ -2290,10 +2592,18 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        QualityModeButton.Content = _qualityMode == ReaderQualityMode.Quality ? "质量" : "性能";
-        QualityModeButton.ToolTip = _qualityMode == ReaderQualityMode.Quality
-            ? "当前为质量模式：原图解码，适配模式生成清晰适配图；原始模式为 1:1"
-            : "当前为性能模式：按视口降采样，降低内存压力";
+        QualityModeButton.Content = _qualityMode switch
+        {
+            ReaderQualityMode.Performance => "性能",
+            ReaderQualityMode.Quality => "质量",
+            _ => "极致"
+        };
+        QualityModeButton.ToolTip = _qualityMode switch
+        {
+            ReaderQualityMode.Performance => "当前为性能模式：按视口降采样，降低内存压力",
+            ReaderQualityMode.Quality => "当前为质量模式：原图解码，适配模式使用 WPF 高质量缩放；原始模式为 1:1",
+            _ => "当前为极致模式：按页面内容自适应高质量重采样与轻锐化；原始模式仍为 1:1"
+        };
         UpdateToolbarMenuLabels();
     }
 
@@ -2534,7 +2844,7 @@ public partial class ReaderWindow : Window
     private const int SWP_NOZORDER = 0x0004;
 
     [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    private static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
@@ -2596,7 +2906,7 @@ public partial class ReaderWindow : Window
         ReleaseHoldZoom();
         CloseReaderDropdowns();
         PageCatalogOverlay.Visibility = Visibility.Visible;
-        EnsurePageCatalogItems();
+        _ = EnsurePageCatalogItemsAsync();
         StartPageCatalogThumbnailLoad();
     }
 
@@ -2621,7 +2931,7 @@ public partial class ReaderWindow : Window
         e.Handled = true;
     }
 
-    private void EnsurePageCatalogItems()
+    private async Task EnsurePageCatalogItemsAsync()
     {
         if (PageCatalogItems.Count == _book.Pages.Count)
         {
@@ -2631,7 +2941,19 @@ public partial class ReaderWindow : Window
         // 杂图模式不支持书签，跳过数据库查询
         if (_misc is null)
         {
-            _bookmarks = _database.LoadBookmarks(_book.Id);
+            try
+            {
+                _bookmarks = await Task.Run(() => _database.LoadBookmarks(_book.Id));
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn("reader-bookmarks", $"加载书签失败：{ex.Message}");
+                return;
+            }
+            if (_isClosing)
+            {
+                return;
+            }
             UpdateSignButton();
         }
         else

@@ -235,23 +235,10 @@
             </ScrollViewer>
         </Border>
 
-        <!-- 杂图评语浮层（仅杂图模式 + 有评语时显示，底部半透明） -->
-        <Border x:Name="MiscCommentBar"
+        <!-- 杂图静态评语贴纸层；位置以当前图片显示区域的相对坐标计算。 -->
+        <Canvas x:Name="MiscCommentsLayer"
                 Panel.ZIndex="7"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="0,0,0,56"
-                MaxWidth="720"
-                Padding="16,10"
-                CornerRadius="8"
-                Background="#CC000000"
-                Visibility="Collapsed">
-            <TextBlock x:Name="MiscCommentText"
-                       Foreground="#F9FAFB"
-                       FontSize="13"
-                       TextWrapping="Wrap"
-                       MaxWidth="688"/>
-        </Border>
+                Visibility="Collapsed"/>
 
         <!-- 翻页加载指示器：翻页请求发出后显示，图片解码完成后隐藏。
              防闪：< 150ms 的快速加载不显示。 -->
@@ -648,7 +635,7 @@
                 <Button x:Name="OriginalSizeButton" Content="原始" Style="{StaticResource ReaderButton}" Click="OriginalSize_Click"/>
                 <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
                 <!-- 质量与背景组 -->
-                <Button x:Name="QualityModeButton" Content="质量" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="ToggleQualityModeButton_Click"/>
+                <Button x:Name="QualityModeButton" Content="质量" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Focusable="False" Click="ToggleQualityModeButton_Click"/>
                 <Button x:Name="BackgroundButton" Content="背景" Style="{StaticResource ReaderButton}" Click="CycleBackgroundButton_Click"/>
                 <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
                 <!-- 页面模式组 -->
@@ -673,11 +660,40 @@
                 </ComboBox>
                 <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
                 <!-- 杂图专属操作组（仅杂图模式可见） -->
-                <StackPanel x:Name="MiscActionsPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
-                    <Button Content="Tag" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscEditTags_Click"/>
-                    <Button Content="评语" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscEditComment_Click"/>
-                    <Button Content="收藏" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscToggleFavorite_Click"/>
-                    <Button Content="重命名" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscRename_Click"/>
+                <StackPanel x:Name="MiscActionsPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed" Focusable="False">
+                    <Border Margin="0,0,8,0"
+                            Padding="8,5"
+                            CornerRadius="{StaticResource RadiusControl}"
+                            Background="{DynamicResource Brush.Reader.ButtonBgDark}"
+                            BorderBrush="{DynamicResource Brush.Reader.ButtonBorder}"
+                            BorderThickness="1"
+                            Focusable="False">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Focusable="False">
+                            <TextBlock Text="评分"
+                                       Margin="0,0,5,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Brush.Reader.Text}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"/>
+                            <StackPanel x:Name="MiscRatingStarsHost"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Focusable="False"/>
+                            <TextBlock x:Name="MiscRatingText"
+                                       Text="—"
+                                       MinWidth="20"
+                                       Margin="5,0,0,0"
+                                       VerticalAlignment="Center"
+                                       TextAlignment="Center"
+                                       Foreground="{DynamicResource Brush.Reader.SubtleText}"
+                                       FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+                    <Button Content="Tag" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscEditTags_Click" Focusable="False"/>
+                    <Button Content="新增评语" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscEditComment_Click" Focusable="False"/>
+                    <Button x:Name="MiscCommentVisibilityButton" Content="隐藏评语" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="ToggleMiscCommentVisibility_Click" Focusable="False"/>
+                    <Button Content="收藏" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscToggleFavorite_Click" Focusable="False"/>
+                    <Button Content="重命名" Style="{StaticResource ReaderButton}" Margin="0,0,6,0" Click="MiscRename_Click" Focusable="False"/>
                     <Border Width="1" Height="24" Background="{DynamicResource Brush.Reader.ButtonBorder}" Margin="12,0"/>
                 </StackPanel>
                 <!-- 功能组 -->

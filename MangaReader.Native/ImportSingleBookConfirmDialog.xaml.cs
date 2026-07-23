@@ -23,21 +23,7 @@ public partial class ImportSingleBookConfirmDialog : Window
     private static string BuildSummary(BatchImportCandidate candidate)
     {
         var totalBytes = ImageLoader.SumFileBytes(candidate.Pages);
-        return $"{candidate.PageCount} 张图片 · {FormatSize(totalBytes)}";
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        if (bytes <= 0)
-        {
-            return "0MB";
-        }
-
-        const double mb = 1024d * 1024d;
-        const double gb = 1024d * 1024d * 1024d;
-        return bytes >= gb
-            ? $"{bytes / gb:0.##}G"
-            : $"{Math.Max(1, bytes / mb):0.#}MB";
+        return $"{candidate.PageCount} 张图片 · {FileSizeFormatter.Format(totalBytes)}";
     }
 
     private void TitleBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
